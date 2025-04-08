@@ -1,0 +1,164 @@
+
+# Cronograma de Desenvolvimento do Projeto RPX - Próximas 8 Semanas
+
+## Semana 1: Correção de Problemas Atuais e Estabilização
+
+Dias 1-2: Resolução de Bugs Críticos
+- ✅ Corrigir erro de conexão com MongoDB Atlas (adicionar IP à whitelist)
+- ✅ Resolver problema de importação de ícones Crown e Medal na página de ranking
+- ✅ Corrigir erros de imagens não encontradas (/images/avatar-placeholder.png)
+- ✅ Substituir todos os ícones problemáticos de react-icons/fi por react-feather
+
+Dias 3-5: Estruturação de Assets e Imagens
+- ✅ Criar pasta /public/images e adicionar imagens necessárias (avatar-placeholder.png)
+- ✅ Implementar sistema adequado de carregamento de imagens
+- ✅ Configurar corretamente os paths de assets estáticos
+- ✅ Testar build e deploy para garantir consistência
+
+Dias 6-7: Configuração de Ambiente
+- ✅ Finalizar configuração do MongoDB Atlas (conexão, índices, whitelist)
+- ✅ Configurar variáveis de ambiente (.env) para desenvolvimento e produção
+- ✅ Padronizar scripts de build e deploy
+- ✅ Documentar configuração de ambiente para o time
+
+## Semana 2: Expansão do Backend
+
+Dias 1-3: Modelos e Controladores
+- ✅ Implementar/finalizar modelos do MongoDB (usuários, apostas, partidas, torneios)
+- ✅ Desenvolver controladores para todas as entidades principais
+- ✅ Adicionar validação adequada para todos os inputs
+- ✅ Implementar tratamento de erros consistente
+
+Dias 4-5: Autenticação e Autorização
+- ✅ Finalizar sistema de autenticação (JWT)
+- ✅ Implementar sistema de refresh tokens
+- ✅ Criar middleware de autorização baseado em funções
+- ⬜ Desenvolver endpoints para gerenciamento de sessões
+
+Dias 6-7: API RESTful
+- ✅ Documentar API com Swagger
+- ⬜ Implementar versionamento da API
+- ✅ Adicionar rate limiting específico por endpoint
+- ⬜ Criar testes automatizados para endpoints principais
+
+## Semana 3: Desenvolvimento do Sistema de Apostas
+
+Dias 1-3: Sistema de Odds e Apostas
+- ✅ Desenvolver algoritmo de cálculo de odds
+- ✅ Implementar sistema de criação e gerenciamento de apostas
+- ⬜ Criar lógica para apostas simples e múltiplas
+- ✅ Desenvolver sistema de validação de apostas
+
+Dias 4-5: Processamento de Resultados
+- ⬜ Implementar sistema de atualização automática de resultados
+- ⬜ Desenvolver lógica para processamento de pagamentos
+- ⬜ Criar cron jobs para atualização de status de apostas
+- ⬜ Implementar notificações para resultados de apostas
+
+Dias 6-7: Transações Financeiras
+- ✅ Desenvolver sistema de carteira virtual
+- ✅ Implementar sistema de depósito e saque
+- ✅ Criar histórico de transações
+- ⬜ Desenvolver relatórios financeiros básicos
+
+## Semana 4: Aprimoramento do Frontend
+
+Dias 1-3: Finalização de Páginas Principais
+- ✅ Finalizar página de torneios (resolver problema dos ícones)
+- ✅ Aprimorar página de ranking (implementar ordenação e filtros)
+- ✅ Desenvolver página detalhada de partidas
+- ✅ Implementar visualização de histórico de apostas
+
+Dias 4-5: Sistema de Autenticação Frontend
+- ✅ Implementar páginas de login/registro
+- ✅ Criar gerenciamento de estado de autenticação (Context API)
+- ✅ Desenvolver redirecionamentos baseados em autenticação
+- ⬜ Implementar recuperação de senha
+
+Dias 6-7: Responsividade e UX
+- ✅ Otimizar para dispositivos móveis
+- ✅ Implementar feedback visual para ações do usuário
+- ✅ Desenvolver estados de carregamento e erro
+- ✅ Implementar animações e transições
+
+## Semana 5: Sistema de Torneios e Competições
+
+Dias 1-3: Estrutura de Torneios
+- ✅ Finalizar backend para torneios
+- ⬜ Implementar sistema de inscrições
+- ⬜ Desenvolver geração automática de chaves
+- ⬜ Criar sistema de progressão de torneios
+
+Dias 4-5: Gerenciamento de Competições
+- ⬜ Implementar diferentes formatos de torneios
+- ⬜ Desenvolver sistema de pontuação
+- ⬜ Criar regras específicas por competição
+- ⬜ Implementar sistema de premiação
+
+Dias 6-7: Interface de Torneios
+- ✅ Finalizar página de detalhes de torneio
+- ⬜ Implementar visualização de bracket
+- ⬜ Desenvolver páginas de estatísticas
+- ⬜ Criar sistema de notificações para jogos importantes
+
+## Semana 6: Sistema de Ranking e Social
+
+Dias 1-3: Sistema de Ranking Avançado
+- ✅ Finalizar algoritmo de ranking
+- ⬜ Implementar níveis/patentes
+- ⬜ Desenvolver sistema de conquistas
+- ⬜ Criar sistema de pontos de experiência
+
+Dias 4-5: Recursos Sociais
+- ✅ Implementar perfis públicos de usuários
+- ⬜ Desenvolver sistema de amigos/seguidores
+- ⬜ Criar feed de atividades
+- ⬜ Implementar sistema de mensagens diretas
+
+Dias 6-7: Gamificação
+- ⬜ Desenvolver sistema de missões diárias
+- ⬜ Implementar recompensas por login diário
+- ⬜ Criar sistema de desafios entre usuários
+- ⬜ Desenvolver leaderboards temporários
+
+## Semana 7: Loja e Monetização
+
+Dias 1-3: Estrutura da Loja
+- ✅ Desenvolver backend para loja virtual
+- ✅ Implementar sistema de itens e categorias
+- ⬜ Criar sistema de promoções e descontos
+- ⬜ Desenvolver inventário de usuários
+
+Dias 4-5: Integração de Pagamentos
+- ✅ Implementar gateway de pagamento
+- ✅ Desenvolver sistema de processamento de pedidos
+- ✅ Criar histórico de compras
+- ⬜ Implementar sistema de reembolso
+
+Dias 6-7: Interface da Loja
+- ✅ Finalizar frontend da loja
+- ⬜ Implementar carrinho de compras
+- ⬜ Desenvolver checkout e confirmação
+- ⬜ Criar sistema de avaliações de produtos
+
+## Semana 8: Testes, Otimização e Lançamento
+
+Dias 1-3: Testes Intensivos
+- ⬜ Realizar testes de integração
+- ⬜ Executar testes de carga
+- ⬜ Validar fluxos de usuário
+- ⬜ Testar em diferentes dispositivos e navegadores
+
+Dias 4-5: Otimização de Performance
+- ⬜ Implementar lazy loading e code splitting
+- ⬜ Otimizar carregamento de imagens
+- ⬜ Melhorar tempos de resposta da API
+- ⬜ Implementar cache estratégico
+
+Dias 6-7: Preparação para Lançamento
+- ⬜ Configurar ambiente de produção
+- ⬜ Implementar monitoramento e alertas
+- ⬜ Criar documentação final para usuários
+- ⬜ Preparar estratégia de suporte pós-lançamento
+
+

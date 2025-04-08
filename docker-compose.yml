@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Serviço de aplicação Node.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongo:27017/rpx-platform
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - rpx-network
+    command: npm run dev
+
+  # Banco de dados MongoDB
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - rpx-network
+
+  # Redis para cache e filas
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - rpx-network
+
+  # MongoDB Express (interface web para gerenciar MongoDB)
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+    depends_on:
+      - mongo
+    networks:
+      - rpx-network
+
+  # Serviço para mock API (simula API do Free Fire)
+  mock-api:
+    build:
+      context: ./mock-api
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./mock-api:/app
+      - /app/node_modules
+    environment:
+      - PORT=3002
+    networks:
+      - rpx-network
+    command: npm start
+
+networks:
+  rpx-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data: 

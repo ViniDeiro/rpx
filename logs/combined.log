@@ -1,0 +1,1140 @@
+[2025-03-27 15:55:50] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-27 15:56:21] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at startServerWithoutMongoDB (C:\Users\Vini\Desktop\projeto rpx\src\server.js:115:10)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:153:5
+[2025-03-28 03:27:26] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 01:34:09] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 01:59:23] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:01:44] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:01:58] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:02:12] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:02:13] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:03:16] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:03:16] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:06:09] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:06:09] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:06:49] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:07:02] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:07:03] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-29 02:07:16] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:07:16] info: Buscando lista de partidas disponíveis 
+[2025-03-29 02:17:42] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:19:00] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:19:01] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-29 02:21:49] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:25:25] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 02:25:25] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-29 11:29:50] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-29 11:38:47] info: Buscando lista de partidas disponíveis 
+[2025-03-29 11:38:47] info: Buscando lista de partidas disponíveis 
+[2025-03-29 11:40:17] info: Buscando lista de partidas disponíveis 
+[2025-03-29 11:40:17] info: Buscando lista de partidas disponíveis 
+[2025-03-29 11:40:25] info: Buscando lista de partidas disponíveis 
+[2025-03-29 11:40:25] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:35:10] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:35:10] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:37:22] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:37:22] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:41:13] info: Buscando lista de partidas disponíveis 
+[2025-03-29 12:41:13] info: Buscando lista de partidas disponíveis 
+[2025-03-29 14:55:33] info: Buscando lista de partidas disponíveis 
+[2025-03-29 14:55:33] info: Buscando lista de partidas disponíveis 
+[2025-03-29 22:20:12] info: Buscando lista de partidas disponíveis 
+[2025-03-29 22:20:12] info: Buscando lista de partidas disponíveis 
+[2025-03-31 13:42:22] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-31 13:47:18] info: Buscando lista de partidas disponíveis 
+[2025-03-31 13:47:18] info: Buscando lista de partidas disponíveis 
+[2025-03-31 14:01:34] info: Buscando lista de partidas disponíveis 
+[2025-03-31 14:01:34] info: Buscando lista de partidas disponíveis 
+[2025-03-31 14:04:06] info: Buscando lista de partidas disponíveis 
+[2025-03-31 14:04:06] info: Buscando lista de partidas disponíveis 
+[2025-03-31 14:37:43] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-31 14:39:07] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-31 16:00:03] info: Buscando lista de partidas disponíveis 
+[2025-03-31 16:00:03] info: Buscando lista de partidas disponíveis 
+[2025-03-31 16:37:44] info: Buscando lista de partidas disponíveis 
+[2025-03-31 16:37:44] info: Buscando lista de partidas disponíveis 
+[2025-03-31 17:56:04] info: Buscando lista de partidas disponíveis 
+[2025-03-31 17:56:04] info: Buscando lista de partidas disponíveis 
+[2025-03-31 23:24:02] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-31 23:50:55] debug: Logging inicializado em modo de desenvolvimento 
+[2025-03-31 23:50:56] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-31 23:53:30] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:07:39] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:07:40] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:07:55] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:08:36] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:14:41] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:14:50] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:16:04] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:17:03] info: Buscando lista de partidas disponíveis 
+[2025-04-01 00:17:03] info: Buscando lista de partidas disponíveis 
+[2025-04-01 00:34:10] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:37:15] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 00:48:47] info: Buscando lista de partidas disponíveis 
+[2025-04-01 00:48:47] info: Buscando lista de partidas disponíveis 
+[2025-04-01 00:49:28] info: Buscando lista de partidas disponíveis 
+[2025-04-01 00:49:28] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:28:43] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 01:35:42] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:35:42] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:54:18] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:54:18] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:54:22] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:54:22] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:49] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:49] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:51] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:51] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:52] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:58:52] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:59:34] info: Buscando lista de partidas disponíveis 
+[2025-04-01 01:59:34] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:00:59] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:00:59] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:01:00] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:01:00] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:01:07] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:01:07] info: Buscando lista de partidas disponíveis 
+[2025-04-01 02:58:21] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 03:05:52] info: Tentativa de login para o usuário: vini_deiro@icloud.com 
+[2025-04-01 03:09:27] info: Tentativa de login para o usuário: vini_deiro@icloud.com 
+[2025-04-01 03:09:53] info: Buscando lista de partidas disponíveis 
+[2025-04-01 03:09:53] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:00:56] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 15:14:01] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:14:01] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:21:01] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:21:01] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:24:59] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 15:26:42] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 15:26:43] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:151:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-04-01 15:43:57] info: Buscando lista de partidas disponíveis 
+[2025-04-01 15:43:57] info: Buscando lista de partidas disponíveis 
+[2025-04-01 16:02:38] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 16:02:41] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 16:03:41] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 16:04:18] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 16:04:54] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 16:04:55] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:151:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-04-01 17:07:32] info: Buscando lista de partidas disponíveis 
+[2025-04-01 17:07:32] info: Buscando lista de partidas disponíveis 
+[2025-04-01 17:07:38] info: Buscando lista de partidas disponíveis 
+[2025-04-01 17:07:38] info: Buscando lista de partidas disponíveis 
+[2025-04-01 17:57:19] debug: Logging inicializado em modo de desenvolvimento 
+[2025-04-01 17:57:22] debug: Logging inicializado em modo de desenvolvimento 
+2025-04-02 14:38:13 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:38:13 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:39:08 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:39:08 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:51:41 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:51:41 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:53:21 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:53:21 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:57:01 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:57:01 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:58:14 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:58:14 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:58:29 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 14:58:29 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:01:00 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:01:00 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:07 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:07 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:17 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:17 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:30 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:03:30 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:05:26 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:05:26 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:06:02 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:06:02 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:10:12 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-02 15:10:12 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 11:23:51 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 11:23:51 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:19 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:19 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:30 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:30 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:40 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:13:40 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:31:26 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:31:26 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:32:16 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:32:16 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:33:17 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "password": {
+      "type": "field",
+      "value": "12345678",
+      "msg": "Senha deve conter pelo menos uma letra minúscula",
+      "path": "password",
+      "location": "body"
+    },
+    "phone": {
+      "type": "field",
+      "value": "+5511931550012",
+      "msg": "Telefone deve estar no formato (99) 99999-9999",
+      "path": "phone",
+      "location": "body"
+    }
+  }
+}
+2025-04-03 12:38:00 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:38:00 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:38:26 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "phone": {
+      "type": "field",
+      "value": "+5511931550012",
+      "msg": "Telefone deve estar no formato (99) 99999-9999",
+      "path": "phone",
+      "location": "body"
+    }
+  }
+}
+2025-04-03 12:41:03 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:41:03 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:42:18 [info]: Tentativa de registro para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:42:18 [info]: Novo usuário registrado com sucesso: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:45:41 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:45:41 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:32 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:32 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:35 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:35 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:43 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:43 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:44 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:49:44 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:09 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:09 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:16 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:16 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:33 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 12:50:33 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 14:18:16 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 14:18:16 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 14:22:25 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 14:22:26 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 15:57:51 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 15:57:51 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:00:59 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:00:59 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:01:04 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:01:04 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:05:27 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:05:27 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:05:32 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:05:32 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:18:31 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:18:32 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:18:46 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:18:46 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:28:48 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 17:28:48 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:24:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:24:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:24:58 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:24:58 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:25:31 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:25:31 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:26:13 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:26:13 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:35:18 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:35:18 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:45:02 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:45:02 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:45:26 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:45:26 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:46:20 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:46:20 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:46:57 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 19:46:57 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 20:00:07 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 20:00:07 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 20:00:25 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 20:00:25 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:23:41 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:23:41 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:27:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:27:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:32:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:32:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:42:21 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:42:21 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:44:52 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-03 22:44:52 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:09:29 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:09:29 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:15:02 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:15:02 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:16:42 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:16:42 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:16:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:16:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:20:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:20:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:21:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:21:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:22:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:22:44 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:22:56 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:22:56 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:29 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:29 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:39 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:39 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:50 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:34:50 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:37:28 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:37:28 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:38:43 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:38:43 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:40:18 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:40:18 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:42:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:42:35 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:42:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:42:37 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:47:09 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:47:09 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:47:53 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:47:53 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:50:12 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 00:50:12 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 14:58:21 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 14:58:21 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 15:01:11 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 15:01:11 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 15:01:34 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 15:01:34 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:06:34 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:06:34 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:06:37 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:06:37 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:08:21 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:08:21 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:36:40 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:36:40 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:37:21 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:37:21 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:43:18 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:43:18 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:55:20 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 17:55:20 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-04 18:34:59 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 18:35:00 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 19:25:50 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 19:25:50 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-04 19:26:49 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-04 19:26:49 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:19:09 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:19:09 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:21:09 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:21:10 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:25:40 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-05 01:25:40 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 14:44:57 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 14:44:57 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 14:45:31 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 14:45:32 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:10 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:10 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:13 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:13 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:17 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:17 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:59 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:32:59 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:33:08 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:33:08 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:43:03 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:43:03 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:43:06 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:43:06 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:44:15 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:44:15 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:44:17 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:44:17 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:45:26 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:45:26 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:45:28 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:45:28 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:46:57 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 16:46:57 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:01:39 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:01:39 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:20:31 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:20:31 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:24:49 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 17:24:49 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:28:09 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:28:09 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:29:13 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:29:13 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:39:58 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 18:39:58 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-07 21:51:47 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 21:51:47 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 21:56:33 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-07 21:56:33 [info]: Buscando lista de partidas disponíveis
+{
+  "service": "rpx-platform"
+}
+2025-04-08 14:49:44 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-08 14:49:44 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-08 14:56:54 [info]: Tentativa de login para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-08 14:56:54 [info]: Login bem-sucedido para o usuário: ygorxrpx@gmail.com
+{
+  "service": "rpx-platform"
+}
+2025-04-08 18:38:17 [info]: 🚀 Servidor rodando na porta 3001
+{
+  "service": "rpx-platform"
+}
+2025-04-08 18:38:17 [info]: API disponível em http://localhost:3001
+{
+  "service": "rpx-platform"
+}
+2025-04-08 19:19:49 [info]: Recebido sinal SIGINT. Encerrando servidor...
+{
+  "service": "rpx-platform"
+}

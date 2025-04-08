@@ -1,0 +1,84 @@
+[2025-03-27 15:56:21] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at startServerWithoutMongoDB (C:\Users\Vini\Desktop\projeto rpx\src\server.js:115:10)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:153:5
+[2025-03-29 02:07:03] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-29 02:19:01] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-29 02:25:25] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-03-31 23:50:56] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:150:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-04-01 15:26:43] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:151:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2025-04-01 16:04:55] error: Erro não tratado: listen EADDRINUSE: address already in use :::3001 
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1907:16)
+    at listenInCluster (node:net:1964:12)
+    at Server.listen (node:net:2066:7)
+    at C:\Users\Vini\Desktop\projeto rpx\src\server.js:151:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-04-03 12:33:17 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "password": {
+      "type": "field",
+      "value": "12345678",
+      "msg": "Senha deve conter pelo menos uma letra minúscula",
+      "path": "password",
+      "location": "body"
+    },
+    "phone": {
+      "type": "field",
+      "value": "+5511931550012",
+      "msg": "Telefone deve estar no formato (99) 99999-9999",
+      "path": "phone",
+      "location": "body"
+    }
+  }
+}
+2025-04-03 12:38:26 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "phone": {
+      "type": "field",
+      "value": "+5511931550012",
+      "msg": "Telefone deve estar no formato (99) 99999-9999",
+      "path": "phone",
+      "location": "body"
+    }
+  }
+}
