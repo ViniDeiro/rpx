@@ -6,6 +6,20 @@ interface MongooseConnection {
   promise: Promise<mongoose.Mongoose> | null;
 }
 
+// Interface para simular uma Collection do MongoDB
+interface MongoDBCollectionCompat {
+  find: (query: any) => { toArray: () => Promise<any[]> };
+  findOne: (query: any) => Promise<any>;
+  insertOne: (doc: any) => Promise<any>;
+  updateOne: (filter: any, update: any) => Promise<any>;
+  deleteOne: (filter: any) => Promise<any>;
+}
+
+// Interface para simular o cliente MongoDB tradicional
+interface MongoDBCompat {
+  collection: (name: string) => MongoDBCollectionCompat;
+}
+
 // Variável global para manter a conexão entre recarregamentos da API
 declare global {
   var mongoose: MongooseConnection | undefined;
@@ -17,13 +31,71 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+// Função para criar um objeto de compatibilidade com MongoDB nativo
+function createMongoDBCompat(mongooseInstance: mongoose.Mongoose): MongoDBCompat {
+  return {
+    collection: (name: string) => {
+      // Obter o modelo do mongoose ou criar um novo
+      let model: any;
+      try {
+        model = mongooseInstance.model(name);
+      } catch (e) {
+        // Se o modelo não existir, criar um dinâmico
+        const schema = new mongoose.Schema({}, { strict: false });
+        model = mongooseInstance.model(name, schema);
+      }
+
+      // Retornar um objeto que emula as operações de Collection do MongoDB
+      return {
+        find: (query: any) => ({
+          toArray: async () => {
+            // Evitamos o método .exec() que estava causando erros de tipo
+            // e usamos Promise.resolve para garantir que retornamos uma Promise
+            const documents = await Promise.resolve(model.find(query).lean());
+            return documents || [];
+          }
+        }),
+        findOne: async (query: any) => {
+          // Usamos Promise.resolve para garantir que retornamos uma Promise
+          return await Promise.resolve(model.findOne(query).lean());
+        },
+        insertOne: async (doc: any) => {
+          // Criamos uma nova instância e salvamos para maior compatibilidade
+          const newDoc = new model(doc);
+          const saved = await newDoc.save();
+          return { insertedId: saved._id, acknowledged: true };
+        },
+        updateOne: async (filter: any, update: any) => {
+          // Usamos Promise.resolve para garantir que retornamos uma Promise
+          const result = await Promise.resolve(model.updateOne(filter, update));
+          return { 
+            matchedCount: result.matchedCount || 0,
+            modifiedCount: result.modifiedCount || 0,
+            acknowledged: true
+          };
+        },
+        deleteOne: async (filter: any) => {
+          // Usamos Promise.resolve para garantir que retornamos uma Promise
+          const result = await Promise.resolve(model.deleteOne(filter));
+          return { 
+            deletedCount: result.deletedCount || 0,
+            acknowledged: true
+          };
+        }
+      };
+    }
+  };
+}
+
 export async function connectToDatabase() {
   // Se já temos uma conexão, retorná-la
   if (cached.conn) {
-    // Retornando um objeto compatível com o código legado que espera client e db
+    // Criar e retornar um objeto compatível com MongoDB
+    const mongoDBCompat = createMongoDBCompat(cached.conn);
+    
     return {
       client: cached.conn,
-      db: cached.conn,
+      db: mongoDBCompat,
       mongoose: cached.conn
     };
   }
@@ -47,10 +119,12 @@ export async function connectToDatabase() {
     // Aguardar a promessa de conexão ser resolvida
     cached.conn = await cached.promise;
     
-    // Retornando um objeto compatível com o código legado que espera client e db
+    // Criar e retornar um objeto compatível com MongoDB
+    const mongoDBCompat = createMongoDBCompat(cached.conn);
+    
     return {
       client: cached.conn,
-      db: cached.conn,
+      db: mongoDBCompat,
       mongoose: cached.conn
     };
   } catch (e) {
