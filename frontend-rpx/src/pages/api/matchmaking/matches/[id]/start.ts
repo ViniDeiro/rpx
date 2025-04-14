@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      match: updatedMatch
+      match: updatedMatch || null
     });
   } catch (error) {
     console.error('Erro ao iniciar partida:', error);

@@ -71,8 +71,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      allPlayersReady,
-      match: updatedMatch
+      allPlayersReady: Boolean(allPlayersReady),
+      match: updatedMatch || null
     });
   } catch (error) {
     console.error('Erro ao processar solicitação de pronto:', error);
