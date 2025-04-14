@@ -7,13 +7,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3000:3000"
     volumes:
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PORT=3001
+      - PORT=3000
       - MONGODB_URI=mongodb://mongo:27017/rpx-platform
       - REDIS_URL=redis://redis:6379
     depends_on:

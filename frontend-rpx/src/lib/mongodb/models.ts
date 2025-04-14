@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  phone: { type: String },
+  cpf: { type: String },
+  birthdate: { type: String },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -29,8 +32,36 @@ const userSchema = new mongoose.Schema({
     balance: { type: Number, default: 0 },
     transactions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' }]
   },
+  // Sistema de amizade
+  friends: [{ 
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    avatar: String,
+    status: { type: String, enum: ['online', 'offline', 'in_game', 'idle'], default: 'offline' },
+    since: { type: Date, default: Date.now },
+    isFavorite: { type: Boolean, default: false },
+    lastActivity: Date
+  }],
+  friendRequests: [{ 
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    avatar: String,
+    requestDate: { type: Date, default: Date.now }
+  }],
+  sentFriendRequests: [{ 
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    requestDate: { type: Date, default: Date.now }
+  }],
+  // Usuários bloqueados
+  blockedUsers: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    blockedAt: { type: Date, default: Date.now }
+  }],
   isVerified: { type: Boolean, default: false },
   lastLogin: Date,
+  lastActivity: Date,
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' }
 });
 

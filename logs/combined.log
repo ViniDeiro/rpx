@@ -5150,3 +5150,23 @@ Error: listen EADDRINUSE: address already in use :::3001
 {
   "service": "rpx-platform"
 }
+2025-04-14 13:18:22 [info]: Servidor Socket.IO inicializado
+{
+  "service": "rpx-platform"
+}
+2025-04-14 13:18:23 [info]: 🚀 Servidor rodando na porta 3000
+{
+  "service": "rpx-platform"
+}
+2025-04-14 13:18:23 [info]: API disponível em http://localhost:3000
+{
+  "service": "rpx-platform"
+}
+2025-04-14 13:18:23 [info]: Inicializando tarefas agendadas...
+{
+  "service": "rpx-platform"
+}
+2025-04-14 13:18:23 [info]: Tarefas agendadas inicializadas com sucesso
+{
+  "service": "rpx-platform"
+}

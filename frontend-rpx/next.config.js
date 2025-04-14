@@ -12,7 +12,7 @@ const nextConfig = {
     unoptimized: process.env.NODE_ENV !== 'production',
   },
   env: {
-    API_URL: process.env.API_URL || 'http://localhost:3001/api',
+    API_URL: process.env.API_URL || 'http://localhost:3000/api',
   },
   // Adicionar análise de bundle se a variável ANALYZE estiver definida
   ...(process.env.ANALYZE === 'true' ? { webpack: (config) => {
@@ -24,7 +24,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*' // Proxy para o backend
+        destination: 'http://localhost:3000/api/:path*' // Proxy para o backend
       }
     ]
   }

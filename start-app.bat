@@ -18,7 +18,7 @@ timeout /t 3 /nobreak > nul
 start cmd /k "cd %~dp0frontend-rpx && npm run dev"
 
 echo Aplicativo RPX iniciado com sucesso!
-echo Backend: http://localhost:3001
+echo Backend: http://localhost:3000
 echo Frontend: http://localhost:3000
 
 exit /b 0 

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 // Interface para o usuário que vem da API
 type User = {
   id: string;
-  name: string;
+  name?: string;
   email: string;
   phone?: string;
   birthdate?: string;
@@ -19,6 +19,27 @@ type User = {
   achievements?: string[];
   purchases?: string[];
   avatarUrl?: string; // URL da imagem de avatar personalizada
+  profile?: {
+    name?: string;
+    avatar?: string;
+    bio?: string;
+    location?: string;
+    socialLinks?: {
+      twitter?: string;
+      instagram?: string;
+      twitch?: string;
+    }
+  };
+  role?: string;
+  wallet?: {
+    balance: number;
+    transactions?: any[];
+  };
+  stats?: {
+    matches?: number;
+    wins?: number;
+    losses?: number;
+  };
 };
 
 type AuthContextType = {
@@ -28,7 +49,7 @@ type AuthContextType = {
   isSimulatedMode: boolean; // Mantido para compatibilidade, mas sempre será false
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
-  logout: () => void;
+  logout: () => boolean;
   updateUser: (userData: Partial<User>) => Promise<void>;
   updateCustomization: (type: 'avatar' | 'banner', itemId: string) => Promise<void>;
   updateUserAvatar: (file: File) => Promise<void>; // Nova função para fazer upload de avatar
@@ -125,53 +146,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       
-      // Verificar se a resposta não é OK
-      if (!response.ok) {
-        // Primeiro tentar obter o texto da resposta
-        const responseText = await response.text();
-        
-        try {
-          // Tentar analisar o texto como JSON
-          const errorData = JSON.parse(responseText);
-          throw new Error(errorData.message || 'Erro ao fazer login');
-        } catch (jsonError) {
-          // Se não conseguir analisar como JSON, usar o texto da resposta
-          console.error('Erro na resposta não-JSON:', responseText);
-          throw new Error('Erro na comunicação com o servidor. Tente novamente mais tarde.');
-        }
+      // Logar a resposta bruta para depuração
+      const rawResponse = await response.text();
+      console.log('Resposta bruta do servidor:', rawResponse);
+      
+      // Se a resposta estiver vazia ou não for válida
+      if (!rawResponse) {
+        throw new Error('Resposta vazia do servidor. Verifique a conexão.');
       }
       
-      // Se a resposta for OK, tentamos analisar o JSON
-      const text = await response.text();
       let data;
-      
       try {
-        data = JSON.parse(text);
-        console.log('Resposta de login completa:', data);
+        data = JSON.parse(rawResponse);
       } catch (jsonError) {
-        console.error('Erro ao analisar JSON da resposta:', jsonError, 'Texto recebido:', text);
+        console.error('Erro ao analisar JSON da resposta:', jsonError);
         throw new Error('Erro ao processar resposta do servidor. Tente novamente mais tarde.');
       }
       
-      // Verificar se o token existe na resposta (corrigir para usar a estrutura correta)
-      let token = null;
-      let userData = null;
-      
-      // Verificar diferentes estruturas possíveis
-      if (data.data?.token) {
-        token = data.data.token;
-        userData = data.data.user;
-        console.log('Token encontrado na estrutura data.data.token');
-      } else if (data.token) {
-        token = data.token;
-        userData = data.user;
-        console.log('Token encontrado na estrutura data.token');
+      // Verificar se a resposta contém erro
+      if (!response.ok) {
+        const errorMessage = data.error || 'Erro desconhecido ao fazer login';
+        throw new Error(errorMessage);
       }
       
-      // Se ainda não encontrou o token, verificar outras possibilidades
+      console.log('Resposta do login processada:', data);
+      
+      // Extrair token e dados do usuário, com fallbacks para diferentes estruturas
+      const token = data.token || data.data?.token;
+      const userData = data.user || data.data?.user;
+      
       if (!token) {
-        console.error('Erro: Token não encontrado na resposta. Estrutura da resposta:', data);
-        throw new Error('Token não recebido do servidor. Verifique os logs.');
+        throw new Error('Token não recebido do servidor.');
+      }
+      
+      if (!userData) {
+        throw new Error('Dados do usuário não recebidos do servidor.');
       }
       
       // Armazenar token
@@ -180,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Atualizar estado do usuário
       setUser(userData);
       
-      console.log('Login bem-sucedido. Token armazenado e usuário atualizado:', userData?.id || 'ID não disponível');
+      console.log('Login bem-sucedido.');
       
       return userData;
     } catch (error: any) {
@@ -196,14 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
-      // Adicionar um username aos dados de registro
-      const userDataWithUsername = {
+      // Preparar dados para registro
+      const registrationData = {
         ...userData,
-        username: generateUsername(userData.name),
+        // Usar o nome como username se não for especificado
+        username: userData.username || userData.name.split(' ')[0]
       };
 
       console.log('Tentando registrar com dados:', {
-        ...userDataWithUsername,
+        ...registrationData,
         password: '[PROTEGIDO]'
       });
 
@@ -216,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userDataWithUsername),
+        body: JSON.stringify(registrationData),
       });
       
       // Verificar se a resposta não é OK
@@ -228,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Tentar analisar o texto como JSON
           const errorData = JSON.parse(responseText);
           console.error('Erro na resposta da API de registro:', errorData);
-          throw new Error(errorData.message || 'Erro ao registrar usuário');
+          throw new Error(errorData.error || 'Erro ao registrar usuário');
         } catch (jsonError) {
           // Se não conseguir analisar como JSON, usar o texto da resposta
           console.error('Erro na resposta não-JSON do registro:', responseText);
@@ -409,14 +419,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função de logout
   const logout = () => {
-    // Remover token do localStorage
-    localStorage.removeItem('auth_token');
+    console.log('Função de logout chamada');
     
-    // Limpar estado do usuário
-    setUser(null);
-    
-    // Redirecionar para a página inicial
-    router.push('/');
+    try {
+      // Remover token do localStorage
+      localStorage.removeItem('auth_token');
+      console.log('Token removido do localStorage');
+      
+      // Limpar cookies (caso existam)
+      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Limpar estado do usuário
+      setUser(null);
+      console.log('Estado do usuário limpo');
+      
+      // Não redirecionamos aqui para evitar comportamento inconsistente
+      // O redirecionamento será feito pelo componente que chamou logout
+      console.log('Logout concluído com sucesso');
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      return false;
+    }
   };
 
   return (

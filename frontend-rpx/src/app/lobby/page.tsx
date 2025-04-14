@@ -131,11 +131,12 @@ export default function LobbyPage() {
   // Inicializar o lobby quando o usuário for carregado
   useEffect(() => {
     if (user) {
+      console.log('Dados do usuário carregados no lobby:', user);
       // Iniciar com o próprio usuário como líder
       const currentPlayer: LobbyPlayer = {
         id: user.id,
-        name: user.name,
-        avatar: user.avatarId || '/images/avatars/default.svg',
+        name: user.username || user.profile?.name || 'Usuário',
+        avatar: user.profile?.avatar || user.avatarId || '/images/avatars/default.svg',
         level: user.level || 1,
         rank: 'diamante', // Exemplo, idealmente viria do perfil do usuário
         isLeader: true,
@@ -146,7 +147,7 @@ export default function LobbyPage() {
       
       // Adicionar mensagem do sistema
       setChatMessages([
-        {id: 1, user: 'Sistema', message: 'Bem-vindo ao lobby! Convide seus amigos para jogar.', isSystem: true}
+        {id: 1, user: 'Sistema', message: `Bem-vindo ao lobby, ${currentPlayer.name}! Convide seus amigos para jogar.`, isSystem: true}
       ]);
       
       // Mostrar animação de entrada no lobby
@@ -220,7 +221,7 @@ export default function LobbyPage() {
     
     const newMessage = {
       id: chatMessages.length + 1,
-      user: user?.name || 'Você',
+      user: user?.username || user?.profile?.name || 'Você',
       message: message
     };
     

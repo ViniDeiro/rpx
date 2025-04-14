@@ -2,26 +2,39 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Menu, X, User, DollarSign, ChevronDown } from 'react-feather';
 import OptimizedImage from '../ui/optimized-image';
 import ImagePaths from '@/utils/image-paths';
 import Image from 'next/image';
 import { formatCurrency } from '@/utils/formatters';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
 
-  // Mock user - em produção viria de um contexto de autenticação
-  const user = {
-    name: 'Usuário RPX',
-    balance: 2500,
-    avatar: '/images/avatar-placeholder.svg',
-    isLoggedIn: true
+  // Função para fazer logout
+  const handleLogout = () => {
+    console.log('Logout solicitado no menu header');
+    try {
+      const success = logout();
+      if (success) {
+        // Fechar o menu dropdown
+        setIsProfileOpen(false);
+        // Redirecionar para a página de login
+        router.push('/auth/login');
+      } else {
+        console.error('Erro ao fazer logout');
+      }
+    } catch (error) {
+      console.error('Erro ao processar logout:', error);
+    }
   };
 
   useEffect(() => {
@@ -96,11 +109,11 @@ export const Header = () => {
 
           {/* Autenticação e perfil - Desktop */}
           <div className="hidden md:flex items-center space-x-4">
-            {user.isLoggedIn ? (
+            {isAuthenticated && user ? (
               <>
                 {/* Carteira */}
                 <div className="flex items-center bg-purple-900/30 border border-gray-700 rounded-full px-3 py-1.5">
-                  <span className="text-sm font-medium text-white">{formatCurrency(user.balance)}</span>
+                  <span className="text-sm font-medium text-white">{formatCurrency(user.wallet?.balance || user.balance || 0)}</span>
                 </div>
                 
                 {/* Menu de perfil */}
@@ -117,8 +130,8 @@ export const Header = () => {
                   >
                     <div className="relative w-8 h-8 overflow-hidden rounded-full">
                       <OptimizedImage 
-                        src={user.avatar} 
-                        alt={user.name}
+                        src={user.profile?.avatar || '/images/avatar-placeholder.svg'} 
+                        alt={user.username || 'Usuário'}
                         width={32}
                         height={32}
                         className="object-cover"
@@ -145,7 +158,10 @@ export const Header = () => {
                         Carteira
                       </Link>
                       <hr className="my-1 border-border" />
-                      <button className="w-full text-left px-4 py-2 text-sm text-error hover:bg-card-hover">
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-error hover:bg-card-hover"
+                      >
                         Sair
                       </button>
                     </motion.div>
@@ -215,13 +231,13 @@ export const Header = () => {
               
               <hr className="border-border my-2" />
               
-              {user.isLoggedIn ? (
+              {isAuthenticated && user ? (
                 <>
                   <div className="flex items-center px-4 py-2">
                     <div className="relative w-10 h-10 overflow-hidden rounded-full mr-3">
                       <OptimizedImage 
-                        src={user.avatar} 
-                        alt={user.name}
+                        src={user.profile?.avatar || '/images/avatar-placeholder.svg'} 
+                        alt={user.username || 'Usuário'}
                         width={40}
                         height={40}
                         className="object-cover"
@@ -229,16 +245,16 @@ export const Header = () => {
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{user.name}</div>
+                      <div className="font-medium">{user.username || user.profile?.name || 'Usuário'}</div>
                       <div className="text-sm text-gray-300">
-                        {formatCurrency(user.balance)}
+                        {formatCurrency(user.wallet?.balance || user.balance || 0)}
                       </div>
                     </div>
                   </div>
                   
                   <Link
                     href="/profile"
-                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover"
+                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover flex items-center"
                     onClick={() => setIsOpen(false)}
                   >
                     <User size={18} className="mr-3" />
@@ -246,28 +262,29 @@ export const Header = () => {
                   </Link>
                   
                   <button 
-                    className="px-4 py-3 text-left rounded-md text-base font-medium text-error hover:bg-card-hover"
+                    onClick={handleLogout}
+                    className="px-4 py-3 w-full text-left rounded-md text-base font-medium text-error hover:bg-card-hover"
                   >
                     Sair
                   </button>
                 </>
               ) : (
-                <div className="flex flex-col space-y-2 px-4 py-2">
+                <>
                   <Link 
-                    href="/auth/login" 
-                    className="btn-outline w-full"
+                    href="/auth/login"
+                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover"
                     onClick={() => setIsOpen(false)}
                   >
                     Entrar
                   </Link>
                   <Link 
-                    href="/auth/register" 
-                    className="btn-gradient w-full"
+                    href="/auth/register"
+                    className="px-4 py-3 bg-primary hover:bg-primary-dark rounded-md text-base font-medium"
                     onClick={() => setIsOpen(false)}
                   >
                     Registrar
                   </Link>
-                </div>
+                </>
               )}
             </nav>
           </div>
