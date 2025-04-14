@@ -64,8 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Verificar se todos os jogadores estão prontos
-    const allPlayersReady = match.teams.every(team => 
-      team.players.every(player => player.isReady)
+    const allPlayersReady = match.teams.every((team: { players: any[] }) => 
+      team.players.every((player: { isReady: boolean }) => player.isReady)
     );
 
     if (!allPlayersReady) {

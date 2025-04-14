@@ -65,8 +65,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const updatedMatch = await db.collection('matches').findOne({ id });
 
     // Verificar se todos os jogadores estão prontos
-    const allPlayersReady = updatedMatch.teams.every(team => 
-      team.players.every(player => player.isReady)
+    const allPlayersReady = updatedMatch && updatedMatch.teams.every((team: { players: any[] }) => 
+      team.players.every((player: { isReady: boolean }) => player.isReady)
     );
 
     return res.status(200).json({

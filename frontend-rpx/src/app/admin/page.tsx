@@ -329,7 +329,7 @@ export default function AdminDashboard() {
               <a href="/login" className="text-purple-600 hover:text-purple-800 text-sm font-medium">
                 Fazer login novamente
               </a>
-            </div>
+          </div>
           )}
         </div>
       )}
@@ -379,7 +379,7 @@ export default function AdminDashboard() {
               <span className="ml-2 text-xs text-green-500 flex items-center">
                 <ArrowUp className="h-3 w-3 mr-1" />15%
               </span>
-            </div>
+          </div>
             <p className="text-xs text-gray-500 mt-1">R$ {stats.platformBalance.toFixed(2)} em saldo</p>
           </CardContent>
         </Card>
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
               <span className="ml-2 text-xs text-red-500 flex items-center">
                 <ArrowUp className="h-3 w-3 mr-1" />5
               </span>
-            </div>
+        </div>
             <p className="text-xs text-gray-500 mt-1">Pendentes de revisão</p>
           </CardContent>
         </Card>
@@ -443,7 +443,7 @@ export default function AdminDashboard() {
               </a>
             </CardContent>
           </Card>
-        </div>
+          </div>
       </section>
 
       {/* Partidas Recentes */}
@@ -460,8 +460,8 @@ export default function AdminDashboard() {
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Jogo</th>
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Status</th>
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Valor</th>
-                    </tr>
-                  </thead>
+                </tr>
+              </thead>
                   <tbody>
                     {stats.recentMatches.map((match, index) => (
                       <tr key={match.id} className={index < stats.recentMatches.length - 1 ? "border-b" : ""}>
@@ -475,22 +475,22 @@ export default function AdminDashboard() {
                             {match.status === 'completed' ? 'Completada' : 
                              match.status === 'in_progress' ? 'Em Progresso' : 'Disputada'}
                           </span>
-                        </td>
+                    </td>
                         <td className="px-4 py-3 text-sm text-gray-800">R$ {match.value.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
               ) : (
                 <div className="p-6 text-center text-gray-500">
                   Nenhuma partida recente encontrada
-                </div>
+          </div>
               )}
               <div className="p-4 border-t">
                 <a href="/admin/partidas" className="text-purple-600 text-sm font-medium hover:text-purple-800">
                   Ver todas as partidas →
                 </a>
-              </div>
+        </div>
             </CardContent>
           </Card>
         </section>
@@ -526,8 +526,8 @@ export default function AdminDashboard() {
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Usuário</th>
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Data</th>
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Status</th>
-                    </tr>
-                  </thead>
+                </tr>
+              </thead>
                   <tbody>
                     {(activeTab === 'admin' ? stats.adminUsers : stats.playerUsers).map((user, index) => (
                       <tr key={user.id} className={index < (activeTab === 'admin' ? stats.adminUsers.length : stats.playerUsers.length) - 1 ? "border-b" : ""}>
@@ -538,7 +538,7 @@ export default function AdminDashboard() {
                             </div>
                             <span className="font-medium text-gray-800">{user.username}</span>
                           </div>
-                        </td>
+                    </td>
                         <td className="px-4 py-3 text-sm text-gray-600">{user.joinDate}</td>
                         <td className="px-4 py-3 text-sm">
                           {user.verified ? (
@@ -548,23 +548,23 @@ export default function AdminDashboard() {
                           ) : (
                             <span className="flex items-center text-orange-500">
                               <Clock className="h-4 w-4 mr-1" /> Pendente
-                            </span>
+                      </span>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
               ) : (
                 <div className="p-6 text-center text-gray-500">
                   Nenhum {activeTab === 'admin' ? 'administrador' : 'jogador'} encontrado
-                </div>
+          </div>
               )}
               <div className="p-4 border-t">
                 <a href={activeTab === 'admin' ? "/admin/administradores" : "/admin/jogadores"} className="text-purple-600 text-sm font-medium hover:text-purple-800">
                   Ver todos os {activeTab === 'admin' ? 'administradores' : 'jogadores'} →
                 </a>
-              </div>
+        </div>
             </CardContent>
           </Card>
         </section>

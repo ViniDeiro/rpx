@@ -1,6 +1,3 @@
-/**
- * Script para diagnóstico completo da conta admin
- */
 
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -8,7 +5,7 @@ const fs = require('fs');
 
 async function diagnosticoContaAdmin() {
   try {
-    // Conectar ao MongoDB
+    
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true
@@ -16,10 +13,10 @@ async function diagnosticoContaAdmin() {
     
     console.log('✅ Conectado ao MongoDB Atlas com sucesso');
     
-    // Definir o schema do usuário com strict false para pegar todos os campos
+    
     const userSchema = new mongoose.Schema({}, { strict: false });
 
-    // Registrar o modelo
+    
     let User;
     try {
       User = mongoose.model('User');
@@ -27,7 +24,7 @@ async function diagnosticoContaAdmin() {
       User = mongoose.model('User', userSchema);
     }
     
-    // Buscar o usuário admin
+    
     const adminUser = await User.findOne({ 'contact.email': 'admin@rpxplatform.com' });
     
     if (!adminUser) {
@@ -37,22 +34,22 @@ async function diagnosticoContaAdmin() {
     
     console.log('✅ Usuário admin encontrado:', adminUser._id);
     
-    // Extrair documento completo
+    
     const adminDoc = adminUser.toObject();
     
-    // Salvar a estrutura completa em um arquivo para análise
+    
     fs.writeFileSync('admin-structure.json', JSON.stringify(adminDoc, null, 2));
     console.log('✅ Estrutura completa salva em admin-structure.json');
     
-    // Verificar todos os campos relacionados a status/ativação
+    
     console.log('\n🔍 DIAGNÓSTICO DE CAMPOS DE ATIVAÇÃO:');
     
-    // Função para inspecionar recursivamente todos os campos
+    
     function encontrarCamposDeAtivacao(obj, caminho = '') {
       for (const [chave, valor] of Object.entries(obj)) {
         const caminhoAtual = caminho ? `${caminho}.${chave}` : chave;
         
-        // Checar se é campo relacionado a ativação
+        
         if (
           typeof chave === 'string' && 
           (
