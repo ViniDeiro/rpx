@@ -88,27 +88,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db.collection('matches').updateOne(
       { id },
       { 
-        $pull: { [`teams.${teamIndex}.players`]: { id: userId } },
+        $pull: { [`teams.${teamIndex}.players`]: { id: userId } as any },
         $set: { updatedAt: new Date() }
       }
     );
 
     // Verificar se a partida ficou vazia após a saída do jogador
     const updatedMatchData = await db.collection('matches').findOne({ id });
-    const totalPlayers = updatedMatchData.teams.reduce((count, team) => count + team.players.length, 0);
-
-    // Se a partida ficou vazia, cancelá-la
-    if (totalPlayers === 0) {
-      await db.collection('matches').updateOne(
-        { id },
-        { 
-          $set: { 
-            status: 'canceled',
-            updatedAt: new Date(),
-            canceledReason: 'Todos os jogadores saíram'
-          } 
-        }
+    
+    if (updatedMatchData) {
+      const totalPlayers = updatedMatchData.teams.reduce(
+        (count: number, team: { players: any[] }) => count + team.players.length, 
+        0
       );
+
+      // Se a partida ficou vazia, cancelá-la
+      if (totalPlayers === 0) {
+        await db.collection('matches').updateOne(
+          { id },
+          { 
+            $set: { 
+              status: 'canceled',
+              updatedAt: new Date(),
+              canceledReason: 'Todos os jogadores saíram'
+            } 
+          }
+        );
+      }
     }
 
     return res.status(200).json({
