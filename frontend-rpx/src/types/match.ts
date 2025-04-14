@@ -39,4 +39,15 @@ export interface Match {
   gameType?: 'solo' | 'duo' | 'squad';
   roomCapacity?: number;
   gameDetails?: GameDetails;
+  teams?: Array<{
+    id: string;
+    name: string;
+    players: Array<{
+      id: string;
+      name: string;
+      avatar?: string;
+      isReady: boolean;
+      isCaptain: boolean;
+    }>;
+  }>;
 } 
