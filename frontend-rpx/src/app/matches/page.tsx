@@ -13,7 +13,7 @@ import SubmitResultModal from '@/components/modals/SubmitResultModal';
 
 // Tipos para as plataformas
 type Platform = 'emulator' | 'mobile' | 'mixed' | 'tactical';
-type Tab = 'partidas' | 'criar';
+type Tab = 'desafios' | 'criar';
 
 // Componente principal envolvido em Suspense
 function MatchesContent() {
@@ -28,7 +28,7 @@ function MatchesContent() {
   const submitResult = searchParams?.get('submitResult');
   const matchIdToSubmit = searchParams?.get('matchId');
   
-  const [activeTab, setActiveTab] = useState<Tab>('partidas');
+  const [activeTab, setActiveTab] = useState<Tab>('desafios');
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +40,7 @@ function MatchesContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Estados para criação de partida
+  // Estados para criação de desafio
   const [createMatchMode, setCreateMatchMode] = useState<string>(lobbyFormat || 'solo');
   const [createMatchTeamSize, setCreateMatchTeamSize] = useState<number>(lobbyFormat === 'solo' ? 1 : lobbyFormat === 'duo' ? 2 : 4);
   const [createMatchPlatform, setCreateMatchPlatform] = useState<Platform>('mixed');
@@ -71,24 +71,24 @@ function MatchesContent() {
   const [enteredPassword, setEnteredPassword] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
   
-  // Função para abrir o modal da sala de partida
+  // Função para abrir o modal da sala de desafio
   const openRoomModal = (match: Match) => {
     setSelectedMatch(match);
     setIsRoomModalOpen(true);
   };
   
-  // Função para verificar senha e abrir a partida
+  // Função para verificar senha e abrir o desafio
   const openPasswordModal = (match: Match, e?: React.MouseEvent) => {
     setSelectedMatch(match);
     setEnteredPassword("");  // Garantir que o campo de senha está vazio
     setPasswordError("");
     setIsPasswordModalOpen(true);
     
-    // Evitar que a aplicação filtre ou atualize a lista de partidas
+    // Evitar que a aplicação filtre ou atualize a lista de desafios
     if (e) e.stopPropagation();
   };
   
-  // Função para verificar senha e abrir a partida
+  // Função para verificar senha e abrir o desafio
   const checkPasswordAndOpen = () => {
     if (selectedMatch && enteredPassword === selectedMatch.password) {
       setIsPasswordModalOpen(false);
@@ -108,7 +108,7 @@ function MatchesContent() {
     setFilteredMatches(matches);
   };
   
-  // Função para enviar o resultado da partida
+  // Função para enviar o resultado do desafio
   const handleSubmitResult = (result: {
     matchId: string;
     winner: 'team1' | 'team2';
@@ -118,7 +118,7 @@ function MatchesContent() {
     // Aqui você implementaria a lógica para enviar o resultado ao backend
     console.log('Resultado enviado:', result);
     
-    // Mock: Atualize o estado da partida para "completed" no frontend
+    // Mock: Atualize o estado do desafio para "completed" no frontend
     if (selectedMatch) {
       const updatedMatches = matches.map(m => 
         m.id === selectedMatch.id ? { ...m, status: 'completed' } : m
@@ -146,7 +146,7 @@ function MatchesContent() {
     }
   }, [isPasswordModalOpen]);
 
-  // Buscar partidas da API
+  // Buscar desafios da API
   useEffect(() => {
     const fetchMatches = async () => {
       try {
@@ -163,11 +163,11 @@ function MatchesContent() {
           setFilteredMatches(matchesData);
         }
       } catch (err) {
-        console.error('Erro ao carregar partidas:', err);
+        console.error('Erro ao carregar desafios:', err);
         // Iniciar com array vazio em caso de erro
         setMatches([]);
         setFilteredMatches([]);
-        setError('Não foi possível carregar as partidas. Por favor, tente novamente mais tarde.');
+        setError('Não foi possível carregar os desafios. Por favor, tente novamente mais tarde.');
       } finally {
         setIsLoading(false);
       }
@@ -176,7 +176,7 @@ function MatchesContent() {
     fetchMatches();
   }, []);
 
-  // Filtrar partidas
+  // Filtrar desafios
   useEffect(() => {
     let filtered = Array.isArray(matches) ? [...matches] : [];
 
@@ -201,7 +201,7 @@ function MatchesContent() {
     // Filtrar por plataforma
     if (selectedPlatform) {
       filtered = filtered.filter(match => {
-        // No modo misto, não mostrar partidas 1x1 (solo)
+        // No modo misto, não mostrar desafios 1x1 (solo)
         if (selectedPlatform === 'mixed' && match.teamSize === 1) {
           return false;
         }
@@ -230,7 +230,7 @@ function MatchesContent() {
     return teamSize * 2; // 2 equipes
   };
 
-  // Gerar dados de exemplo para partidas
+  // Gerar dados de exemplo para desafios
   const generateMockMatches = (): Match[] => {
     const modes = ['solo', 'duo', 'squad'];
     const platforms = ['emulator', 'mobile', 'mixed', 'tactical'];
@@ -249,7 +249,7 @@ function MatchesContent() {
       
       return {
         id: `match-${i}`,
-        title: `Partida ${i + 1}`,
+        title: `Desafio ${i + 1}`,
         mode,
         teamSize,
         type: Math.random() > 0.5 ? 'ranked' : 'casual',
@@ -268,22 +268,22 @@ function MatchesContent() {
     });
   };
 
-  // Criar uma nova partida
+  // Criar um novo desafio
   const handleCreateMatch = async () => {
     if (!isAuthenticated) {
       router.push('/auth/login');
       return;
     }
 
-    // Validar se o título da partida foi preenchido
+    // Validar se o título do desafio foi preenchido
     if (!matchTitle.trim()) {
-      alert('Por favor, informe um título para a partida');
+      alert('Por favor, informe um título para o desafio');
       return;
     }
     
     // Validar se a senha foi preenchida
     if (!matchPassword.trim()) {
-      alert('Por favor, defina uma senha para a partida privada');
+      alert('Por favor, defina uma senha para o desafio privado');
       return;
     }
 
@@ -293,7 +293,7 @@ function MatchesContent() {
     // Gerar odd aleatória entre 1.80 e 2.15
     const odd = Math.round((1.80 + Math.random() * 0.35) * 100) / 100;
 
-    // Criar objeto da partida
+    // Criar objeto do desafio
     const newMatch = {
       title: matchTitle,
       mode: createMatchMode,
@@ -303,7 +303,7 @@ function MatchesContent() {
       odd: odd,
       // Prêmio é o retorno potencial (entrada * odd)
       prize: Math.round(entryFee * odd),
-      type: 'casual', // Por padrão, todas as partidas criadas são casuais
+      type: 'casual', // Por padrão, todos os desafios criados são casuais
       status: 'open',
       playersJoined: createMatchMode === 'solo' ? 1 : teamFormation === 'formed' ? createMatchTeamSize : 1,
       totalPlayers: getTotalPlayers(createMatchTeamSize),
@@ -317,14 +317,14 @@ function MatchesContent() {
       // Comentado por enquanto, já que estamos usando dados mockados
       // const response = await api.post('/matches', newMatch);
       
-      // Adicionar a nova partida ao estado local
+      // Adicionar o novo desafio ao estado local
       const matchWithId = {
         ...newMatch,
         id: `match-${Date.now()}`, // ID temporário
         startTime: new Date(Date.now() + 10 * 60000).toISOString(), // Começa em 10 minutos
       };
       
-      // Adicionar a nova partida no início da lista
+      // Adicionar o novo desafio no início da lista
       setMatches([matchWithId, ...matches]);
       setFilteredMatches([matchWithId, ...filteredMatches]);
       
@@ -335,13 +335,13 @@ function MatchesContent() {
       setCreateMatchCustomFee(150);
       setMatchPassword('');
       
-      // Mudar para a aba de partidas criadas
-      setActiveTab('partidas');
+      // Mudar para a aba de desafios criados
+      setActiveTab('desafios');
       
-      alert('Partida criada com sucesso!');
+      alert('Desafio criado com sucesso!');
     } catch (error) {
-      console.error('Erro ao criar partida:', error);
-      alert('Ocorreu um erro ao criar a partida. Tente novamente.');
+      console.error('Erro ao criar desafio:', error);
+      alert('Ocorreu um erro ao criar o desafio. Tente novamente.');
     }
   };
 
@@ -365,7 +365,7 @@ function MatchesContent() {
   // Efeito para verificar se deve abrir o modal de resultado
   useEffect(() => {
     if (submitResult === 'true' && matchIdToSubmit) {
-      // Procurar a partida pelo ID
+      // Procurar o desafio pelo ID
       const match = matches.find(m => m.id === matchIdToSubmit);
       if (match) {
         setSelectedMatch(match);
@@ -383,19 +383,19 @@ function MatchesContent() {
     );
   }
 
-  // Render matches
+  // Render desafios
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="container mx-auto py-8 px-4">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold">Partidas</h1>
+          <h1 className="text-3xl font-bold">Desafios</h1>
           
-          {activeTab === 'partidas' && (
+          {activeTab === 'desafios' && (
           <div className="flex gap-4 w-full md:w-auto">
             <div className="relative flex-1 md:flex-none">
               <input
                 type="text"
-                placeholder="Buscar partidas..."
+                placeholder="Buscar desafios..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 rounded-lg bg-card-bg border border-gray-700 focus:outline-none focus:border-purple-500"
@@ -417,31 +417,31 @@ function MatchesContent() {
         {/* Abas */}
         <div className="flex border-b border-gray-700 mb-8">
           <button
-            onClick={() => setActiveTab('partidas')}
-            className={`px-4 py-3 font-medium transition-colors ${activeTab === 'partidas' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => setActiveTab('desafios')}
+            className={`px-4 py-3 font-medium transition-colors ${activeTab === 'desafios' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
           >
-            Partidas Criadas
+            Desafios Criados
           </button>
           <button
             onClick={() => setActiveTab('criar')}
             className={`px-4 py-3 font-medium transition-colors flex items-center gap-2 ${activeTab === 'criar' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
           >
             <Plus size={18} />
-            Criar Partida
+            Criar Desafio
           </button>
         </div>
 
-        {activeTab === 'partidas' ? (
+        {activeTab === 'desafios' ? (
           <>
-            {/* Área de partidas criadas */}
+            {/* Área de desafios criados */}
             {filteredMatches.length === 0 ? (
               <div className="text-center py-12 bg-card-bg rounded-xl border border-gray-700">
-                <div className="text-gray-400 text-xl mb-4">Não existem partidas criadas no momento</div>
+                <div className="text-gray-400 text-xl mb-4">Não existem desafios criados no momento</div>
                 <button 
                   onClick={() => setActiveTab('criar')}
                   className="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800"
                 >
-                  Criar Nova Partida
+                  Criar Novo Desafio
                 </button>
               </div>
             ) : (
@@ -470,7 +470,7 @@ function MatchesContent() {
                       </span>
                     </div>
                     
-                    <h3 className="text-lg font-bold mb-3">{match.title || `Partida #${match.id}`}</h3>
+                    <h3 className="text-lg font-bold mb-3">{match.title || `Desafio #${match.id}`}</h3>
                     
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
@@ -485,7 +485,7 @@ function MatchesContent() {
                       
                       <div className="flex items-center gap-3">
                         <Key className="text-purple-400" size={20} />
-                        <span>Partida Privada</span>
+                        <span>Desafio Privado</span>
                       </div>
                       
                       {(match.teamSize || 0) > 1 && match.paymentOption && (
@@ -524,15 +524,15 @@ function MatchesContent() {
             )}
           </>
         ) : (
-          // Formulário para criação de partida
+          // Formulário para criação de desafio
           <div className="bg-card-bg rounded-xl border border-gray-700 shadow-lg p-6 mb-8">
             <div className="text-center mb-6">
               <div className="mx-auto w-16 h-16 bg-purple-900/20 rounded-full flex items-center justify-center mb-4">
                 <Shield size={28} className="text-purple-500" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Partidas Privadas</h2>
+              <h2 className="text-2xl font-bold mb-2">Desafios Privados</h2>
               <p className="text-gray-400 max-w-lg mx-auto">
-                As partidas criadas aqui são privadas e protegidas por senha. Elas são usadas para torneios e eventos exclusivos.
+                Os desafios criados aqui são privados e protegidos por senha. Eles são usados para torneios e eventos exclusivos.
               </p>
             </div>
 
@@ -543,7 +543,7 @@ function MatchesContent() {
                 </div>
                 <h3 className="text-lg font-medium mb-2">Acesso por Senha</h3>
                 <p className="text-sm text-gray-400">
-                  Apenas jogadores com senha podem entrar nas partidas privadas.
+                  Apenas jogadores com senha podem entrar nos desafios privados.
                 </p>
               </div>
               
@@ -569,35 +569,35 @@ function MatchesContent() {
             </div>
 
             <div className="bg-background p-6 rounded-xl">
-              <h3 className="font-bold text-lg mb-4">Criar Nova Partida</h3>
+              <h3 className="font-bold text-lg mb-4">Criar Novo Desafio</h3>
               
               {/* Formulário de criação - mantém a parte existente */}
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Título da Partida</label>
+                  <label className="block text-sm text-gray-300 mb-2">Título do Desafio</label>
                   <input
                     type="text"
                     value={matchTitle}
                     onChange={(e) => setMatchTitle(e.target.value)}
-                    placeholder="Ex: Partida Rápida 1x1"
+                    placeholder="Ex: Desafio Rápido 1x1"
                     className="w-full p-3 rounded-lg bg-background border border-gray-700 focus:outline-none focus:border-purple-500"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Senha da Partida Privada</label>
+                  <label className="block text-sm text-gray-300 mb-2">Senha do Desafio Privado</label>
                   <div className="relative">
                     <input
                       type="text"
                       value={matchPassword}
                       onChange={(e) => setMatchPassword(e.target.value)}
-                      placeholder="Digite uma senha para sua partida"
+                      placeholder="Digite uma senha para seu desafio"
                       className="w-full p-3 pl-10 rounded-lg bg-background border border-gray-700 focus:outline-none focus:border-purple-500"
                     />
                     <Lock size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    Esta senha será exigida para os jogadores entrarem na partida
+                    Esta senha será exigida para os jogadores entrarem no desafio
                   </p>
                 </div>
                 
@@ -748,7 +748,7 @@ function MatchesContent() {
                   )}
                 </div>
                 
-                <div className="mb-2 text-sm text-gray-300">Resumo da Partida</div>
+                <div className="mb-2 text-sm text-gray-300">Resumo do Desafio</div>
                 <div className="bg-background p-4 rounded-lg border border-gray-700 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Formato:</span>
@@ -791,7 +791,7 @@ function MatchesContent() {
                 <div className="flex justify-end gap-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('partidas')}
+                    onClick={() => setActiveTab('desafios')}
                     className="px-6 py-3 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors"
                   >
                     Cancelar
@@ -801,7 +801,7 @@ function MatchesContent() {
                     onClick={handleCreateMatch}
                     className="px-6 py-3 bg-purple-700 text-white font-medium rounded-lg hover:bg-purple-800 transition-colors"
                   >
-                    Criar Partida
+                    Criar Desafio
                   </button>
                 </div>
               </div>
@@ -826,7 +826,7 @@ function MatchesContent() {
         </>
       )}
       
-      {/* Modal de senha para partida privada */}
+      {/* Modal de senha para desafio privado */}
       {isPasswordModalOpen && selectedMatch && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80">
           <div className="bg-card-bg p-6 rounded-xl max-w-md w-full">
@@ -834,14 +834,14 @@ function MatchesContent() {
               <div className="mx-auto w-16 h-16 bg-purple-900/20 rounded-full flex items-center justify-center mb-4">
                 <Lock size={28} className="text-purple-500" />
               </div>
-              <h2 className="text-xl font-bold mb-2">Partida Privada</h2>
+              <h2 className="text-xl font-bold mb-2">Desafio Privado</h2>
               <p className="text-gray-400 text-sm">
-                Esta é uma partida privada protegida por senha. Por favor, digite a senha para entrar.
+                Este é um desafio privado protegido por senha. Por favor, digite a senha para entrar.
               </p>
             </div>
             
             <div className="mb-6">
-              <label className="block text-sm text-gray-300 mb-2">Senha da Partida</label>
+              <label className="block text-sm text-gray-300 mb-2">Senha do Desafio</label>
               <input
                 type="password"
                 value={enteredPassword}

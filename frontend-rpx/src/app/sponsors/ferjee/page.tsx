@@ -39,7 +39,7 @@ const carouselImages = [
   },
   {
     src: "/images/ct/imagem4.jpg",
-    title: "Game House RPX",
+    title: "Game House FERJEE",
     description: "Estrutura completa para desenvolvimento de talentos"
   },
   {

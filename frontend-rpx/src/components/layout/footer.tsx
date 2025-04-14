@@ -14,7 +14,7 @@ export const Footer = () => {
       title: 'Navegação',
       links: [
         { label: 'Início', href: '/' },
-        { label: 'Partidas', href: '/matches' },
+        { label: 'Desafios', href: '/matches' },
         { label: 'Torneios', href: '/tournaments' },
         { label: 'Rankings', href: '/ranking' },
         { label: 'Loja', href: '/store' },

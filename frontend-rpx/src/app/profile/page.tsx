@@ -36,7 +36,7 @@ interface ExtendedUser {
   stats?: ExtendedStats;
 }
 
-interface Rank {
+interface ExtendedRank {
   tier: string;
   division?: string;
   name: string;

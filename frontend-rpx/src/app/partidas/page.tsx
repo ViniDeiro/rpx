@@ -38,7 +38,7 @@ export default function MatchesPage() {
   return (
     <div className="max-w-7xl mx-auto p-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Partidas Privadas</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Desafios Privados</h1>
         <p className="text-gray-600 max-w-3xl">
           As partidas personalizadas são exclusivas e acessíveis apenas por senha. Somente administradores podem criar partidas privadas para torneios e eventos especiais.
         </p>
@@ -49,7 +49,7 @@ export default function MatchesPage() {
           <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
             <Shield size={28} className="text-purple-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Partidas Restritas</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Desafios Restritos</h2>
           <p className="text-gray-600 max-w-lg mx-auto">
             Estas são partidas especiais criadas por administradores e protegidas por senha. São utilizadas para torneios oficiais, eventos privados e competições exclusivas.
           </p>
@@ -72,7 +72,7 @@ export default function MatchesPage() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Limite de Jogadores</h3>
             <p className="text-gray-600 text-sm">
-              Partidas com número específico de participantes para competições balanceadas.
+              Desafios com número específico de participantes para competições balanceadas.
             </p>
           </div>
           
@@ -111,7 +111,7 @@ export default function MatchesPage() {
               Para criar partidas, você precisa ter privilégios de administrador.
               <br />
               <Link href="/lobby" className="text-purple-600 hover:underline mt-1 inline-block">
-                Ir para o Lobby de Partidas Públicas
+                Ir para o Lobby de Desafios Públicos
               </Link>
             </p>
           )}

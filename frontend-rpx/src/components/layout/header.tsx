@@ -49,7 +49,7 @@ export const Header = () => {
   const navLinks = [
     { href: '/', label: 'Início' },
     { href: '/lobby', label: 'Lobby' },
-    { href: '/matches', label: 'Partidas' },
+    { href: '/matches', label: 'Desafios' },
     { href: '/tournaments', label: 'Torneios' },
     { href: '/ranking', label: 'Rankings' },
     { href: '/store', label: 'Loja' },
