@@ -20,7 +20,7 @@ import {
   ExternalLink 
 } from 'react-feather';
 
-// Dados simulados dos patrocinadores
+// Dados simulados dos parceiros
 interface Sponsor {
   id: number;
   name: string;
@@ -140,7 +140,7 @@ const testimonials = [
   },
   {
     id: 2,
-    text: "A visibilidade que ganhamos como patrocinadores do RPX superou todas as expectativas, com ROI mensurável desde o primeiro mês.",
+    text: "A visibilidade que ganhamos como parceiros do RPX superou todas as expectativas, com ROI mensurável desde o primeiro mês.",
     author: "Carlos Mendes",
     position: "CEO",
     company: "GameVerse"
@@ -162,7 +162,7 @@ const stats = [
   { id: 4, name: "Conversão", value: "12.8%", icon: <Target />, color: "bg-red-500" }
 ];
 
-// Benefícios para os patrocinadores
+// Benefícios para os parceiros
 const sponsorBenefits = {
   platinum: [
     "Logo em destaque na página inicial",
@@ -184,7 +184,7 @@ const sponsorBenefits = {
     "Menções durante transmissões"
   ],
   silver: [
-    "Logo na página de patrocinadores",
+    "Logo na página de parceiros",
     "Presença em eventos menores",
     "Anúncios rotativos na plataforma",
     "Relatório trimestral de dados",
@@ -192,7 +192,7 @@ const sponsorBenefits = {
   ]
 };
 
-export default function SponsorsPage() {
+export default function PartnersPage() {
   const [activeTab, setActiveTab] = useState<'platinum' | 'gold' | 'silver'>('platinum');
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [featuredSponsor, setFeaturedSponsor] = useState<Sponsor | null>(null);
@@ -223,7 +223,7 @@ export default function SponsorsPage() {
         
         <div className="relative z-20 max-w-7xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-300 to-white mb-4 tracking-tight">
-            Patrocinadores <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">RPX</span>
+            Parceiros <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">RPX</span>
           </h1>
           <p className="text-xl md:text-2xl text-purple-100 max-w-3xl mx-auto mb-10 drop-shadow-sm">
             Junte-se às marcas líderes que impulsionam a próxima geração de experiências competitivas
@@ -231,7 +231,7 @@ export default function SponsorsPage() {
           
           <div className="flex flex-wrap justify-center gap-4 mt-8">
             <a href="#become-sponsor" className="px-8 py-3.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg shadow-lg hover:from-purple-500 hover:to-purple-600 transition-all duration-300 flex items-center transform hover:scale-105 hover:shadow-purple-500/30">
-              Torne-se Patrocinador
+              Torne-se Parceiro
               <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
             </a>
             <a href="#benefits" className="px-8 py-3.5 bg-transparent border border-purple-500 text-purple-300 font-medium rounded-lg hover:bg-purple-900/30 transition-all duration-300 hover:border-purple-400 hover:text-white transform hover:scale-105">
@@ -241,7 +241,7 @@ export default function SponsorsPage() {
         </div>
       </section>
 
-      {/* Patrocinador Destacado */}
+      {/* Parceiro Destacado */}
       <section className="relative py-20 bg-gradient-to-r from-gray-900 via-purple-900/30 to-gray-900 overflow-hidden mb-24">
         <div className="absolute inset-0 bg-black/5 opacity-10"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-900"></div>
@@ -255,7 +255,7 @@ export default function SponsorsPage() {
                   <div className="w-[200px] h-[200px] flex items-center justify-center p-4 rounded-xl shadow-lg transform transition-all duration-500 group-hover:scale-110 bg-black/20 backdrop-blur-sm">
                     <Image 
                       src={featuredSponsor?.logo || '/images/sponsors/placeholder.png'} 
-                      alt={featuredSponsor?.name || 'Patrocinador Destacado'}
+                      alt={featuredSponsor?.name || 'Parceiro Destacado'}
                       width={180}
                       height={180}
                       className="object-contain filter drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]"
@@ -268,7 +268,7 @@ export default function SponsorsPage() {
             
             <div className="w-full md:w-1/2 text-center md:text-left">
               <div className="space-y-6">
-                <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/40 px-3 py-1 rounded-full">Patrocinador Destacado</span>
+                <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/40 px-3 py-1 rounded-full">Parceiro Destacado</span>
                 
                 <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-white to-purple-300 mb-4">
                   {featuredSponsor?.name || 'FERJEE'}
@@ -301,7 +301,7 @@ export default function SponsorsPage() {
         </div>
       </section>
       
-      {/* Patrocinadores em Destaque */}
+      {/* Parceiros em Destaque */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -340,7 +340,7 @@ export default function SponsorsPage() {
                       <div className="bg-purple-900/50 rounded-full p-1.5 mr-2">
                         <Award size={14} className="text-purple-300" />
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-purple-300">Patrocinador Platinum</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-purple-300">Parceiro Platinum</span>
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-100 transition-colors duration-300">{sponsor.name}</h3>
                     <p className="text-gray-400 mb-4 group-hover:text-gray-300 transition-colors duration-300">{sponsor.description}</p>
@@ -409,7 +409,7 @@ export default function SponsorsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/30 px-3 py-1 rounded-full">Nossas Parcerias</span>
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Nossos Patrocinadores</h2>
+            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Nossos Parceiros</h2>
             <div className="h-1 w-28 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-800 mx-auto mb-6 rounded-full"></div>
             <p className="text-xl text-gray-300 text-center max-w-3xl mx-auto">
               Conheça as marcas que tornam possível a melhor experiência para nossa comunidade
@@ -472,7 +472,7 @@ export default function SponsorsPage() {
                       activeTab === 'platinum' ? 'text-purple-400' : 
                       activeTab === 'gold' ? 'text-yellow-400' : 'text-gray-400'
                     }`}>
-                      Patrocinador {activeTab === 'platinum' ? 'Platinum' : activeTab === 'gold' ? 'Gold' : 'Silver'}
+                      Parceiro {activeTab === 'platinum' ? 'Platinum' : activeTab === 'gold' ? 'Gold' : 'Silver'}
                     </span>
                   </div>
                   
@@ -497,120 +497,13 @@ export default function SponsorsPage() {
         </div>
       </section>
       
-      {/* Benefícios */}
-      <section id="benefits" className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-purple-900/30 to-transparent relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/5 opacity-20"></div>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-600/5 rounded-full filter blur-3xl animate-pulse-slow"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600/5 rounded-full filter blur-3xl animate-pulse-slow"></div>
-        
-        <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-16">
-            <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/30 px-3 py-1 rounded-full">Vantagens</span>
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Benefícios para Patrocinadores</h2>
-            <div className="h-1 w-28 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-800 mx-auto mb-6 rounded-full"></div>
-            <p className="text-xl text-gray-300 text-center max-w-3xl mx-auto">
-              Descubra o que cada nível de patrocínio oferece para sua marca
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Plano Platinum */}
-            <div className="bg-gradient-to-br from-gray-900/80 to-purple-900/30 rounded-xl p-8 border border-purple-600/30 relative group hover:border-purple-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-purple-500/10 transform hover:scale-105">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                Premium
-              </div>
-              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-300 text-center mt-4 mb-6 flex items-center justify-center">
-                <Star size={20} className="text-yellow-400 mr-2" />
-                Platinum
-              </h3>
-              <div className="border-t border-purple-900/50 pt-6 mb-6">
-                <ul className="space-y-4">
-                  {sponsorBenefits.platinum.map((benefit, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-purple-500/30 flex items-center justify-center mt-0.5 border border-purple-500/40">
-                        <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                      </div>
-                      <span className="ml-3 text-gray-300 group-hover:text-white transition-colors duration-300">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="text-center">
-                <span className="text-2xl font-bold text-white block mb-6">R$ 50.000 <span className="text-sm text-purple-300 font-normal">/mês</span></span>
-                <a href="#become-sponsor" className="inline-block w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg hover:from-purple-500 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-purple-500/30 transform hover:scale-105">
-                  Tornar-se Platinum
-                </a>
-              </div>
-            </div>
-            
-            {/* Plano Gold */}
-            <div className="bg-gradient-to-br from-gray-900/80 to-yellow-900/20 rounded-xl p-8 border border-yellow-600/30 relative group hover:border-yellow-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-yellow-500/10 transform hover:scale-105">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white px-5 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                Popular
-              </div>
-              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-yellow-300 text-center mt-4 mb-6 flex items-center justify-center">
-                <Star size={20} className="text-yellow-400 mr-2" />
-                Gold
-              </h3>
-              <div className="border-t border-yellow-900/50 pt-6 mb-6">
-                <ul className="space-y-4">
-                  {sponsorBenefits.gold.map((benefit, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-yellow-500/30 flex items-center justify-center mt-0.5 border border-yellow-500/40">
-                        <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                      </div>
-                      <span className="ml-3 text-gray-300 group-hover:text-white transition-colors duration-300">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="text-center">
-                <span className="text-2xl font-bold text-white block mb-6">R$ 25.000 <span className="text-sm text-yellow-300 font-normal">/mês</span></span>
-                <a href="#become-sponsor" className="inline-block w-full px-4 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-yellow-500/30 transform hover:scale-105">
-                  Tornar-se Gold
-                </a>
-              </div>
-            </div>
-            
-            {/* Plano Silver */}
-            <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/30 rounded-xl p-8 border border-gray-600/30 relative group hover:border-gray-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-gray-500/10 transform hover:scale-105">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-gray-600 to-gray-700 text-white px-5 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                Iniciante
-              </div>
-              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 text-center mt-4 mb-6 flex items-center justify-center">
-                <Star size={20} className="text-gray-400 mr-2" />
-                Silver
-              </h3>
-              <div className="border-t border-gray-800 pt-6 mb-6">
-                <ul className="space-y-4">
-                  {sponsorBenefits.silver.map((benefit, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-gray-500/30 flex items-center justify-center mt-0.5 border border-gray-500/40">
-                        <div className="h-2 w-2 rounded-full bg-gray-500"></div>
-                      </div>
-                      <span className="ml-3 text-gray-300 group-hover:text-white transition-colors duration-300">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="text-center">
-                <span className="text-2xl font-bold text-white block mb-6">R$ 10.000 <span className="text-sm text-gray-400 font-normal">/mês</span></span>
-                <a href="#become-sponsor" className="inline-block w-full px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-medium rounded-lg hover:from-gray-500 hover:to-gray-600 transition-all duration-300 shadow-lg hover:shadow-gray-500/30 transform hover:scale-105">
-                  Tornar-se Silver
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
       {/* Depoimentos */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/5 opacity-10"></div>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/30 px-3 py-1 rounded-full">Experiências</span>
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">O que nossos patrocinadores dizem</h2>
+            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">O que nossos parceiros dizem</h2>
             <div className="h-1 w-28 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-800 mx-auto mb-6 rounded-full"></div>
             <p className="text-xl text-gray-300 text-center max-w-3xl mx-auto">
               Experiências reais de marcas que confiaram no RPX
@@ -669,7 +562,7 @@ export default function SponsorsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <div className="p-8 md:p-12">
                 <span className="inline-block text-sm uppercase tracking-wider text-purple-400 font-semibold mb-4 bg-purple-900/30 px-3 py-1 rounded-full">Seja Parceiro</span>
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-300 mb-6">Torne-se um Patrocinador</h2>
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-300 mb-6">Torne-se um Parceiro</h2>
                 <p className="text-gray-300 mb-8 text-lg">
                   Junte-se às principais marcas que estão definindo o futuro do entretenimento digital e 
                   conecte-se com uma audiência altamente engajada e valiosa.
@@ -790,6 +683,95 @@ export default function SponsorsPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Benefícios Section */}
+      <section id="benefits" className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-7xl mx-auto text-center">
+          <span className="inline-block px-3 py-1 bg-purple-900/50 text-purple-300 font-medium rounded-full text-sm mb-3">Vantagens</span>
+          <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Benefícios para Parceiros</h2>
+          
+          {/* ...código... */}
+        </div>
+      </section>
+
+      {/* Testemunhos */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-transparent to-purple-900/10 relative">
+        <div className="max-w-7xl mx-auto text-center">
+          <span className="inline-block px-3 py-1 bg-purple-900/50 text-purple-300 font-medium rounded-full text-sm mb-3">Depoimentos</span>
+          <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">O que nossos parceiros dizem</h2>
+          
+          {/* ...código... */}
+        </div>
+      </section>
+
+      {/* Nossos Parceiros */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-transparent to-purple-900/10 relative">
+        <div className="max-w-7xl mx-auto text-center mb-16">
+          <span className="inline-block text-xs uppercase tracking-wider text-purple-400 font-semibold mb-2 bg-purple-900/30 px-3 py-1 rounded-full">Comunidade</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Nossos Parceiros</h2>
+          <p className="text-gray-300 max-w-3xl mx-auto">
+            Conheça as marcas que acreditam e investem no crescimento dos esports
+          </p>
+        </div>
+        
+        {/* ...código... */}
+      </section>
+
+      {/* Torne-se um Parceiro - CTA Section */}
+      <section id="become-sponsor" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 relative">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+          <div className="absolute -inset-2 bg-[url('/images/grid-pattern.svg')] opacity-5"></div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="bg-card-bg/80 backdrop-blur-lg p-8 rounded-2xl border border-purple-500/20 shadow-xl hover:shadow-purple-500/10 transition-all duration-500 hover:border-purple-500/30 transform lg:translate-x-10">
+              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-4">Torne-se um Parceiro</h2>
+              <p className="text-gray-300 mb-6">
+                Junte-se à comunidade RPX e alcance um público engajado e apaixonado por esports. Oferecemos diferentes níveis de parceria para adequar-se às necessidades da sua marca.
+              </p>
+              
+              {/* ...código... */}
+            </div>
+            
+            <div className="hidden lg:flex justify-center">
+              <div className="relative w-full h-full max-w-md">
+                {/* ...código... */}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-7xl mx-auto text-center">
+          <span className="inline-block px-3 py-1 bg-purple-900/50 text-purple-300 font-medium rounded-full text-sm mb-3">Perguntas</span>
+          <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-4">Perguntas Frequentes</h2>
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-16">
+            Respostas para as dúvidas mais comuns sobre parcerias com o RPX
+          </p>
+          
+          {/* ...código... */}
+        </div>
+      </section>
+
+      {/* Footer CTA */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-t from-purple-900/20 to-transparent relative">
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white mb-6">
+            Pronto para fazer parte da revolução dos esports?
+          </h2>
+          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+            Entre em contato com nossa equipe e descubra como uma parceria com o RPX pode impulsionar sua marca.
+          </p>
+          <a href="#contact" className="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg shadow-lg hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 transform hover:scale-105 hover:shadow-purple-500/30">
+            Entre em Contato
+          </a>
         </div>
       </section>
     </div>

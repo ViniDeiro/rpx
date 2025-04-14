@@ -53,7 +53,7 @@ export const Header = () => {
     { href: '/tournaments', label: 'Torneios' },
     { href: '/ranking', label: 'Rankings' },
     { href: '/store', label: 'Loja' },
-    { href: '/sponsors', label: 'Patrocinadores' },
+    { href: '/sponsors', label: 'Parceiros' },
   ];
 
   return (

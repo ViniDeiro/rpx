@@ -89,13 +89,12 @@ export default function FerjeePage() {
         </div>
         
         <div className="relative z-20 max-w-7xl mx-auto">
-          <Link 
-            href="/sponsors" 
-            className="inline-flex items-center text-purple-300 hover:text-white mb-8 transition-colors bg-purple-900/30 hover:bg-purple-900/50 px-4 py-2 rounded-lg backdrop-blur-sm group"
-          >
-            <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-            Voltar para Patrocinadores
-          </Link>
+          <div className="py-4">
+            <Link href="/sponsors" className="flex items-center text-purple-400 hover:text-purple-300 transition">
+              <ArrowLeft size={16} className="mr-2" />
+              Voltar para Parceiros
+            </Link>
+          </div>
           
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <div className="w-full md:w-1/2">
