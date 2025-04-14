@@ -71,7 +71,13 @@ O projeto está configurado para deploy na Vercel:
 Os seguintes endpoints já foram migrados para o novo formato:
 
 - `/api/auth/login` - Autenticação de usuários
+- `/api/auth/register` - Registro de novos usuários
+- `/api/auth/profile` - Gerenciamento de perfil de usuário
 - `/api/users` - Gerenciamento de usuários (apenas admin)
+- `/api/wallet/transactions` - Histórico de transações
+- `/api/wallet/deposit` - Solicitação de depósito
+- `/api/wallet/withdraw` - Solicitação de saque
+- `/api/matches` - Listagem de partidas disponíveis
 
 Os demais endpoints estão sendo migrados gradualmente.
 
