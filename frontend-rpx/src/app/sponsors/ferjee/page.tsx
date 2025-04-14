@@ -90,8 +90,11 @@ export default function FerjeePage() {
         
         <div className="relative z-20 max-w-7xl mx-auto">
           <div className="py-4">
-            <Link href="/sponsors" className="flex items-center text-purple-400 hover:text-purple-300 transition">
-              <ArrowLeft size={16} className="mr-2" />
+            <Link 
+              href="/sponsors" 
+              className="inline-flex items-center text-purple-300 hover:text-white mb-8 transition-colors bg-purple-900/30 hover:bg-purple-900/50 px-4 py-2 rounded-lg backdrop-blur-sm group"
+            >
+              <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
               Voltar para Parceiros
             </Link>
           </div>
@@ -102,7 +105,7 @@ export default function FerjeePage() {
                 <div className="bg-purple-800/50 rounded-full p-1.5 mr-2 backdrop-blur-sm">
                   <Award size={20} className="text-purple-300" />
                 </div>
-                <span className="text-sm uppercase tracking-wider text-purple-300 font-semibold">Patrocinador Platinum</span>
+                <span className="text-sm uppercase tracking-wider text-purple-300 font-semibold">Parceiro Platinum</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-4 tracking-tight">
                 FERJEE
@@ -370,10 +373,10 @@ export default function FerjeePage() {
               <div className="flex items-center justify-center">
                 <div className="flex items-center gap-4 bg-purple-900/20 p-4 rounded-xl backdrop-blur-sm border border-purple-500/10">
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-800 to-indigo-800 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-                    MC
+                    CA
                   </div>
                   <div className="text-left">
-                    <div className="text-lg font-bold text-white">Marcos Carvalho</div>
+                    <div className="text-lg font-bold text-white">Cadu Albuquerque</div>
                     <div className="text-purple-300">Presidente da FERJEE</div>
                   </div>
                 </div>
