@@ -39,6 +39,8 @@ type User = {
     matches?: number;
     wins?: number;
     losses?: number;
+    rankPoints?: number;
+    earnings?: number;
   };
 };
 
