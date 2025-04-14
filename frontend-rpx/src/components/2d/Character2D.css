@@ -1,0 +1,111 @@
+.character-container {
+  position: relative;
+  display: inline-block;
+  overflow: visible;
+}
+
+/* Animações de personagens */
+
+/* Idle - pequena flutuação */
+.character-animation-idle {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Walk - movimento de balanço */
+.character-animation-walk {
+  animation: walk 0.5s steps(4) infinite;
+}
+
+/* Run - balanço rápido */
+.character-animation-run {
+  animation: walk 0.3s steps(4) infinite;
+}
+
+/* Attack - movimento rápido para frente */
+.character-animation-attack {
+  animation: attack 0.5s ease-in-out;
+}
+
+/* Jump - pulo para cima e volta */
+.character-animation-jump {
+  animation: jump 0.8s ease-in-out;
+}
+
+/* Dance - rotação e movimento */
+.character-animation-dance {
+  animation: dance 2s ease-in-out infinite;
+}
+
+/* Definição das animações */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes walk {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(2px) rotate(1deg);
+  }
+  50% {
+    transform: translateX(0) rotate(0deg);
+  }
+  75% {
+    transform: translateX(-2px) rotate(-1deg);
+  }
+}
+
+@keyframes attack {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-5px) rotate(-5deg);
+  }
+  50% {
+    transform: translateX(10px) rotate(5deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@keyframes jump {
+  0%, 100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  10% {
+    transform: translateY(0) scale(1, 0.9);
+  }
+  30% {
+    transform: translateY(-15px) scale(1, 1.1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1, 1);
+  }
+  75% {
+    transform: translateY(-10px) scale(1, 1);
+  }
+}
+
+@keyframes dance {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+} 

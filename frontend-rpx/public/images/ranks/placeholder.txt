@@ -1,0 +1,12 @@
+Aqui você deve adicionar as imagens das molduras de rank.
+
+Recomendação: crie imagens PNG transparentes para as molduras de cada nível:
+- bronze.png
+- silver.png
+- gold.png
+- platinum.png
+- diamond.png
+- master.png
+- challenger.png
+
+Tamanho recomendado: 256x256 pixels 

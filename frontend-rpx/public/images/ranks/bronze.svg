@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradientes -->
+  <defs>
+    <linearGradient id="bronzeGradient" x1="200" y1="0" x2="200" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#92400E"/>
+      <stop offset="1" stop-color="#78350F"/>
+    </linearGradient>
+    <linearGradient id="bronzeShine" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B45309"/>
+      <stop offset="1" stop-color="#92400E"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- Círculo base -->
+  <circle cx="200" cy="200" r="190" stroke="url(#bronzeGradient)" stroke-width="10" fill="none"/>
+  
+  <!-- Detalhes decorativos simples -->
+  <path d="M200 10 L210 30 L200 40 L190 30 Z" fill="#B45309" filter="url(#glow)"/>
+  <path d="M200 390 L210 370 L200 360 L190 370 Z" fill="#B45309" filter="url(#glow)"/>
+  <path d="M10 200 L30 210 L40 200 L30 190 Z" fill="#B45309" filter="url(#glow)"/>
+  <path d="M390 200 L370 210 L360 200 L370 190 Z" fill="#B45309" filter="url(#glow)"/>
+  
+  <!-- Arcos decorativos -->
+  <path d="M80 80 A170 170 0 0 1 320 80" stroke="url(#bronzeShine)" stroke-width="4" fill="none"/>
+  <path d="M80 320 A170 170 0 0 0 320 320" stroke="url(#bronzeShine)" stroke-width="4" fill="none"/>
+  
+  <!-- Detalhes decorativos adicionais -->
+  <circle cx="200" cy="30" r="6" fill="#D97706" filter="url(#glow)"/>
+  <circle cx="200" cy="370" r="6" fill="#D97706" filter="url(#glow)"/>
+  <circle cx="30" cy="200" r="6" fill="#D97706" filter="url(#glow)"/>
+  <circle cx="370" cy="200" r="6" fill="#D97706" filter="url(#glow)"/>
+  
+  <!-- Emblema inferior -->
+  <g transform="translate(175, 320)">
+    <path d="M25 0 L45 10 L50 30 L25 40 L0 30 L5 10 Z" fill="#92400E" stroke="#B45309" stroke-width="1.5"/>
+    <circle cx="25" cy="20" r="8" fill="#D97706" stroke="#F59E0B" stroke-width="1"/>
+  </g>
+</svg> 

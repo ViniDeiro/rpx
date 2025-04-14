@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "three": "^0.152.2",
+    "@react-three/fiber": "^8.13.6",
+    "@react-three/drei": "^9.80.1",
+    "react-hot-toast": "^2.4.1"
+  }
+} 

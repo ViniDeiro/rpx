@@ -1,0 +1,388 @@
+'use client';
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Crown, Medal, Trophy, Search, ChevronRight, ChevronLeft, Info, Award, Trophy as TrophyIcon } from 'lucide-react';
+import { Rank } from '@/types/ranking';
+import { formatRank, createRank } from '@/utils/rankingSystem';
+import RankBadge from '@/components/RankBadge';
+
+// Interface para jogadores no leaderboard
+interface LeaderboardPlayer {
+  id: string;
+  name: string;
+  avatar: string;
+  rank: Rank;
+  winRate: number;
+  wins: number;
+  losses: number;
+  matchesPlayed: number;
+  position: number;
+}
+
+// Interface para paginação
+interface Pagination {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  limit: number;
+}
+
+export default function LeaderboardPage() {
+  // Estados
+  const [players, setPlayers] = useState<LeaderboardPlayer[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, totalPages: 1, totalItems: 0, limit: 20 });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [tier, setTier] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [season, setSeason] = useState<string>("1");
+
+  // Função para buscar dados do leaderboard
+  const fetchLeaderboard = async (page: number, limit: number, tier: string = "all", search: string = "") => {
+    setIsLoading(true);
+    try {
+      // Simulando busca de dados da API
+      const response = await fetch(`/api/ranking/leaderboard?page=${page}&limit=${limit}${tier !== "all" ? `&tier=${tier}` : ""}${search ? `&search=${search}` : ""}`);
+      
+      // Simulamos temporariamente a resposta da API
+      const mockData = getMockData(page, tier, search);
+      
+      // Processamos os dados recebidos
+      setPlayers(mockData.players);
+      setPagination(mockData.pagination);
+    } catch (error) {
+      console.error("Erro ao buscar dados do leaderboard:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Buscar dados iniciais
+  useEffect(() => {
+    fetchLeaderboard(pagination.page, pagination.limit, tier, searchQuery);
+  }, [tier, season]);
+
+  // Buscar dados ao mudar de página
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= pagination.totalPages) {
+      fetchLeaderboard(newPage, pagination.limit, tier, searchQuery);
+    }
+  };
+
+  // Buscar com filtro de pesquisa
+  const handleSearch = () => {
+    fetchLeaderboard(1, pagination.limit, tier, searchQuery);
+  };
+
+  // Trocar tier de ranque
+  const handleTierChange = (value: string) => {
+    setTier(value);
+  };
+
+  return (
+    <div className="container py-6 space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                <Trophy className="h-6 w-6 text-yellow-400" />
+                Classificação Global
+              </CardTitle>
+              <CardDescription>
+                Jogadores classificados por rank e pontos de liga
+              </CardDescription>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar jogador..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+              </div>
+              
+              <Select value={tier} onValueChange={handleTierChange}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filtrar por tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tiers</SelectItem>
+                  <SelectItem value="desafiante">Desafiante</SelectItem>
+                  <SelectItem value="mestre">Mestre</SelectItem>
+                  <SelectItem value="diamante">Diamante</SelectItem>
+                  <SelectItem value="platina">Platina</SelectItem>
+                  <SelectItem value="ouro">Ouro</SelectItem>
+                  <SelectItem value="prata">Prata</SelectItem>
+                  <SelectItem value="bronze">Bronze</SelectItem>
+                  <SelectItem value="ferro">Ferro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left font-medium py-3 pl-4">#</th>
+                    <th className="text-left font-medium py-3">Jogador</th>
+                    <th className="text-center font-medium py-3">Rank</th>
+                    <th className="text-center font-medium py-3">Vitórias</th>
+                    <th className="text-center font-medium py-3">Derrotas</th>
+                    <th className="text-center font-medium py-3">Taxa de Vitória</th>
+                    <th className="text-center font-medium py-3">Partidas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8">Carregando classificação...</td>
+                    </tr>
+                  ) : players.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8">Nenhum jogador encontrado.</td>
+                    </tr>
+                  ) : (
+                    players.map((player) => (
+                      <tr key={player.id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 pl-4">
+                          {player.position <= 3 ? (
+                            <div className="flex justify-center w-8 h-8 items-center">
+                              {player.position === 1 ? (
+                                <Crown size={24} className="text-yellow-400" fill="#FFC107" />
+                              ) : player.position === 2 ? (
+                                <Medal size={24} className="text-gray-400" fill="#B0BEC5" />
+                              ) : (
+                                <Medal size={24} className="text-amber-700" fill="#A1887F" />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium">{player.position}</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full bg-muted overflow-hidden mr-3">
+                              <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{player.name}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 text-center">
+                          <div className="flex justify-center">
+                            <RankBadge rank={player.rank} size="sm" showLP={true} />
+                          </div>
+                        </td>
+                        <td className="py-3 text-center font-medium text-green-500">{player.wins}</td>
+                        <td className="py-3 text-center font-medium text-red-500">{player.losses}</td>
+                        <td className="py-3 text-center">
+                          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                               style={{
+                                 backgroundColor: `rgba(${player.winRate >= 60 ? '34, 197, 94' : player.winRate >= 50 ? '234, 179, 8' : '239, 68, 68'}, 0.1)`,
+                                 color: player.winRate >= 60 ? 'rgb(34, 197, 94)' : player.winRate >= 50 ? 'rgb(234, 179, 8)' : 'rgb(239, 68, 68)'
+                               }}>
+                            {player.winRate}%
+                          </div>
+                        </td>
+                        <td className="py-3 text-center font-medium">{player.matchesPlayed}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Paginação */}
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {players.length} de {pagination.totalItems} jogadores
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1 || isLoading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Página {pagination.page} de {pagination.totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages || isLoading}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Informações da temporada atual */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <TrophyIcon className="h-5 w-5 text-yellow-400" />
+            Temporada {season}
+          </CardTitle>
+          <CardDescription>
+            Informações sobre a temporada atual e recompensas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex flex-col items-center p-4 border rounded-lg">
+              <Crown size={32} className="text-yellow-400 mb-2" />
+              <h3 className="font-semibold text-lg">Top 10</h3>
+              <p className="text-center text-muted-foreground text-sm mt-1">
+                Os 10 melhores jogadores receberão uma insígnia exclusiva e 1000 moedas.
+              </p>
+            </div>
+            <div className="flex flex-col items-center p-4 border rounded-lg">
+              <Award size={32} className="text-purple-400 mb-2" />
+              <h3 className="font-semibold text-lg">Promoção de Rank</h3>
+              <p className="text-center text-muted-foreground text-sm mt-1">
+                Jogadores que subirem 2 ou mais tiers receberão recompensas extras.
+              </p>
+            </div>
+            <div className="flex flex-col items-center p-4 border rounded-lg">
+              <Trophy size={32} className="text-blue-400 mb-2" />
+              <h3 className="font-semibold text-lg">Fin da Temporada</h3>
+              <p className="text-center text-muted-foreground text-sm mt-1">
+                A temporada atual termina em 30 dias. Prepare-se para as finais!
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Função para gerar dados mock
+function getMockData(page: number, tier: string = "all", search: string = "") {
+  // Importar a função createRank para criar objetos Rank completos
+  const { createRank } = require('@/utils/rankingSystem');
+  
+  // Lista de nomes fictícios para os jogadores
+  const names = [
+    "Faker", "Bjergsen", "Uzi", "Caps", "TheShy", "Chovy", "Canyon", "JackeyLove", "ShowMaker", "Deft",
+    "Ruler", "Knight", "Perkz", "CoreJJ", "Rekkles", "Jankos", "Keria", "Viper", "Nuguri", "BeryL",
+    "Hylissang", "Doinb", "Mata", "Scout", "Bwipo", "Tarzan", "Lehends", "Xiaohu", "Ming", "Meiko",
+    "Rookie", "Smeb", "PraY", "GorillA", "Bang", "Wolf", "Bengi", "Ambition", "Crown", "CuVee",
+    "Impact", "Doublelift", "Sneaky", "Jensen", "Svenskeren", "Xmithie", "Biofrost", "Zven", "Mithy", "Alphari",
+  ];
+
+  // Criar jogadores usando a função createRank para garantir objetos Rank válidos
+  const allPlayers = Array.from({ length: 50 }, (_, i) => {
+    // Distribuir os ranks de forma realista
+    let playerRank;
+    let rankTier;
+    let rankDivision = '';
+    let rankLP;
+
+    if (i === 0) {
+      rankTier = 'desafiante';
+      rankLP = 756;
+    } else if (i < 3) {
+      rankTier = 'mestre';
+      rankLP = 300 + Math.floor(Math.random() * 300);
+    } else if (i < 10) {
+      rankTier = 'diamante';
+      rankDivision = 'I';
+      rankLP = Math.floor(Math.random() * 100);
+    } else if (i < 20) {
+      rankTier = 'platina';
+      rankDivision = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+      rankLP = Math.floor(Math.random() * 100);
+    } else if (i < 30) {
+      rankTier = 'ouro';
+      rankDivision = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+      rankLP = Math.floor(Math.random() * 100);
+    } else if (i < 38) {
+      rankTier = 'prata';
+      rankDivision = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+      rankLP = Math.floor(Math.random() * 100);
+    } else if (i < 45) {
+      rankTier = 'bronze';
+      rankDivision = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+      rankLP = Math.floor(Math.random() * 100);
+    } else {
+      rankTier = 'ferro';
+      rankDivision = ['I', 'II', 'III', 'IV'][Math.floor(Math.random() * 4)];
+      rankLP = Math.floor(Math.random() * 100);
+    }
+
+    // Garantir que estamos utilizando a função createRank corretamente
+    playerRank = createRank(rankTier, rankDivision, rankLP);
+
+    const wins = Math.floor(Math.random() * 100) + 30;
+    const matchesPlayed = wins + Math.floor(Math.random() * 100) + 20;
+    const losses = matchesPlayed - wins;
+    const winRate = Math.round((wins / matchesPlayed) * 100);
+
+    return {
+      id: `player-${i + 1}`,
+      name: names[i % names.length],
+      avatar: `/avatars/player${(i % 12) + 1}.png`,
+      rank: playerRank,
+      winRate: winRate,
+      wins: wins,
+      losses: losses,
+      matchesPlayed: matchesPlayed,
+      position: i + 1
+    };
+  });
+
+  // Aplicar filtros
+  let filteredPlayers = allPlayers;
+  
+  // Filtrar por tier se necessário
+  if (tier !== "all") {
+    filteredPlayers = filteredPlayers.filter(player => player.rank.tier === tier);
+  }
+  
+  // Filtrar por busca se necessário
+  if (search) {
+    const searchLower = search.toLowerCase();
+    filteredPlayers = filteredPlayers.filter(player => 
+      player.name.toLowerCase().includes(searchLower)
+    );
+  }
+
+  // Calcular paginação
+  const limit = 20;
+  const offset = (page - 1) * limit;
+  const paginatedPlayers = filteredPlayers.slice(offset, offset + limit);
+  const totalPages = Math.ceil(filteredPlayers.length / limit);
+
+  return {
+    players: paginatedPlayers,
+    pagination: {
+      page,
+      totalPages,
+      totalItems: filteredPlayers.length,
+      limit
+    }
+  };
+} 

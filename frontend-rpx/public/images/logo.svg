@@ -1,0 +1,13 @@
+<svg width="120" height="50" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rpxGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stopColor="#4f46e5" />
+      <stop offset="100%" stopColor="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <g fill="url(#rpxGradient)" stroke="none">
+    <path d="M15 10h20c5.523 0 10 4.477 10 10s-4.477 10-10 10H25v10H15V10zm10 15h10c2.761 0 5-2.239 5-5s-2.239-5-5-5H25v10z" />
+    <path d="M55 10h10l15 15-15 15H55l15-15-15-15z" />
+    <path d="M85 10h20v5h-10v7.5h10v5h-10v7.5h10v5H85V10z" />
+  </g>
+</svg> 
