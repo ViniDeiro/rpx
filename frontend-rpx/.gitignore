@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ignorar arquivos da raiz para evitar conflitos no deploy
+/next.config.js
+/tailwind.config.js
+/pages
+/components
+/.next
