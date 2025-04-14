@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { User } from '@/lib/mongodb/models';
+import { getModels } from '@/lib/mongodb/models';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     }
 
     await connectToDatabase();
+    const { User } = await getModels();
 
     // Verifica se o usuário alvo existe
     const targetUser = await User.findById(targetUserId);

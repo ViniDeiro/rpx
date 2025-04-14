@@ -26,7 +26,9 @@ const userSchema = new mongoose.Schema({
   stats: {
     matches: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
-    losses: { type: Number, default: 0 }
+    losses: { type: Number, default: 0 },
+    rankPoints: { type: Number, default: 0 },
+    earnings: { type: Number, default: 0 }
   },
   wallet: {
     balance: { type: Number, default: 0 },
@@ -65,12 +67,15 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' }
 });
 
+// Declaração do modelo User
+let User: mongoose.Model<any>;
+
 // Função para obter modelos com verificação de conexão
 export async function getModels() {
   await connectToDatabase();
   
   // Verificar se os modelos já existem antes de redefini-los
-  const User = mongoose.models.User || mongoose.model('User', userSchema);
+  User = mongoose.models.User || mongoose.model('User', userSchema);
   
   // Retornar os modelos para uso nas APIs
   return {
@@ -78,5 +83,5 @@ export async function getModels() {
   };
 }
 
-// Exportar esquemas para uso em outras partes da aplicação
-export { userSchema }; 
+// Exportar esquemas e modelos para uso em outras partes da aplicação
+export { userSchema, User }; 

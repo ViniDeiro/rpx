@@ -12,6 +12,7 @@ export interface Rank {
   borderColor: string;
   image: string;
   requiredPointsForPromotion: number;
+  nextRank?: string; // Nome do próximo rank
 }
 
 export interface RankProgress {
@@ -120,18 +121,30 @@ export const calculateRank = (points: number): Rank => {
   
   // Pontos necessários para promoção (próxima divisão ou próximo tier)
   let requiredPointsForPromotion;
+  let nextRank: string | undefined;
+  
   if (tier !== 'mestre' && tier !== 'challenger' && division !== 'I') {
     // Promoção para próxima divisão no mesmo tier
     const tierRange = RANK_CONFIG[tier].max - RANK_CONFIG[tier].min;
     const divisionSize = tierRange / 4;
     const currentDivIndex = ['IV', 'III', 'II', 'I'].indexOf(division as string);
     requiredPointsForPromotion = RANK_CONFIG[tier].min + (currentDivIndex + 1) * divisionSize;
+    
+    // Nome do próximo rank (próxima divisão)
+    const nextDivision = ['IV', 'III', 'II', 'I'][currentDivIndex + 1];
+    nextRank = `${RANK_FRAMES[tier].name} ${nextDivision}`;
   } else if (nextTier) {
     // Promoção para o próximo tier
     requiredPointsForPromotion = RANK_CONFIG[nextTier].min;
+    
+    // Nome do próximo rank (próximo tier, divisão IV se aplicável)
+    nextRank = nextTier !== 'mestre' && nextTier !== 'challenger' 
+      ? `${RANK_FRAMES[nextTier].name} IV` 
+      : RANK_FRAMES[nextTier].name;
   } else {
     // Já está no rank mais alto
     requiredPointsForPromotion = Infinity;
+    nextRank = undefined;
   }
 
   return {
@@ -143,7 +156,8 @@ export const calculateRank = (points: number): Rank => {
     color: RANK_FRAMES[tier].color,
     borderColor: RANK_FRAMES[tier].borderColor,
     image: RANK_FRAMES[tier].image,
-    requiredPointsForPromotion
+    requiredPointsForPromotion,
+    nextRank
   };
 };
 
