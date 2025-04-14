@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 // Interface para o cache da conexão
 interface MongooseConnection {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+  conn: mongoose.Mongoose | null;
+  promise: Promise<mongoose.Mongoose> | null;
 }
 
 // Variável global para manter a conexão entre recarregamentos da API
