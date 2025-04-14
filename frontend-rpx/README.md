@@ -78,6 +78,12 @@ Os seguintes endpoints já foram migrados para o novo formato:
 - `/api/wallet/deposit` - Solicitação de depósito
 - `/api/wallet/withdraw` - Solicitação de saque
 - `/api/matches` - Listagem de partidas disponíveis
+- `/api/matches/[id]` - Obtenção de detalhes e atualização de partidas
+- `/api/matches/[id]/join` - Entrada em partidas
+- `/api/bets` - Criação e listagem de apostas
+- `/api/bets/[id]` - Detalhes e operações em apostas específicas (cashout, cancelamento)
+- `/api/notifications` - Listagem e criação de notificações
+- `/api/notifications/[id]/read` - Marcação de notificações como lidas
 
 Os demais endpoints estão sendo migrados gradualmente.
 
