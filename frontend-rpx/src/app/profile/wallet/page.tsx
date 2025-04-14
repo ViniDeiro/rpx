@@ -6,8 +6,18 @@ import Link from 'next/link';
 import { DollarSign, TrendingUp, TrendingDown, Clock, ArrowLeft } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Interface para definir o tipo de Transaction
+interface Transaction {
+  id: number;
+  type: string;
+  amount: number;
+  status: string;
+  date: string;
+  method?: string; // Propriedade opcional
+}
+
 // Dados fictícios de exemplo para transações
-const MOCK_TRANSACTIONS = [
+const MOCK_TRANSACTIONS: Transaction[] = [
   { id: 1, type: 'deposit', amount: 100, status: 'completed', date: '2023-11-15T14:22:00', method: 'pix' },
   { id: 2, type: 'withdrawal', amount: 50, status: 'completed', date: '2023-11-12T10:15:00', method: 'pix' },
   { id: 3, type: 'deposit', amount: 200, status: 'completed', date: '2023-11-10T18:35:00', method: 'card' },
@@ -18,7 +28,7 @@ const MOCK_TRANSACTIONS = [
 export default function WalletPage() {
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useAuth();
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
@@ -37,58 +47,60 @@ export default function WalletPage() {
     }
   }, [isAuthenticated]);
 
-  // Formatar o valor como moeda brasileira
-  const formatCurrency = (value) => {
+  // Função para formatar valores em moeda
+  function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-  };
+  }
 
-  // Formatar data relativa
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
+  // Função para formatar datas
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
-  };
+  }
 
   // Filtrar transações com base na tab ativa
-  const filteredTransactions = () => {
-    if (activeTab === 'all') return transactions;
-    if (activeTab === 'deposits') return transactions.filter(t => t.type === 'deposit');
-    if (activeTab === 'withdrawals') return transactions.filter(t => t.type === 'withdrawal');
-    if (activeTab === 'matches') return transactions.filter(t => ['match_win', 'match_bet'].includes(t.type));
-    return transactions;
-  };
+  const filteredTransactions = transactions.filter(transaction => {
+    if (activeTab === 'all') return true;
+    return transaction.type.includes(activeTab);
+  });
 
-  // Renderizar ícone de transação
-  const renderTransactionIcon = (type) => {
-    switch (type) {
-      case 'deposit':
-        return <TrendingUp className="text-green-500" size={20} />;
-      case 'withdrawal':
-        return <TrendingDown className="text-red-500" size={20} />;
-      case 'match_win':
-        return <TrendingUp className="text-blue-500" size={20} />;
-      case 'match_bet':
-        return <Clock className="text-yellow-500" size={20} />;
+  // Renderiza o ícone correto para cada tipo de transação
+  function getTransactionIcon(type: string) {
+    switch(true) {
+      case type.includes('deposit'):
+        return <TrendingUp className="text-green-500" />;
+      case type.includes('withdrawal'):
+        return <TrendingDown className="text-red-500" />;
+      case type.includes('match'):
+        return <TrendingUp className="text-blue-500" />;
       default:
-        return <DollarSign className="text-gray-500" size={20} />;
+        return <Clock className="text-gray-500" />;
     }
-  };
+  }
+
+  // Renderiza o valor da transação com a cor apropriada
+  function renderTransactionAmount(type: string, amount: number) {
+    const isPositive = type.includes('deposit') || type.includes('win');
+    return (
+      <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
+        {isPositive ? '+' : '-'}{formatCurrency(amount)}
+      </span>
+    );
+  }
 
   // Obter texto descritivo do tipo de transação
-  const getTransactionTypeText = (type) => {
+  const getTransactionDescriptionText = (type: string): string => {
     switch (type) {
       case 'deposit':
-        return 'Depósito';
+        return 'Depósito na carteira';
       case 'withdrawal':
-        return 'Saque';
+        return 'Saque da carteira';
       case 'match_win':
         return 'Vitória em partida';
       case 'match_bet':
@@ -96,16 +108,6 @@ export default function WalletPage() {
       default:
         return 'Transação';
     }
-  };
-
-  // Renderizar valor da transação
-  const renderTransactionAmount = (type, amount) => {
-    const isPositive = ['deposit', 'match_win'].includes(type);
-    return (
-      <span className={`font-semibold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-        {isPositive ? '+' : '-'} {formatCurrency(amount)}
-      </span>
-    );
   };
 
   if (isLoading) {
@@ -203,16 +205,16 @@ export default function WalletPage() {
               <div className="p-8 flex justify-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ) : filteredTransactions().length > 0 ? (
-              filteredTransactions().map((transaction) => (
+            ) : filteredTransactions.length > 0 ? (
+              filteredTransactions.map((transaction) => (
                 <div key={transaction.id} className="p-4 hover:bg-card-hover transition-colors">
                   <div className="flex items-center">
                     <div className="mr-3 p-2 bg-card-hover rounded-full">
-                      {renderTransactionIcon(transaction.type)}
+                      {getTransactionIcon(transaction.type)}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">
-                        {getTransactionTypeText(transaction.type)}
+                        {getTransactionDescriptionText(transaction.type)}
                         {transaction.method && (
                           <span className="text-sm text-gray-400 ml-2">
                             via {transaction.method === 'pix' ? 'PIX' : 'Cartão'}
