@@ -20,7 +20,12 @@ if (!cached) {
 export async function connectToDatabase() {
   // Se já temos uma conexão, retorná-la
   if (cached.conn) {
-    return cached.conn;
+    // Retornando um objeto compatível com o código legado que espera client e db
+    return {
+      client: cached.conn,
+      db: cached.conn,
+      mongoose: cached.conn
+    };
   }
 
   // Se não existe uma promessa de conexão, criar uma
@@ -41,7 +46,13 @@ export async function connectToDatabase() {
   try {
     // Aguardar a promessa de conexão ser resolvida
     cached.conn = await cached.promise;
-    return cached.conn;
+    
+    // Retornando um objeto compatível com o código legado que espera client e db
+    return {
+      client: cached.conn,
+      db: cached.conn,
+      mongoose: cached.conn
+    };
   } catch (e) {
     // Se falhar, limpar a promessa para tentar novamente na próxima chamada
     cached.promise = null;
