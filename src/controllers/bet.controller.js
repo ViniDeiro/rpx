@@ -7,6 +7,7 @@ const Wallet = require('../models/wallet.model');
 const User = require('../models/user.model');
 const { generateBetSlipId } = require('../utils/idGenerator');
 const mongoose = require('mongoose');
+const NotificationService = require('../utils/notificationService');
 
 /**
  * Controlador para gerenciamento de apostas
@@ -456,7 +457,7 @@ class BetController {
   }
   
   /**
-   * Liquidar apostas após resultado de partida (admin ou sistema)
+   * Liquidar apostas após resultado de partida
    * @param {Object} req - Requisição Express
    * @param {Object} res - Resposta Express
    * @param {Function} next - Função next do Express
@@ -518,6 +519,10 @@ class BetController {
       let winningBetsCount = 0;
       let totalPayouts = 0;
       
+      // Arrays para notificações em lote
+      const winningUserIds = [];
+      const losingUserIds = [];
+      
       // Processar cada aposta
       for (const bet of pendingBets) {
         // Liquidar a aposta com o resultado
@@ -528,6 +533,7 @@ class BetController {
         if (bet.status === 'won') {
           winningBetsCount++;
           totalPayouts += bet.potential_return;
+          winningUserIds.push(bet.user.toString());
           
           // Encontrar carteira do usuário e adicionar pagamento
           const wallet = await Wallet.findByUser(bet.user).session(session);
@@ -543,7 +549,56 @@ class BetController {
                 match_id: match._id
               }
             });
+            
+            // Enviar notificação individual para apostas ganhas
+            try {
+              await NotificationService.sendToUser({
+                userId: bet.user,
+                type: 'match_result',
+                title: 'Aposta ganha! 🎉',
+                message: `Parabéns! Sua aposta de R$ ${bet.amount.toFixed(2)} em "${match.title}" foi vencedora. Você ganhou R$ ${bet.potential_return.toFixed(2)}!`,
+                priority: 'normal',
+                action: {
+                  type: 'navigate',
+                  target: `/bets/${bet._id}`
+                },
+                references: {
+                  match: match._id,
+                  bet: bet._id
+                }
+              });
+            } catch (notificationError) {
+              logger.error(`Erro ao enviar notificação de aposta ganha: ${notificationError.message}`, {
+                userId: bet.user,
+                betId: bet._id
+              });
+            }
           }
+        } else if (bet.status === 'lost') {
+          // Adicionar usuário à lista de perdedores para notificação em lote
+          losingUserIds.push(bet.user.toString());
+        }
+      }
+      
+      // Enviar notificações em lote para apostas perdidas
+      if (losingUserIds.length > 0) {
+        try {
+          await NotificationService.sendToMany({
+            userIds: [...new Set(losingUserIds)], // Remover duplicatas
+            type: 'match_result',
+            title: 'Resultado da aposta',
+            message: `O resultado de "${match.title}" foi divulgado. Infelizmente sua aposta não foi vencedora. Continue participando!`,
+            priority: 'low',
+            action: {
+              type: 'navigate',
+              target: `/matches/${match._id}`
+            },
+            references: {
+              match: match._id
+            }
+          });
+        } catch (notificationError) {
+          logger.error(`Erro ao enviar notificações em lote para apostas perdidas: ${notificationError.message}`);
         }
       }
       

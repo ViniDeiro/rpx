@@ -138,6 +138,34 @@ const authorize = (allowedRoles = []) => {
 };
 
 /**
+ * Middleware para verificar se o usuário é administrador
+ */
+const isAdmin = (req, res, next) => {
+  // Primeiro verificar se o usuário está autenticado
+  authenticate(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    
+    // Verificar se o usuário tem o papel de administrador (verificando tanto roles quanto role)
+    const isAdminUser = 
+      (req.user?.roles && Array.isArray(req.user.roles) && req.user.roles.includes('admin')) || // Verificar pelo array roles
+      req.user?.role === 'admin'; // Verificar pelo campo role
+    
+    if (!isAdminUser) {
+      console.log('Autorização negada. Dados do usuário:', {
+        id: req.user?._id,
+        roles: req.user?.roles,
+        role: req.user?.role
+      });
+      return next(ApiError.forbidden('Acesso negado. É necessário ser administrador.'));
+    }
+    
+    next();
+  });
+};
+
+/**
  * Utilitário para gerar token JWT
  * @param {Object} user - Objeto do usuário
  * @returns {Object} Objeto com token e refresh token
@@ -206,6 +234,7 @@ module.exports = {
   refreshToken,
   generateTokens,
   revokeRefreshToken,
+  isAdmin,
   JWT_SECRET,
   REFRESH_TOKEN_SECRET,
   JWT_EXPIRES_IN,

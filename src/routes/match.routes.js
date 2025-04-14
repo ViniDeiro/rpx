@@ -10,10 +10,10 @@ const { validateMatch, validateMatchResult } = require('../middleware/validation
 
 /**
  * @route   GET /api/matches
- * @desc    Obter lista de partidas com filtros opcionais
+ * @desc    Obter todas as partidas disponíveis
  * @access  Public
  */
-router.get('/', MatchController.getMatches);
+router.get('/', MatchController.getAllMatches);
 
 /**
  * @route   GET /api/matches/live
@@ -58,6 +58,20 @@ router.get('/:id/odds', MatchController.getMatchOdds);
 router.get('/:id/stats', MatchController.getMatchStats);
 
 /**
+ * @route   GET /api/matches/:id/markets
+ * @desc    Obter mercados de apostas para uma partida
+ * @access  Public
+ */
+router.get('/:id/markets', MatchController.getMatchMarkets);
+
+/**
+ * @route   GET /api/matches/:id/live
+ * @desc    Obter estatísticas ao vivo de uma partida
+ * @access  Public
+ */
+router.get('/:id/live', MatchController.getLiveStats);
+
+/**
  * @route   POST /api/matches
  * @desc    Criar uma nova partida
  * @access  Private (Admin)
@@ -98,5 +112,36 @@ router.delete('/:id', authenticate, authorize('admin'), MatchController.deleteMa
  * @access  Private (Admin)
  */
 router.post('/:id/stats', authenticate, authorize('admin'), MatchController.updateLiveStats);
+
+/**
+ * @route   POST /api/matches/:id/invite
+ * @desc    Enviar convites para participar de uma partida
+ * @access  Private
+ */
+router.post('/:id/invite', authenticate, MatchController.sendMatchInvitation);
+
+/**
+ * @route   POST /api/matches/:matchId/notify-upcoming
+ * @desc    Notificar usuários sobre partida prestes a começar
+ * @access  Private (Admin/System)
+ */
+router.post(
+  '/:matchId/notify-upcoming',
+  authenticate,
+  authorize(['admin', 'system']),
+  MatchController.notifyUpcomingMatch
+);
+
+/**
+ * @route   POST /api/matches/:matchId/notify-results
+ * @desc    Notificar usuários sobre resultados de partida
+ * @access  Private (Admin/System)
+ */
+router.post(
+  '/:matchId/notify-results',
+  authenticate,
+  authorize(['admin', 'system']),
+  MatchController.notifyMatchResults
+);
 
 module.exports = router; 

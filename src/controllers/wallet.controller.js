@@ -2,6 +2,7 @@ const Wallet = require('../models/wallet.model');
 const User = require('../models/user.model');
 const { ApiError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
+const NotificationService = require('../utils/notificationService');
 
 /**
  * Controlador para gerenciamento de carteira e transações
@@ -215,6 +216,28 @@ class WalletController {
       // Completar a transação
       await wallet.completeTransaction(reference);
       
+      // Enviar notificação ao usuário
+      try {
+        await NotificationService.sendTransactionNotification(
+          user_id, 
+          transaction_id || reference, 
+          'deposit', 
+          amount
+        );
+        
+        logger.info(`Notificação de depósito enviada`, { 
+          userId: user_id, 
+          reference, 
+          amount 
+        });
+      } catch (notificationError) {
+        // Registrar erro na notificação, mas continuar o processo
+        logger.error(`Erro ao enviar notificação de depósito: ${notificationError.message}`, {
+          userId: user_id,
+          reference
+        });
+      }
+      
       logger.info(`Depósito confirmado com sucesso`, { 
         userId: user_id, 
         reference, 
@@ -335,16 +358,89 @@ class WalletController {
         throw new ApiError(404, 'Carteira não encontrada');
       }
       
+      // Encontrar a transação pelo reference
+      const transaction = wallet.findTransactionByReference(reference);
+      if (!transaction) {
+        throw new ApiError(404, 'Transação não encontrada');
+      }
+      
       // Processar conforme o status
       if (status === 'completed') {
         await wallet.completeTransaction(reference);
         logger.info(`Saque processado com sucesso`, { userId: user_id, reference, adminId: req.user.id });
+        
+        // Enviar notificação ao usuário
+        try {
+          await NotificationService.sendTransactionNotification(
+            user_id, 
+            transaction._id || reference, 
+            'withdrawal', 
+            transaction.amount
+          );
+          
+          logger.info(`Notificação de saque enviada`, { 
+            userId: user_id, 
+            reference
+          });
+        } catch (notificationError) {
+          // Registrar erro na notificação, mas continuar o processo
+          logger.error(`Erro ao enviar notificação de saque: ${notificationError.message}`, {
+            userId: user_id,
+            reference
+          });
+        }
       } else if (status === 'failed') {
         await wallet.failTransaction(reference, reason || 'Processamento falhou');
         logger.info(`Saque falhou`, { userId: user_id, reference, reason, adminId: req.user.id });
+        
+        // Enviar notificação de falha
+        try {
+          await NotificationService.sendToUser({
+            userId: user_id,
+            type: 'transaction_completed',
+            title: 'Saque não processado',
+            message: `Seu saque não pôde ser processado. Motivo: ${reason || 'Falha no processamento'}. O valor foi estornado para sua conta.`,
+            priority: 'high',
+            action: {
+              type: 'navigate',
+              target: '/wallet/transactions'
+            },
+            references: {
+              transaction: transaction._id || reference
+            }
+          });
+        } catch (notificationError) {
+          logger.error(`Erro ao enviar notificação de falha no saque: ${notificationError.message}`, {
+            userId: user_id,
+            reference
+          });
+        }
       } else if (status === 'canceled') {
         await wallet.cancelTransaction(reference, reason || 'Cancelado pelo administrador');
         logger.info(`Saque cancelado`, { userId: user_id, reference, reason, adminId: req.user.id });
+        
+        // Enviar notificação de cancelamento
+        try {
+          await NotificationService.sendToUser({
+            userId: user_id,
+            type: 'transaction_completed',
+            title: 'Saque cancelado',
+            message: `Seu saque foi cancelado. Motivo: ${reason || 'Cancelado pelo administrador'}. O valor foi estornado para sua conta.`,
+            priority: 'normal',
+            action: {
+              type: 'navigate',
+              target: '/wallet/transactions'
+            },
+            references: {
+              transaction: transaction._id || reference
+            }
+          });
+        } catch (notificationError) {
+          logger.error(`Erro ao enviar notificação de cancelamento: ${notificationError.message}`, {
+            userId: user_id,
+            reference
+          });
+        }
       } else {
         throw new ApiError(400, 'Status inválido');
       }

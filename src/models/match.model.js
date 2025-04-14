@@ -1,300 +1,183 @@
-const mongoose = require('mongoose');
+/**
+ * Modelo de Partida (Match) para o MongoDB
+ */
 
-const matchSchema = new mongoose.Schema({
-  match_id: {
-    type: String,
-    required: true,
-    unique: true
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+
+// Schema para jogador em um time
+const playerSchema = new Schema({
+  user_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
-  tournament: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Tournament'
-  },
-  tournament_name: {
+  username: {
     type: String,
     required: true
   },
-  tournament_round: {
+  avatar: {
     type: String
   },
-  teams: [{
-    team_id: {
-      type: String,
-      required: true
-    },
-    name: {
-      type: String,
-      required: true
-    },
-    logo: {
-      type: String
-    },
-    players: [{
-      player_id: {
-        type: String,
-        required: true
-      },
-      name: {
-        type: String,
-        required: true
-      },
-      nickname: {
-        type: String
-      },
-      avatar: {
-        type: String
-      }
-    }]
-  }],
-  start_time: {
+  is_ready: {
+    type: Boolean,
+    default: false
+  },
+  is_captain: {
+    type: Boolean,
+    default: false
+  },
+  joined_at: {
     type: Date,
+    default: Date.now
+  }
+});
+
+// Schema para time
+const teamSchema = new Schema({
+  name: {
+    type: String,
     required: true
   },
-  end_time: {
+  players: [playerSchema],
+  score: {
+    type: Number,
+    default: 0
+  }
+});
+
+// Schema para resultado
+const resultSchema = new Schema({
+  winner: {
+    type: String,
+    enum: ['team1', 'team2', 'draw'],
+    required: true
+  },
+  team1_score: {
+    type: Number,
+    default: 0
+  },
+  team2_score: {
+    type: Number,
+    default: 0
+  },
+  screenshots: [{
+    type: String
+  }],
+  verified_by: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  verified_at: {
     type: Date
+  },
+  dispute_status: {
+    type: String,
+    enum: ['none', 'pending', 'resolved'],
+    default: 'none'
+  }
+});
+
+// Schema para partida
+const matchSchema = new Schema({
+  title: {
+    type: String
+  },
+  mode: {
+    type: String,
+    required: true,
+    index: true
+  },
+  type: {
+    type: String,
+    enum: ['solo', 'duo', 'squad', 'tournament'],
+    required: true,
+    index: true
   },
   status: {
     type: String,
-    enum: ['upcoming', 'in_progress', 'completed', 'canceled', 'postponed'],
-    default: 'upcoming'
+    enum: ['waiting', 'in_progress', 'completed', 'canceled'],
+    default: 'waiting',
+    index: true
   },
-  betting_status: {
+  team_size: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 4
+  },
+  platform: {
     type: String,
-    enum: ['open', 'closed', 'settled'],
-    default: 'open'
+    enum: ['emulator', 'mobile', 'mixed', 'tactical'],
+    default: 'mixed',
+    index: true
   },
-  odds: {
-    teams: [{
-      team_id: {
-        type: String,
-        required: true
-      },
-      odd: {
-        type: Number,
-        required: true,
-        min: 1
-      },
-      probability: {
-        type: Number,
-        min: 0,
-        max: 1
-      }
-    }],
-    special_markets: [
-      {
-        market_id: {
-          type: String,
-          required: true
-        },
-        name: {
-          type: String,
-          required: true
-        },
-        description: {
-          type: String
-        },
-        options: [{
-          option_id: {
-            type: String,
-            required: true
-          },
-          name: {
-            type: String,
-            required: true
-          },
-          odd: {
-            type: Number,
-            required: true,
-            min: 1
-          }
-        }]
-      }
-    ]
+  entry_fee: {
+    type: Number,
+    required: true,
+    min: 0,
+    index: true
+  },
+  prize: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  teams: {
+    team1: {
+      type: teamSchema,
+      required: true
+    },
+    team2: {
+      type: teamSchema,
+      required: true
+    }
+  },
+  created_at: {
+    type: Date,
+    default: Date.now,
+    index: true
+  },
+  updated_at: {
+    type: Date,
+    default: Date.now
+  },
+  started_at: {
+    type: Date
+  },
+  completed_at: {
+    type: Date
   },
   result: {
-    winner_team_id: {
-      type: String
-    },
-    scores: [{
-      team_id: {
-        type: String,
-        required: true
-      },
-      position: {
-        type: Number
-      },
-      kills: {
-        type: Number,
-        default: 0
-      },
-      points: {
-        type: Number,
-        default: 0
-      }
-    }],
-    player_stats: [{
-      player_id: {
-        type: String,
-        required: true
-      },
-      team_id: {
-        type: String,
-        required: true
-      },
-      kills: {
-        type: Number,
-        default: 0
-      },
-      damage: {
-        type: Number,
-        default: 0
-      },
-      survival_time: {
-        type: Number,
-        default: 0
-      },
-      revives: {
-        type: Number,
-        default: 0
-      }
-    }],
-    special_markets_results: [{
-      market_id: {
-        type: String,
-        required: true
-      },
-      winning_option_id: {
-        type: String
-      }
-    }]
+    type: resultSchema
   },
-  live_updates: [{
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    event_type: {
-      type: String,
-      enum: ['kill', 'team_eliminated', 'circle_closing', 'match_start', 'match_end', 'other']
-    },
-    description: {
-      type: String
-    },
-    data: {
-      type: mongoose.Schema.Types.Mixed
-    }
-  }],
-  total_bets: {
-    type: Number,
-    default: 0
-  },
-  total_bet_amount: {
-    type: Number,
-    default: 0
-  },
-  stream_url: {
+  room_id: {
     type: String
   },
-  source_data: {
-    type: mongoose.Schema.Types.Mixed
+  room_password: {
+    type: String
   },
-  is_featured: {
-    type: Boolean,
-    default: false
+  payment_option: {
+    type: String,
+    enum: ['captain', 'split'],
+    default: 'split'
+  },
+  created_by: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
-}, {
-  timestamps: true
 });
 
-// Índices para melhorar performance de queries
-matchSchema.index({ start_time: 1 });
-matchSchema.index({ status: 1 });
-matchSchema.index({ tournament: 1 });
-matchSchema.index({ 'teams.team_id': 1 });
-matchSchema.index({ match_id: 1 }, { unique: true });
+// Índices compostos
+matchSchema.index({ status: 1, entry_fee: 1 });
+matchSchema.index({ type: 1, team_size: 1, platform: 1 });
 
-// Middleware pre-save para atualizar status com base no tempo
+// Middleware pre-save para atualizar o updated_at
 matchSchema.pre('save', function(next) {
-  const now = new Date();
-  
-  // Atualizar status automaticamente com base no tempo
-  if (this.status === 'upcoming' && now >= this.start_time) {
-    this.status = 'in_progress';
-    this.betting_status = 'closed';
-  }
-  
-  if (this.status === 'in_progress' && this.end_time && now >= this.end_time) {
-    this.status = 'completed';
-  }
-  
+  this.updated_at = new Date();
   next();
 });
-
-// Método para finalizar partida e definir resultados
-matchSchema.methods.finishMatch = async function(results) {
-  if (this.status === 'completed') {
-    throw new Error('Esta partida já foi finalizada');
-  }
-  
-  this.status = 'completed';
-  this.end_time = new Date();
-  this.result = results;
-  
-  // Se apostas ainda não foram liquidadas, marcar para liquidação
-  if (this.betting_status !== 'settled') {
-    this.betting_status = 'settled';
-  }
-  
-  return this.save();
-};
-
-// Método para adicionar atualização ao vivo
-matchSchema.methods.addLiveUpdate = async function(eventType, description, data = {}) {
-  if (this.status !== 'in_progress') {
-    throw new Error('Só é possível adicionar atualizações em partidas em andamento');
-  }
-  
-  const update = {
-    timestamp: new Date(),
-    event_type: eventType,
-    description,
-    data
-  };
-  
-  this.live_updates.push(update);
-  return this.save();
-};
-
-// Método para atualizar as odds de uma partida
-matchSchema.methods.updateOdds = async function(newOdds) {
-  if (this.status !== 'upcoming' && this.betting_status !== 'open') {
-    throw new Error('Não é possível atualizar odds de partidas que já começaram ou com apostas fechadas');
-  }
-  
-  this.odds = newOdds;
-  return this.save();
-};
-
-// Método para atrasar/adiar uma partida
-matchSchema.methods.postponeMatch = async function(newStartTime) {
-  if (this.status !== 'upcoming' && this.status !== 'postponed') {
-    throw new Error('Só é possível adiar partidas que ainda não começaram');
-  }
-  
-  this.status = 'postponed';
-  this.start_time = newStartTime;
-  
-  return this.save();
-};
 
 // Método para cancelar uma partida
 matchSchema.methods.cancelMatch = async function(reason) {
@@ -303,83 +186,182 @@ matchSchema.methods.cancelMatch = async function(reason) {
   }
   
   this.status = 'canceled';
-  this.betting_status = 'closed';
-  this.description = this.description + ` [CANCELADA: ${reason}]`;
+  return this.save();
+};
+
+// Método para iniciar uma partida
+matchSchema.methods.startMatch = async function() {
+  if (this.status !== 'waiting') {
+    throw new Error('Esta partida não está em estado de espera');
+  }
+  
+  // Verificar se há jogadores suficientes
+  if (this.teams.team1.players.length < this.team_size || 
+      this.teams.team2.players.length < this.team_size) {
+    throw new Error('Não há jogadores suficientes para iniciar a partida');
+  }
+  
+  // Verificar se todos os jogadores estão prontos
+  const allReady = [...this.teams.team1.players, ...this.teams.team2.players]
+    .every(player => player.is_ready);
+  
+  if (!allReady) {
+    throw new Error('Nem todos os jogadores estão prontos');
+  }
+  
+  this.status = 'in_progress';
+  this.started_at = new Date();
   
   return this.save();
 };
 
-// Método para obter estatísticas agregadas
-matchSchema.methods.getAggregatedStats = function() {
-  if (!this.result || !this.result.player_stats) {
-    return null;
+// Método para finalizar uma partida
+matchSchema.methods.completeMatch = async function(result) {
+  if (this.status !== 'in_progress') {
+    throw new Error('Esta partida não está em andamento');
   }
   
-  const stats = {
-    totalKills: 0,
-    topFragger: null,
-    teamStats: {}
+  this.status = 'completed';
+  this.completed_at = new Date();
+  this.result = result;
+  
+  return this.save();
+};
+
+// Método para adicionar um jogador
+matchSchema.methods.addPlayer = async function(teamId, player) {
+  if (this.status !== 'waiting') {
+    throw new Error('Não é possível adicionar jogadores a partidas já iniciadas');
+  }
+  
+  const team = teamId === 'team1' ? this.teams.team1 : this.teams.team2;
+  
+  if (team.players.length >= this.team_size) {
+    throw new Error('Time está completo');
+  }
+  
+  // Verificar se o jogador já está em algum time
+  const isAlreadyInTeam1 = this.teams.team1.players.some(p => 
+    p.user_id.toString() === player.user_id.toString());
+  
+  const isAlreadyInTeam2 = this.teams.team2.players.some(p => 
+    p.user_id.toString() === player.user_id.toString());
+  
+  if (isAlreadyInTeam1 || isAlreadyInTeam2) {
+    throw new Error('Jogador já está nesta partida');
+  }
+  
+  // Definir como capitão se for o primeiro jogador do time
+  if (team.players.length === 0) {
+    player.is_captain = true;
+  }
+  
+  team.players.push(player);
+  
+  return this.save();
+};
+
+// Método para remover um jogador
+matchSchema.methods.removePlayer = async function(userId) {
+  if (this.status !== 'waiting') {
+    throw new Error('Não é possível remover jogadores de partidas já iniciadas');
+  }
+  
+  let removed = false;
+  let team = null;
+  
+  // Verificar se o jogador está no time 1
+  const team1PlayerIndex = this.teams.team1.players.findIndex(p => 
+    p.user_id.toString() === userId.toString());
+  
+  if (team1PlayerIndex >= 0) {
+    const wasCapitain = this.teams.team1.players[team1PlayerIndex].is_captain;
+    this.teams.team1.players.splice(team1PlayerIndex, 1);
+    removed = true;
+    team = this.teams.team1;
+    
+    // Se era capitão, nomear outro jogador como capitão se houver
+    if (wasCapitain && team.players.length > 0) {
+      team.players[0].is_captain = true;
+    }
+  }
+  
+  // Se não estava no time 1, verificar no time 2
+  if (!removed) {
+    const team2PlayerIndex = this.teams.team2.players.findIndex(p => 
+      p.user_id.toString() === userId.toString());
+    
+    if (team2PlayerIndex >= 0) {
+      const wasCapitain = this.teams.team2.players[team2PlayerIndex].is_captain;
+      this.teams.team2.players.splice(team2PlayerIndex, 1);
+      removed = true;
+      team = this.teams.team2;
+      
+      // Se era capitão, nomear outro jogador como capitão se houver
+      if (wasCapitain && team.players.length > 0) {
+        team.players[0].is_captain = true;
+      }
+    }
+  }
+  
+  if (!removed) {
+    throw new Error('Jogador não encontrado nesta partida');
+  }
+  
+  return this.save();
+};
+
+// Método estático para encontrar partidas com vagas
+matchSchema.statics.findAvailableMatches = function(filters = {}) {
+  const query = { 
+    status: 'waiting',
+    ...filters
   };
   
-  // Calcular estatísticas
-  this.result.player_stats.forEach(player => {
-    stats.totalKills += player.kills || 0;
-    
-    if (!stats.topFragger || (player.kills > stats.topFragger.kills)) {
-      stats.topFragger = {
-        player_id: player.player_id,
-        team_id: player.team_id,
-        kills: player.kills
-      };
-    }
-    
-    // Estatísticas por equipe
-    if (!stats.teamStats[player.team_id]) {
-      stats.teamStats[player.team_id] = {
-        totalKills: 0,
-        totalDamage: 0,
-        players: 0
-      };
-    }
-    
-    const team = stats.teamStats[player.team_id];
-    team.totalKills += player.kills || 0;
-    team.totalDamage += player.damage || 0;
-    team.players += 1;
-  });
-  
-  return stats;
+  return this.find(query)
+    .sort({ created_at: -1 });
 };
 
-// Método estático para encontrar partidas próximas
-matchSchema.statics.findUpcoming = function(limit = 10) {
-  return this.find({ 
-    status: 'upcoming',
-    start_time: { $gt: new Date() }
+// Método estático para encontrar partidas em andamento
+matchSchema.statics.findActiveMatches = function() {
+  return this.find({ status: 'in_progress' })
+    .sort({ started_at: -1 });
+};
+
+// Método estático para encontrar partidas de um jogador
+matchSchema.statics.findUserMatches = function(userId) {
+  return this.find({
+    $or: [
+      { 'teams.team1.players.user_id': userId },
+      { 'teams.team2.players.user_id': userId }
+    ]
   })
-  .sort({ start_time: 1 })
-  .limit(limit);
+  .sort({ created_at: -1 });
 };
 
-// Método estático para encontrar partidas em destaque
-matchSchema.statics.findFeatured = function() {
-  return this.find({ is_featured: true })
-    .sort({ start_time: 1 });
+// Método estático para encontrar partidas com status específico
+matchSchema.statics.findByStatus = function(status) {
+  return this.find({ status })
+    .sort({ created_at: -1 });
 };
 
-// Método estático para encontrar partidas de um torneio
-matchSchema.statics.findByTournament = function(tournamentId) {
-  return this.find({ tournament: tournamentId })
-    .sort({ start_time: 1 });
+// Método estático para encontrar partidas por faixa de preço
+matchSchema.statics.findByPriceRange = function(minPrice, maxPrice) {
+  const query = {};
+  
+  if (minPrice !== undefined) {
+    query.entry_fee = { $gte: minPrice };
+  }
+  
+  if (maxPrice !== undefined) {
+    query.entry_fee = { ...query.entry_fee, $lte: maxPrice };
+  }
+  
+  return this.find(query)
+    .sort({ entry_fee: 1 });
 };
 
-// Método estático para encontrar partidas de uma equipe
-matchSchema.statics.findByTeam = function(teamId) {
-  return this.find({ 'teams.team_id': teamId })
-    .sort({ start_time: -1 });
-};
-
-// Criar modelo
+// Criar o modelo
 const Match = mongoose.model('Match', matchSchema);
 
 module.exports = Match; 

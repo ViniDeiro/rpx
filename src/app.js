@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
+const path = require('path');
 const { connectDB } = require('./config/database');
 const { errorMiddleware } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
@@ -23,6 +24,9 @@ const walletRoutes = require('./routes/wallet.routes');
 const teamRoutes = require('./routes/team.routes');
 const tournamentRoutes = require('./routes/tournament.routes');
 const rankingRoutes = require('./routes/rankings.routes');
+const notificationRoutes = require('./routes/notification.routes');
+// Rotas de teste (apenas em desenvolvimento)
+const testRoutes = require('./routes/test.routes');
 
 // Inicializar aplicação Express
 const app = express();
@@ -36,6 +40,9 @@ app.use(cors()); // CORS
 app.use(express.json({ limit: '1mb' })); // Parser JSON
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); // Parser URL encoded
 app.use(compression()); // Compressão
+
+// Servir arquivos estáticos de uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logging de requisições HTTP
 if (process.env.NODE_ENV !== 'production') {
@@ -96,6 +103,13 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/rankings', rankingRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Rotas de teste (apenas em ambiente de desenvolvimento)
+if (process.env.NODE_ENV === 'development') {
+  logger.info('Rotas de teste habilitadas - APENAS PARA DESENVOLVIMENTO');
+  app.use('/api/test', testRoutes);
+}
 
 // Após a definição das rotas e antes do handler de erros
 // Configurar documentação da API com Swagger

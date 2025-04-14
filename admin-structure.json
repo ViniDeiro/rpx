@@ -1,0 +1,60 @@
+{
+  "_id": "67fa959973cc1d4d73c89158",
+  "username": "admin",
+  "password": "$2a$10$RR6kGWXJ9rIzzYDvrST8xeDEt3U8LcPGIY8t1k6KGnZMmm4xFhRIO",
+  "name": "Administrador",
+  "avatar": "/images/avatars/default.png",
+  "avatarUrl": null,
+  "contact": {
+    "email": "admin@rpxplatform.com",
+    "phone": "11999999999",
+    "_id": "67fa959973cc1d4d73c89159"
+  },
+  "role": "admin",
+  "status": "active",
+  "level": 50,
+  "experience": 0,
+  "balance": 999999,
+  "isOnline": false,
+  "notifications": {
+    "email": true,
+    "push": true,
+    "matchInvites": true,
+    "marketingEmails": false
+  },
+  "privacySettings": {
+    "showProfileStats": true,
+    "showGameAccounts": true,
+    "showOnlineStatus": true
+  },
+  "isEmailVerified": true,
+  "stats": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0,
+    "totalMatches": 0,
+    "winRate": 0,
+    "totalEarnings": 0,
+    "_id": "67fa959973cc1d4d73c8915a"
+  },
+  "transactions": [],
+  "paymentMethods": [],
+  "kyc": {
+    "status": "not_submitted",
+    "_id": "67fa959973cc1d4d73c8915b"
+  },
+  "gameAccounts": [],
+  "createdAt": "2025-04-12T16:32:25.870Z",
+  "updatedAt": "2025-04-12T16:32:25.875Z",
+  "__v": 0,
+  "isActive": true,
+  "is_active": true,
+  "accountStatus": "active",
+  "active": true,
+  "account": {
+    "isActive": true,
+    "status": "active"
+  },
+  "enabled": true,
+  "state": "active"
+}

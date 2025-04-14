@@ -82,3 +82,47 @@ Error: listen EADDRINUSE: address already in use :::3001
     }
   }
 }
+2025-04-09 18:25:40 [error]: Erro ao autenticar usuário: user.addRefreshToken is not a function
+{
+  "service": "rpx-platform"
+}
+2025-04-09 18:26:42 [error]: Erro ao autenticar usuário: User validation failed: contact: Path `contact` is required.
+{
+  "service": "rpx-platform"
+}
+2025-04-12 12:53:23 [error]: Erro ao autenticar usuário: Operation `users.findOne()` buffering timed out after 10000ms
+{
+  "service": "rpx-platform"
+}
+2025-04-12 13:02:37 [error]: Erro ao autenticar usuário: Operation `users.findOne()` buffering timed out after 10000ms
+{
+  "service": "rpx-platform"
+}
+2025-04-12 13:30:05 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "email": {
+      "type": "field",
+      "value": "admin",
+      "msg": "Email inválido",
+      "path": "email",
+      "location": "body"
+    }
+  }
+}
+2025-04-12 13:30:13 [error]: Dados inválidos
+{
+  "service": "rpx-platform",
+  "statusCode": 422,
+  "errors": {
+    "email": {
+      "type": "field",
+      "value": "admin",
+      "msg": "Email inválido",
+      "path": "email",
+      "location": "body"
+    }
+  }
+}

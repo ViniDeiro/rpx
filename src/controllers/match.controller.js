@@ -5,6 +5,9 @@
 
 const logger = require('../utils/logger');
 const { ApiError } = require('../middleware/errorHandler');
+const Match = require('../models/match.model');
+const User = require('../models/user.model');
+const NotificationService = require('../utils/notificationService');
 
 class MatchController {
   /**
@@ -492,6 +495,258 @@ class MatchController {
       next(error);
     }
   }
+
+  /**
+   * Enviar convite para participar de uma partida
+   * @param {Object} req - Objeto de requisição do Express
+   * @param {Object} res - Objeto de resposta do Express
+   * @param {Function} next - Função next do Express
+   */
+  async sendMatchInvitation(req, res, next) {
+    try {
+      const inviterId = req.user._id;
+      const { matchId, userIds, message } = req.body;
+      
+      if (!matchId || !userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return next(ApiError.badRequest('ID da partida e IDs dos usuários são obrigatórios'));
+      }
+      
+      logger.info(`Enviando convites para partida ${matchId} por ${inviterId}`);
+      
+      // Verificar se a partida existe
+      const match = await Match.findById(matchId);
+      if (!match) {
+        return next(ApiError.notFound('Partida não encontrada'));
+      }
+      
+      // Verificar se o usuário que envia é o proprietário da partida
+      if (match.creator && match.creator.toString() !== inviterId.toString()) {
+        return next(ApiError.forbidden('Apenas o criador da partida pode enviar convites'));
+      }
+      
+      // Verificar status da partida
+      if (match.status !== 'upcoming') {
+        return next(ApiError.badRequest('Só é possível enviar convites para partidas futuras'));
+      }
+      
+      // Verificar se os usuários existem
+      const users = await User.find({ _id: { $in: userIds } }).select('_id username');
+      if (users.length === 0) {
+        return next(ApiError.badRequest('Nenhum usuário válido encontrado'));
+      }
+      
+      const validUserIds = users.map(user => user._id.toString());
+      const sentInvitations = [];
+      const failedInvitations = [];
+      
+      // Enviar convites para cada usuário
+      for (const userId of validUserIds) {
+        try {
+          // Enviar notificação de convite
+          await NotificationService.sendMatchInvitation(
+            userId,
+            matchId,
+            inviterId
+          );
+          
+          sentInvitations.push(userId);
+          logger.info(`Convite para partida enviado com sucesso para ${userId}`);
+        } catch (error) {
+          failedInvitations.push({
+            userId,
+            error: error.message
+          });
+          logger.error(`Erro ao enviar convite para ${userId}: ${error.message}`);
+        }
+      }
+      
+      // Enviar resposta
+      return res.status(200).json({
+        success: true,
+        message: 'Processamento de convites concluído',
+        data: {
+          matchId,
+          sent: sentInvitations,
+          failed: failedInvitations,
+          totalSent: sentInvitations.length,
+          totalFailed: failedInvitations.length
+        }
+      });
+    } catch (error) {
+      logger.error(`Erro ao enviar convites para partida: ${error.message}`);
+      next(error);
+    }
+  }
+  
+  /**
+   * Notificar usuários sobre partida próxima
+   * @param {Object} req - Objeto de requisição do Express
+   * @param {Object} res - Objeto de resposta do Express
+   * @param {Function} next - Função next do Express
+   */
+  async notifyUpcomingMatch(req, res, next) {
+    try {
+      // Verificar permissões - apenas admin ou sistema
+      if (!req.user.isAdmin && !req.isSystem) {
+        throw new ApiError(403, 'Permissão negada');
+      }
+      
+      const { matchId } = req.params;
+      
+      // Verificar se a partida existe
+      const match = await Match.findById(matchId);
+      if (!match) {
+        return next(ApiError.notFound('Partida não encontrada'));
+      }
+      
+      // Verificar se a partida está próxima
+      const now = new Date();
+      const startTime = new Date(match.startTime);
+      const timeUntilStart = startTime - now;
+      
+      // Verificar se a partida está dentro de um limite razoável (1 hora)
+      if (timeUntilStart < 0 || timeUntilStart > 3600000) {
+        return next(ApiError.badRequest('Esta partida não está prestes a começar'));
+      }
+      
+      // Obter todos os usuários que apostaram nesta partida ou foram convidados
+      const interestedUsers = await getInterestedUsers(matchId);
+      
+      if (interestedUsers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'Nenhum usuário interessado encontrado para notificar',
+          data: { count: 0 }
+        });
+      }
+      
+      // Calcular quantos minutos faltam
+      const minutesToStart = Math.round(timeUntilStart / 60000);
+      
+      // Enviar notificações em lote
+      const result = await NotificationService.sendToMany({
+        userIds: interestedUsers,
+        type: 'match_reminder',
+        title: 'Partida prestes a começar',
+        message: `A partida "${match.title}" começará em ${minutesToStart} minutos! Não perca!`,
+        priority: 'high',
+        action: {
+          type: 'navigate',
+          target: `/matches/${matchId}`
+        },
+        references: {
+          match: matchId
+        }
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Notificações enviadas com sucesso',
+        data: {
+          matchId,
+          usersNotified: result.totalSent,
+          minutesToStart
+        }
+      });
+    } catch (error) {
+      logger.error(`Erro ao notificar sobre partida próxima: ${error.message}`);
+      next(error);
+    }
+  }
+  
+  /**
+   * Notificar sobre resultados de partida
+   * @param {Object} req - Objeto de requisição do Express
+   * @param {Object} res - Objeto de resposta do Express
+   * @param {Function} next - Função next do Express
+   */
+  async notifyMatchResults(req, res, next) {
+    try {
+      // Verificar permissões - apenas admin ou sistema
+      if (!req.user.isAdmin && !req.isSystem) {
+        throw new ApiError(403, 'Permissão negada');
+      }
+      
+      const { matchId } = req.params;
+      
+      // Verificar se a partida existe
+      const match = await Match.findById(matchId);
+      if (!match) {
+        return next(ApiError.notFound('Partida não encontrada'));
+      }
+      
+      // Verificar se a partida está concluída e tem resultados
+      if (match.status !== 'completed' || !match.result || !match.result.winner_team_id) {
+        return next(ApiError.badRequest('Esta partida não está concluída ou não tem resultados'));
+      }
+      
+      // Obter todos os usuários que apostaram nesta partida ou foram convidados
+      const interestedUsers = await getInterestedUsers(matchId);
+      
+      if (interestedUsers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'Nenhum usuário interessado encontrado para notificar',
+          data: { count: 0 }
+        });
+      }
+      
+      // Obter nome da equipe vencedora
+      const winnerTeam = match.teams.find(team => team.id === match.result.winner_team_id);
+      const winnerName = winnerTeam ? winnerTeam.name : 'Equipe vencedora';
+      
+      // Enviar notificações em lote
+      const result = await NotificationService.sendToMany({
+        userIds: interestedUsers,
+        type: 'match_result',
+        title: 'Resultado da partida',
+        message: `A partida "${match.title}" terminou! ${winnerName} venceu! Confira os detalhes completos.`,
+        priority: 'normal',
+        action: {
+          type: 'navigate',
+          target: `/matches/${matchId}`
+        },
+        references: {
+          match: matchId
+        }
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Notificações de resultado enviadas com sucesso',
+        data: {
+          matchId,
+          usersNotified: result.totalSent,
+          winnerTeam: winnerName
+        }
+      });
+    } catch (error) {
+      logger.error(`Erro ao notificar resultados de partida: ${error.message}`);
+      next(error);
+    }
+  }
+}
+
+/**
+ * Obter todos os usuários interessados em uma partida
+ * @param {string} matchId - ID da partida
+ * @returns {Promise<Array<string>>} - Array de IDs de usuários
+ */
+async function getInterestedUsers(matchId) {
+  // Implementação fictícia - em uma aplicação real, isso consultaria o banco de dados
+  // para encontrar usuários que apostaram na partida ou foram convidados
+  
+  // 1. Usuários que apostaram na partida
+  const betUsers = await Bet.find({ match: matchId }).distinct('user');
+  
+  // 2. Usuários que foram convidados para a partida
+  const invitedUsers = await MatchInvitation.find({ match: matchId }).distinct('user');
+  
+  // 3. Combinar e remover duplicatas
+  const allUsers = [...betUsers, ...invitedUsers];
+  const uniqueUsers = [...new Set(allUsers.map(id => id.toString()))];
+  
+  return uniqueUsers;
 }
 
 module.exports = new MatchController(); 

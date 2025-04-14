@@ -76,6 +76,10 @@ const options = {
       {
         name: 'Rankings',
         description: 'Endpoints para classificações e rankings'
+      },
+      {
+        name: 'Notificações',
+        description: 'Gerenciamento de notificações do usuário'
       }
     ]
   },
@@ -84,7 +88,8 @@ const options = {
     './src/routes/*.js',
     './src/models/*.js',
     './src/middleware/*.js',
-    './src/docs/*.yaml' // Arquivos adicionais de documentação
+    './src/docs/*.js',    // Arquivos JS de documentação
+    './src/docs/*.yaml'   // Arquivos YAML adicionais de documentação
   ]
 };
 
