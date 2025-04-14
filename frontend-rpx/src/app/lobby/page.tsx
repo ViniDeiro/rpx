@@ -78,24 +78,25 @@ export default function LobbyPage() {
     };
   }>>([]);
   
-  // Estado para controlar se o jogador está conectando a uma sala oficial
+  
   const [isConnectingToOfficialRoom, setIsConnectingToOfficialRoom] = useState(false);
-  // Estado para armazenar a sala oficial selecionada
+  
   const [selectedOfficialRoom, setSelectedOfficialRoom] = useState<any>(null);
   
-  // Amigos online (mockados por enquanto)
+  // Amigos online
   const [onlineFriends, setOnlineFriends] = useState([
-    { id: 'friend1', name: 'ProGamer123', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
-    { id: 'friend2', name: 'CoolPlayer', avatar: '/images/avatars/green.svg', level: 32, status: 'online' },
-    { id: 'friend3', name: 'VictoryKing', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game' },
-    { id: 'friend4', name: 'GameMaster', avatar: '/images/avatars/red.svg', level: 57, status: 'online' },
-    { id: 'friend5', name: 'LegendWinner', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle' },
+    { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
+    { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online' },
+    { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game' },
+    { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online' },
+    { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle' },
+    { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
   ]);
   
-  // Tratamos o user como UserWithStats para acessar stats
+ 
   const userWithStats = user as UserWithStats;
   
-  // Estados para a funcionalidade de busca de partida
+  
   const [isSearchingMatch, setIsSearchingMatch] = useState(false);
   const [foundMatch, setFoundMatch] = useState<Match | null>(null);
   const [showMatchRoomModal, setShowMatchRoomModal] = useState(false);
