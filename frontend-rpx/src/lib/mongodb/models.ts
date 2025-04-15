@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  avatarUrl: { type: String },
   profile: {
     name: String,
     avatar: String,

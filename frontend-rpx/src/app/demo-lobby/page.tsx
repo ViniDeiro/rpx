@@ -16,6 +16,7 @@ interface Player {
   id: string;
   username: string;
   character: Character;
+  avatarUrl?: string;
 }
 
 // Definindo a interface para o componente LobbyWithCharacters
@@ -32,17 +33,20 @@ export default function DemoLobbyPage() {
     { 
       id: 'user1', 
       username: 'Jogador 1', 
-      character: { type: 'ninja', color: '#e74c3c' }
+      character: { type: 'ninja', color: '#e74c3c' },
+      avatarUrl: '/images/avatars/blue.svg'
     },
     { 
       id: 'user2', 
       username: 'Jogador 2', 
-      character: { type: 'mage', color: '#3498db' }
+      character: { type: 'mage', color: '#3498db' },
+      avatarUrl: '/images/avatars/green.svg'
     },
     { 
       id: 'user3', 
       username: 'Jogador 3', 
-      character: { type: 'archer', color: '#2ecc71' }
+      character: { type: 'archer', color: '#2ecc71' },
+      avatarUrl: '/images/avatars/purple.svg'
     }
   ]);
   
@@ -64,10 +68,15 @@ export default function DemoLobbyPage() {
   
   // Adicionar um jogador ao lobby
   const handleAddPlayer = (character: Character) => {
+    // Array de avatares disponíveis
+    const avatars = ['/images/avatars/blue.svg', '/images/avatars/green.svg', 
+                     '/images/avatars/purple.svg', '/images/avatars/default.svg'];
+    
     const newPlayer = {
       id: `user${players.length + 1}`,
       username: `Jogador ${players.length + 1}`,
-      character
+      character,
+      avatarUrl: avatars[Math.floor(Math.random() * avatars.length)]
     };
     
     setPlayers([...players, newPlayer]);

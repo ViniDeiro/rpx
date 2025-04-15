@@ -15,39 +15,40 @@ export default function ProfileBanner() {
   const banner = BANNERS.find(b => b.id === bannerId) || BANNERS.find(b => b.id === defaultBannerId)!;
   
   return (
-    <div className="relative w-full">
-      {/* Banner */}
-      <div className="w-full h-36 md:h-48 lg:h-60 relative overflow-hidden rounded-t-xl">
+    <div className="w-full flex justify-center bg-[#0D0A2A]">
+      <div className="w-full max-w-[73.5%] h-56 sm:h-60 md:h-72 relative overflow-hidden mb-0">
+        {/* Banner image */}
         <Image
           src={banner.image}
           alt={banner.name}
           fill
           priority
+          sizes="(max-width: 768px) 100vw, 73.5vw"
           className="object-cover"
         />
         
-        {/* Gradiente superior para suavizar sobreposição do header */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent" />
+        {/* Gradiente de sobreposição */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A2A] via-transparent to-[#0D0A2A]/60"></div>
         
-        {/* Botão de edição */}
+        {/* Botão de editar */}
         <button 
           onClick={() => setShowSelector(true)}
-          className="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 p-2 rounded-full transition-colors"
-          aria-label="Editar banner"
+          className="absolute bottom-4 right-4 bg-[#171335]/70 hover:bg-[#171335]/90 backdrop-blur-sm p-2 rounded-md flex items-center gap-2 text-white text-sm transition-all duration-200 border border-[#3D2A85]/30 z-10"
         >
           <Edit size={16} />
+          <span>Editar Banner</span>
         </button>
+        
+        {/* Modal de seleção de banner */}
+        {showSelector && (
+          <CustomizationSelector 
+            type="banner"
+            items={BANNERS}
+            selectedItemId={bannerId}
+            onClose={() => setShowSelector(false)}
+          />
+        )}
       </div>
-      
-      {/* Modal de seleção de banner */}
-      {showSelector && (
-        <CustomizationSelector 
-          type="banner"
-          items={BANNERS}
-          selectedItemId={bannerId}
-          onClose={() => setShowSelector(false)}
-        />
-      )}
     </div>
   );
 } 

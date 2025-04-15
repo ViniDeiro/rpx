@@ -38,7 +38,7 @@ export async function authMiddleware(req: NextRequest) {
     headers.set('x-user-role', decoded.role);
 
     // Criar uma nova requisição com os headers atualizados
-    const newRequest = new NextRequest(req.url, {
+    const requestInit = {
       method: req.method,
       headers,
       body: req.body,
@@ -50,7 +50,10 @@ export async function authMiddleware(req: NextRequest) {
       redirect: req.redirect,
       referrer: req.referrer,
       referrerPolicy: req.referrerPolicy,
-    });
+      duplex: 'half' // Necessário para Node.js >= 18.0
+    } as any; // Usar asserção de tipo para contornar erro de tipo
+    
+    const newRequest = new NextRequest(req.url, requestInit);
 
     return newRequest;
   } catch (error) {

@@ -102,15 +102,18 @@ export async function connectToDatabase() {
 
   // Se não existe uma promessa de conexão, criar uma
   if (!cached.promise) {
-    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rpx-platform';
-
+    // String de conexão Atlas fixa - use esta para evitar problemas de carregamento de variáveis de ambiente
+    const MONGODB_URI = 'mongodb+srv://vinideirolopess:c7MVBr6XpIkQwGaZ@cluster0.vocou4s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+    
+    console.log('Tentando conectar ao MongoDB Atlas...');
+    
     cached.promise = mongoose.connect(MONGODB_URI)
       .then((mongoose) => {
-        console.log('MongoDB conectado com sucesso');
+        console.log('MongoDB Atlas conectado com sucesso');
         return mongoose;
       })
       .catch((error) => {
-        console.error('Erro ao conectar ao MongoDB:', error);
+        console.error('Erro ao conectar ao MongoDB Atlas:', error);
         throw error;
       });
   }

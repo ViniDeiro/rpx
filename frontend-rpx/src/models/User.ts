@@ -8,6 +8,7 @@ export interface IUser extends Document {
   username: string;
   birthdate?: Date;
   phone?: string;
+  avatarUrl?: string;
   balance: number;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +56,10 @@ const UserSchema = new Schema<IUser>(
     phone: {
       type: String,
       trim: true,
+    },
+    avatarUrl: {
+      type: String,
+      default: null,
     },
     balance: {
       type: Number,

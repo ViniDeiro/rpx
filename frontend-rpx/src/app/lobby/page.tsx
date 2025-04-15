@@ -11,6 +11,7 @@ import CrownIcon from '@/components/ui/CrownIcon';
 import { Match } from '@/types/match';
 import MatchRoomModal from '@/components/modals/MatchRoomModal';
 import SubmitResultModal from '@/components/modals/SubmitResultModal';
+import FriendSearch from '@/components/lobby/FriendSearch';
 
 // Tipos para o formato do lobby
 type LobbyType = 'solo' | 'duo' | 'squad';
@@ -44,7 +45,7 @@ interface UserWithStats extends Omit<any, 'stats'> {
 
 export default function LobbyPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, token } = useAuth();
   const [lobbyType, setLobbyType] = useState<LobbyType>('solo');
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [showLobbyAnimation, setShowLobbyAnimation] = useState(false);
@@ -84,16 +85,60 @@ export default function LobbyPage() {
   const [selectedOfficialRoom, setSelectedOfficialRoom] = useState<any>(null);
   
   // Amigos online
-  const [onlineFriends, setOnlineFriends] = useState([
-    { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
-    { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online' },
-    { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game' },
-    { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online' },
-    { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle' },
-    { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
-  ]);
+  const [onlineFriends, setOnlineFriends] = useState<Array<{
+    id: string;
+    name: string;
+    avatar: string;
+    level: number;
+    status: string;
+  }>>([]);
   
- 
+  // Carregar amigos do usuário
+  const fetchFriends = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch('/api/users/friends', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar amigos');
+      }
+      
+      const data = await response.json();
+      
+      // Formatar os amigos para o formato esperado pelo componente
+      const formattedFriends = data.friends.map((friend: any) => ({
+        id: friend.id,
+        name: friend.username,
+        avatar: friend.avatarUrl,
+        level: friend.level,
+        status: 'online' // Por padrão, todos são mostrados como online
+      }));
+      
+      setOnlineFriends(formattedFriends);
+    } catch (error) {
+      console.error('Erro ao buscar amigos:', error);
+      // Se falhar, mostrar amigos de demonstração
+      setDefaultFriends();
+    }
+  };
+  
+  // Define amigos padrão caso a API falhe
+  const setDefaultFriends = () => {
+    setOnlineFriends([
+      { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
+      { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online' },
+      { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game' },
+      { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online' },
+      { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle' },
+      { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
+    ]);
+  };
+  
   const userWithStats = user as UserWithStats;
   
   
@@ -137,7 +182,7 @@ export default function LobbyPage() {
       const currentPlayer: LobbyPlayer = {
         id: user.id,
         name: user.username || user.profile?.name || 'Usuário',
-        avatar: user.profile?.avatar || user.avatarId || '/images/avatars/default.svg',
+        avatar: user.avatarUrl || user.profile?.avatar || user.avatarId || '/images/avatars/default.svg',
         level: user.level || 1,
         rank: 'diamante', // Exemplo, idealmente viria do perfil do usuário
         isLeader: true,
@@ -404,6 +449,8 @@ export default function LobbyPage() {
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       fetchAdminRooms();
+      // Buscar amigos do usuário
+      fetchFriends();
     }
   }, [isAuthenticated, isLoading]);
   
@@ -609,10 +656,6 @@ export default function LobbyPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Modos de Jogo</h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs bg-green-500/20 text-green-500 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse"></span>
-                  DB Conectado
-                </span>
                 <button 
                   onClick={fetchAdminRooms}
                   className="p-1 rounded-full hover:bg-white/10 transition-colors"
@@ -657,9 +700,11 @@ export default function LobbyPage() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     lobbyType === 'duo' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
                   }`}>
-                    <div className="relative">
-                      <User size={14} className={`absolute -left-1 -top-1 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
-                      <User size={14} className={`absolute translate-x-1 translate-y-1 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                    <div className="flex items-center justify-center w-full h-full">
+                      <div className="relative w-5 h-5">
+                        <User size={13} className={`absolute left-0 top-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                        <User size={13} className={`absolute right-0 bottom-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                      </div>
                     </div>
                   </div>
                   <div className="ml-3">
@@ -690,34 +735,6 @@ export default function LobbyPage() {
               </div>
             </button>
           </div>
-            
-            {/* Adicionar indicador de salas disponíveis */}
-            <div className="mt-4 mb-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Salas Disponíveis</h3>
-                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                  {adminRooms.filter(room => room.gameType === lobbyType).length} salas
-                </span>
-              </div>
-              
-              {adminRooms.filter(room => room.gameType === lobbyType).length > 0 ? (
-                <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-white/80 flex items-start gap-2">
-                  <CheckCircle size={16} className="text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium text-primary">Salas oficiais disponíveis!</p>
-                    <p className="mt-1">Clique em "Buscar Partida" para se conectar a uma sala oficial administrada.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2 p-3 bg-yellow-600/10 rounded-lg border border-yellow-600/20 text-xs text-white/80 flex items-start gap-2">
-                  <AlertCircle size={16} className="text-yellow-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-yellow-500">Aguardando salas</p>
-                    <p className="mt-1">Nenhuma sala oficial disponível para este modo. Uma sala será criada automaticamente.</p>
-                  </div>
-                </div>
-              )}
-            </div>
             
             {/* Adicionando seletor de valores de aposta com valores fixos */}
             <div className="mt-6">
@@ -1156,64 +1173,42 @@ export default function LobbyPage() {
               </button>
             </div>
             
-            <div className="mb-4">
-              <div className="relative">
-                <input 
-                  type="text"
-                  placeholder="Pesquisar amigos..."
-                  className="w-full bg-card-hover rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#A44BE1]/50 border border-border focus:border-primary/50 transition-all"
-                />
-              </div>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto custom-scrollbar pr-2 mb-4 space-y-2 ">
-              {onlineFriends.map((friend) => (
-                <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-primary/20 hover:bg-card transition-all group">
-                  <div className="flex items-center">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
-                        <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                          <Image
-                            src={friend.avatar}
-                            alt={friend.name}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                      <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#170A2E] ${
-                        friend.status === 'online' ? 'bg-green-500' : 
-                        friend.status === 'in_game' ? 'bg-yellow-500' : 'bg-gray-500'
-                      }`}></div>
-                    </div>
-                    <div className="ml-2">
-                      <div className="text-sm text-white group-hover:drop-shadow-glow transition-all">{friend.name}</div>
-                      <div className="text-xs text-white/50">
-                        {friend.status === 'online' ? 'Online' : 
-                         friend.status === 'in_game' ? 'Em jogo' : 'Ausente'}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => inviteFriend(friend.id)}
-                    className="px-3 py-1.5 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
-                  >
-                    <UserPlus size={14} className="mr-1.5" />
-                    Convidar
-                  </button>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowInviteModal(false)}
-                className="px-4 py-2 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-all"
-              >
-                Cancelar
-              </button>
-            </div>
+            {/* Usar o componente FriendSearch para buscar e convidar amigos reais */}
+            <FriendSearch 
+              onInviteFriend={(friend) => {
+                // Verificar se o lobby pode receber mais jogadores
+                if (
+                  (lobbyType === 'solo' && players.length >= 1) ||
+                  (lobbyType === 'duo' && players.length >= 2) ||
+                  (lobbyType === 'squad' && players.length >= 4)
+                ) {
+                  alert('O lobby já está cheio');
+                  return;
+                }
+                
+                // Adicionar o amigo ao lobby
+                const newPlayer: LobbyPlayer = {
+                  id: friend.id,
+                  name: friend.name,
+                  avatar: friend.avatar,
+                  level: friend.level,
+                  position: players.length
+                };
+                
+                setPlayers([...players, newPlayer]);
+                
+                // Adicionar mensagem ao chat
+                setChatMessages([...chatMessages, {
+                  id: chatMessages.length + 1,
+                  user: 'Sistema',
+                  message: `${friend.name} foi convidado para o lobby.`,
+                  isSystem: true
+                }]);
+                
+                // Fechar o modal
+                setShowInviteModal(false);
+              }}
+            />
           </div>
         </div>
       )}

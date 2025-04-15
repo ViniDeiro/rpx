@@ -23,15 +23,11 @@ export const Header = () => {
   const handleLogout = () => {
     console.log('Logout solicitado no menu header');
     try {
-      const success = logout();
-      if (success) {
-        // Fechar o menu dropdown
-        setIsProfileOpen(false);
-        // Redirecionar para a página de login
-        router.push('/auth/login');
-      } else {
-        console.error('Erro ao fazer logout');
-      }
+      logout();
+      // Fechar o menu dropdown
+      setIsProfileOpen(false);
+      // Redirecionar para a página de login
+      router.push('/auth/login');
     } catch (error) {
       console.error('Erro ao processar logout:', error);
     }
@@ -113,7 +109,7 @@ export const Header = () => {
               <>
                 {/* Carteira */}
                 <div className="flex items-center bg-purple-900/30 border border-gray-700 rounded-full px-3 py-1.5">
-                  <span className="text-sm font-medium text-white">{formatCurrency(user.wallet?.balance || user.balance || 0)}</span>
+                  <span className="text-sm font-medium text-white">{formatCurrency((user?.wallet as any)?.balance || (user as any).balance || 0)}</span>
                 </div>
                 
                 {/* Menu de perfil */}
@@ -129,14 +125,25 @@ export const Header = () => {
                     `}
                   >
                     <div className="relative w-8 h-8 overflow-hidden rounded-full">
-                      <OptimizedImage 
-                        src={user.profile?.avatar || '/images/avatar-placeholder.svg'} 
-                        alt={user.username || 'Usuário'}
-                        width={32}
-                        height={32}
-                        className="object-cover"
-                        fallbackSrc={ImagePaths.avatarPlaceholder}
-                      />
+                      {(user as any).avatarUrl ? (
+                        <Image 
+                          src={(user as any).avatarUrl}
+                          alt={user.username || 'Usuário'}
+                          width={32}
+                          height={32}
+                          className="object-cover transform -translate-y-2.5"
+                          priority
+                        />
+                      ) : (
+                        <Image 
+                          src={(user as any).profile?.avatar || '/images/avatar-placeholder.svg'}
+                          alt={user.username || 'Usuário'}
+                          width={32}
+                          height={32}
+                          className="object-cover"
+                          priority
+                        />
+                      )}
                     </div>
                     <ChevronDown className={`transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} size={16} />
                   </button>
@@ -235,19 +242,30 @@ export const Header = () => {
                 <>
                   <div className="flex items-center px-4 py-2">
                     <div className="relative w-10 h-10 overflow-hidden rounded-full mr-3">
-                      <OptimizedImage 
-                        src={user.profile?.avatar || '/images/avatar-placeholder.svg'} 
-                        alt={user.username || 'Usuário'}
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                        fallbackSrc={ImagePaths.avatarPlaceholder}
-                      />
+                      {(user as any).avatarUrl ? (
+                        <Image 
+                          src={(user as any).avatarUrl}
+                          alt={user.username || 'Usuário'}
+                          width={40}
+                          height={40}
+                          className="object-cover transform -translate-y-3"
+                          priority
+                        />
+                      ) : (
+                        <Image 
+                          src={(user as any).profile?.avatar || '/images/avatar-placeholder.svg'}
+                          alt={user.username || 'Usuário'}
+                          width={40}
+                          height={40}
+                          className="object-cover"
+                          priority
+                        />
+                      )}
                     </div>
                     <div>
-                      <div className="font-medium">{user.username || user.profile?.name || 'Usuário'}</div>
+                      <div className="font-medium">{(user as any).username || (user as any).profile?.name || 'Usuário'}</div>
                       <div className="text-sm text-gray-300">
-                        {formatCurrency(user.wallet?.balance || user.balance || 0)}
+                        {formatCurrency((user?.wallet as any)?.balance || (user as any).balance || 0)}
                       </div>
                     </div>
                   </div>

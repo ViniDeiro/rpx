@@ -44,49 +44,49 @@ export const RANK_FRAMES: Record<RankTier, Omit<Rank, 'division' | 'points' | 'n
     name: 'Bronze',
     color: 'from-amber-700 to-amber-800',
     borderColor: 'border-amber-700',
-    image: '/images/ranks/bronze.svg'
+    image: '/images/ranks/bronze.png'
   },
   prata: {
     tier: 'prata',
     name: 'Prata',
     color: 'from-gray-400 to-gray-500',
     borderColor: 'border-gray-400',
-    image: '/images/ranks/prata.svg'
+    image: '/images/ranks/prata.png'
   },
   ouro: {
     tier: 'ouro',
     name: 'Ouro',
     color: 'from-yellow-500 to-yellow-600',
     borderColor: 'border-yellow-500',
-    image: '/images/ranks/ouro.svg'
+    image: '/images/ranks/ouro.png'
   },
   platina: {
     tier: 'platina',
     name: 'Platina',
     color: 'from-teal-400 to-teal-500',
     borderColor: 'border-teal-400',
-    image: '/images/ranks/platina.svg'
+    image: '/images/ranks/platina.png'
   },
   diamante: {
     tier: 'diamante',
     name: 'Diamante',
     color: 'from-blue-400 to-blue-500',
     borderColor: 'border-blue-400',
-    image: '/images/ranks/diamond.svg'
+    image: '/images/ranks/diamond.png'
   },
   mestre: {
     tier: 'mestre',
     name: 'Mestre',
     color: 'from-purple-500 to-purple-600',
     borderColor: 'border-purple-500',
-    image: '/images/ranks/mestre.svg'
+    image: '/images/ranks/mestre.png'
   },
   challenger: {
     tier: 'challenger',
     name: 'Challenger',
     color: 'from-fuchsia-500 to-fuchsia-600',
     borderColor: 'border-fuchsia-500',
-    image: '/images/ranks/challenger.svg'
+    image: '/images/ranks/challenger.png'
   }
 };
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getModels } from '@/lib/mongodb/models';
-import { authMiddleware } from '@/lib/auth/middleware';
+import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 
 // Definir tipos para o usuário autenticado
 interface AuthenticatedRequest extends NextRequest {
@@ -17,19 +17,25 @@ interface AuthenticatedRequest extends NextRequest {
  * Body: { status: 'online' | 'offline' | 'in_game' | 'idle' }
  */
 export async function POST(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
-  
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
-  const userId = authenticatedReq.user.id;
-  
   try {
+    // Autenticar a requisição
+    const authenticatedReq = await authMiddleware(req);
+    
+    // Se authenticatedReq é uma resposta (erro), retorná-la
+    if (authenticatedReq instanceof NextResponse) {
+      return authenticatedReq;
+    }
+    
+    // Obter ID do usuário dos headers
+    const userId = getUserId(authenticatedReq);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
+    }
+    
     // Obter os dados da requisição
     const { status } = await req.json();
     
@@ -79,19 +85,25 @@ export async function POST(req: NextRequest) {
  * GET - Verificar o status atual do usuário
  */
 export async function GET(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
-  
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
-  const userId = authenticatedReq.user.id;
-  
   try {
+    // Autenticar a requisição
+    const authenticatedReq = await authMiddleware(req);
+    
+    // Se authenticatedReq é uma resposta (erro), retorná-la
+    if (authenticatedReq instanceof NextResponse) {
+      return authenticatedReq;
+    }
+    
+    // Obter ID do usuário dos headers
+    const userId = getUserId(authenticatedReq);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
+    }
+    
     // Obter os modelos do MongoDB
     const { User } = await getModels();
     

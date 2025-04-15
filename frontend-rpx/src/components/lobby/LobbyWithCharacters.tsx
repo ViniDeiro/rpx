@@ -5,6 +5,7 @@ import Character2D from '../2d/Character2D';
 interface Player {
   id: string;
   username: string;
+  avatarUrl?: string;
   character?: {
     type: string;
     color: string;
@@ -74,7 +75,17 @@ export default function LobbyWithCharacters({
                 animation={getCharacterAnimation(gameStatus)}
                 size="medium"
               />
-              <p className="mt-2 font-medium text-sm truncate max-w-full">{player.username}</p>
+              
+              <div className="mt-2 flex items-center justify-center gap-2">
+                {player.avatarUrl && (
+                  <img 
+                    src={player.avatarUrl} 
+                    alt={player.username}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                )}
+                <p className="font-medium text-sm truncate max-w-[80%]">{player.username}</p>
+              </div>
             </div>
           ) : (
             <div className="text-gray-400 text-center">

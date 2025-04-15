@@ -9,6 +9,7 @@ type User = {
   name?: string;
   email: string;
   phone?: string;
+  cpf?: string;
   birthdate?: string;
   balance: number;
   createdAt: string;
@@ -44,18 +45,19 @@ type User = {
   };
 };
 
-type AuthContextType = {
+export interface AuthContextType {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isSimulatedMode: boolean; // Mantido para compatibilidade, mas sempre será false
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (userData: any) => Promise<void>;
-  logout: () => boolean;
-  updateUser: (userData: Partial<User>) => Promise<void>;
+  logout: () => void;
+  updateUser: (userData: Partial<User> & { currentPassword?: string, newPassword?: string }) => Promise<void>;
   updateCustomization: (type: 'avatar' | 'banner', itemId: string) => Promise<void>;
   updateUserAvatar: (file: File) => Promise<void>; // Nova função para fazer upload de avatar
-};
+}
 
 // Criando o contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,27 +79,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSimulatedMode, setIsSimulatedMode] = useState(false); // Mantido, mas sempre será false
+  const [token, setToken] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
+
+  // Inicializar token a partir do localStorage (apenas no cliente)
+  useEffect(() => {
+    // Verificar se estamos no navegador
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('auth_token');
+      setToken(storedToken);
+    }
+  }, []);
 
   // Verificar se o usuário está autenticado ao carregar a página
   useEffect(() => {
-    const validateToken = async () => {
+    const checkAuth = async () => {
       try {
-        // Verificar se existe um token no localStorage
-        const token = localStorage.getItem('auth_token');
+        setIsLoading(true);
         
-        if (!token) {
-          setUser(null);
+        // Pegar o token do localStorage
+        let storedToken = null;
+        if (typeof window !== 'undefined') {
+          storedToken = localStorage.getItem('auth_token');
+        }
+        
+        // Se não houver token, não está autenticado
+        if (!storedToken) {
+          setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
+        
+        // Atualizar o estado do token
+        setToken(storedToken);
         
         // Validar o token com a API
         try {
           // Alterando para usar a rota correta na API
           const response = await fetch('/api/users/profile', {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${storedToken}`,
             },
           });
 
@@ -107,39 +129,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           const data = await response.json();
+          console.log('Resposta completa da API de perfil:', JSON.stringify(data, null, 2));
           
           // Ajuste para lidar com diferentes estruturas de resposta
           const userData = data.data?.user || data.user;
           
           if (userData) {
             console.log('Perfil carregado com sucesso:', userData.id);
+            console.log('Dados do perfil:', JSON.stringify(userData, null, 2));
             setUser(userData);
+            setIsAuthenticated(true);
           } else {
             console.error('Resposta não contém dados do usuário:', data);
             throw new Error('Dados do usuário não encontrados na resposta');
           }
         } catch (error) {
           console.error('Erro ao validar token:', error);
-          localStorage.removeItem('auth_token');
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+          }
+          setToken(null);
           setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        
+        // Em caso de erro, limpar o estado
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+        
+        // Remover token inválido
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
         }
       } finally {
         setIsLoading(false);
       }
     };
     
-    validateToken();
+    checkAuth();
   }, []);
 
-  // Função de login
-  const login = async (email: string, password: string) => {
+  // Função para realizar login
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     
     try {
-      // Usando o proxy configurado no Next.js
-      console.log('Enviando solicitação de login para: /api/auth/login');
-
-      // Login usando o proxy do Next.js
+      // Fazer a requisição para a API
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -148,55 +186,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       
-      // Logar a resposta bruta para depuração
-      const rawResponse = await response.text();
-      console.log('Resposta bruta do servidor:', rawResponse);
-      
-      // Se a resposta estiver vazia ou não for válida
-      if (!rawResponse) {
-        throw new Error('Resposta vazia do servidor. Verifique a conexão.');
-      }
-      
-      let data;
-      try {
-        data = JSON.parse(rawResponse);
-      } catch (jsonError) {
-        console.error('Erro ao analisar JSON da resposta:', jsonError);
-        throw new Error('Erro ao processar resposta do servidor. Tente novamente mais tarde.');
-      }
-      
-      // Verificar se a resposta contém erro
       if (!response.ok) {
-        const errorMessage = data.error || 'Erro desconhecido ao fazer login';
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Credenciais inválidas');
       }
       
-      console.log('Resposta do login processada:', data);
+      const data = await response.json();
       
-      // Extrair token e dados do usuário, com fallbacks para diferentes estruturas
-      const token = data.token || data.data?.token;
-      const userData = data.user || data.data?.user;
-      
-      if (!token) {
-        throw new Error('Token não recebido do servidor.');
+      // Salvar o token no localStorage e no estado
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_token', data.token);
       }
       
-      if (!userData) {
-        throw new Error('Dados do usuário não recebidos do servidor.');
-      }
+      setToken(data.token);
+      setUser(data.user);
       
-      // Armazenar token
-      localStorage.setItem('auth_token', token);
+      // Redirecionar para a página principal
+      router.push('/profile');
       
-      // Atualizar estado do usuário
-      setUser(userData);
-      
-      console.log('Login bem-sucedido.');
-      
-      return userData;
+      return data;
     } catch (error: any) {
       console.error('Erro no login:', error);
-      throw new Error(error.message || 'Falha no login. Verifique suas credenciais.');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -210,19 +221,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Preparar dados para registro
       const registrationData = {
         ...userData,
-        // Usar o nome como username se não for especificado
-        username: userData.username || userData.name.split(' ')[0]
+        // Gerar um username se não for fornecido
+        username: userData.username || (userData.name ? generateUsername(userData.name) : undefined),
       };
-
-      console.log('Tentando registrar com dados:', {
-        ...registrationData,
-        password: '[PROTEGIDO]'
-      });
-
-      // Usando o proxy configurado no Next.js
-      console.log('Enviando solicitação para: /api/auth/register');
-
-      // Registro usando o proxy do Next.js
+      
+      // Fazer a requisição para a API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -231,90 +234,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(registrationData),
       });
       
-      // Verificar se a resposta não é OK
       if (!response.ok) {
-        // Primeiro tentar obter o texto da resposta
-        const responseText = await response.text();
-        
-        try {
-          // Tentar analisar o texto como JSON
-          const errorData = JSON.parse(responseText);
-          console.error('Erro na resposta da API de registro:', errorData);
-          throw new Error(errorData.error || 'Erro ao registrar usuário');
-        } catch (jsonError) {
-          // Se não conseguir analisar como JSON, usar o texto da resposta
-          console.error('Erro na resposta não-JSON do registro:', responseText);
-          throw new Error('Erro na comunicação com o servidor de registro. Tente novamente mais tarde.');
-        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao registrar usuário');
       }
       
-      // Se a resposta for OK, tentamos analisar o JSON
-      const text = await response.text();
-      let data;
+      const data = await response.json();
       
-      try {
-        data = JSON.parse(text);
-        console.log('Usuário registrado com sucesso na API:', data.user?.id || data.data?.user?.id || 'ID não disponível');
-      } catch (jsonError) {
-        console.error('Erro ao analisar JSON da resposta de registro:', jsonError, 'Texto recebido:', text);
-        throw new Error('Erro ao processar resposta do servidor de registro. Tente novamente mais tarde.');
+      // Salvar o token no localStorage e no estado
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_token', data.token);
       }
       
-      // Verificar se o token existe na resposta
-      if (!data.token && data.data?.token) {
-        data.token = data.data.token;
-      }
-      
-      if (!data.user && data.data?.user) {
-        data.user = data.data.user;
-      }
-      
-      // Armazenar token
-      localStorage.setItem('auth_token', data.token);
-      
-      // Atualizar estado do usuário
+      setToken(data.token);
       setUser(data.user);
+
+      // Redirecionar para a página inicial após registro bem-sucedido
+      router.push('/profile');
     } catch (error: any) {
       console.error('Erro no registro:', error);
-      throw new Error(error.message || 'Falha no registro. Tente novamente mais tarde.');
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Função para atualizar dados do usuário
-  const updateUser = async (userData: Partial<User>) => {
+  // Função para atualizar dados do perfil do usuário
+  const updateUser = async (userData: Partial<User> & { currentPassword?: string, newPassword?: string }) => {
     setIsLoading(true);
-    
+
     try {
-      // Atualização usando a API
-      const token = localStorage.getItem('auth_token');
-      
-      if (!token) {
-        throw new Error('Usuário não autenticado');
+      // Verificar token
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      if (!authToken) {
+        throw new Error('Não há token de autenticação. Faça login novamente.');
       }
-      
-      const response = await fetch('/api/user/update', {
-        method: 'PUT',
+
+      let endpoint = '/api/users/profile';
+      let method = 'PUT';
+
+      // Se estiver atualizando senha, usar endpoint diferente
+      if (userData.currentPassword && userData.newPassword) {
+        endpoint = '/api/users/password';
+        method = 'POST';
+      }
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify(userData),
       });
-      
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao atualizar perfil');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao atualizar perfil');
       }
-      
+
       const data = await response.json();
       
+      // Extrair os dados do usuário atualizados
+      const updatedUser = data.user || data.data?.user;
+      
+      if (!updatedUser) {
+        throw new Error('Dados do usuário não recebidos');
+      }
+      
       // Atualizar estado do usuário
-      setUser(data.user);
-    } catch (error: any) {
+      setUser(prevUser => {
+        return { ...prevUser, ...updatedUser } as User;
+      });
+      
+      return updatedUser;
+    } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      throw new Error(error.message || 'Falha ao atualizar perfil. Tente novamente mais tarde.');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -326,9 +322,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       // Atualização usando a API
-      const token = localStorage.getItem('auth_token');
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
-      if (!token) {
+      if (!authToken) {
         throw new Error('Usuário não autenticado');
       }
       
@@ -336,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ type, itemId }),
       });
@@ -363,9 +359,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
-      if (!token) {
+      if (!authToken) {
         throw new Error('Usuário não autenticado');
       }
       
@@ -376,7 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ imageData: base64Data }),
       });
@@ -419,37 +415,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Função de logout
+  // Função para realizar logout
   const logout = () => {
-    console.log('Função de logout chamada');
-    
-    try {
-      // Remover token do localStorage
+    // Remover o token do localStorage
+    if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token');
-      console.log('Token removido do localStorage');
-      
-      // Limpar cookies (caso existam)
-      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
-      // Limpar estado do usuário
-      setUser(null);
-      console.log('Estado do usuário limpo');
-      
-      // Não redirecionamos aqui para evitar comportamento inconsistente
-      // O redirecionamento será feito pelo componente que chamou logout
-      console.log('Logout concluído com sucesso');
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      return false;
     }
+    
+    // Limpar o estado
+    setToken(null);
+    setUser(null);
+    
+    // Redirecionar para a página de login
+    router.push('/login');
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        token,
         isAuthenticated: !!user,
         isLoading,
         isSimulatedMode: false, // Sempre retorna false

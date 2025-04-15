@@ -1,55 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getModels } from '@/lib/mongodb/models';
-import { authMiddleware } from '@/lib/auth/middleware';
-
-// Definir tipos para o usuário autenticado
-interface AuthenticatedRequest extends NextRequest {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    username?: string;
-  };
-}
+import { authMiddleware, getUserId } from '@/lib/auth/middleware';
+import { AuthenticatedRequest } from '@/types/auth';
 
 /**
- * GET - Buscar usuários por nome de usuário
+ * API para buscar usuários pelo nome
  * Query params: q (query de busca)
  */
 export async function GET(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
-  
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
-  const userId = authenticatedReq.user.id;
-  
   try {
+    // Autenticar a requisição
+    const authResult = await authMiddleware(req);
+    
+    // Se authResult é uma resposta (erro), retorná-la
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+    
+    // Obter ID do usuário dos headers
+    const userId = getUserId(authResult);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
+    }
+    
     // Extrair parâmetros de busca da URL
     const url = new URL(req.url);
     const searchQuery = url.searchParams.get('q');
     
-    if (!searchQuery || searchQuery.trim().length < 3) {
+    if (!searchQuery || searchQuery.trim().length < 2) {
       return NextResponse.json(
-        { error: 'A busca deve ter pelo menos 3 caracteres' },
+        { error: 'A busca deve ter pelo menos 2 caracteres' },
         { status: 400 }
       );
     }
-    
+
     // Obter os modelos do MongoDB
     const { User } = await getModels();
-    
+
     // Buscar usuários que correspondam à consulta
     const users = await User.find({
       username: { $regex: searchQuery, $options: 'i' },
       _id: { $ne: userId } // Excluir o próprio usuário dos resultados
     })
-    .select('_id username profile.avatar')
+    .select('_id username avatarUrl profile stats')
     .limit(10)
     .exec();
     
@@ -66,22 +63,22 @@ export async function GET(req: NextRequest) {
     }
     
     // Mapear resultado para incluir status da amizade
-    const usersWithStatus = users.map(user => {
-      const userId = user._id.toString();
+    const usersWithStatus = users.map((user: any) => {
+      const userIdStr = user._id.toString();
       
       // Verificar se já são amigos
       const isFriend = currentUser.friends?.some(
-        (friend: any) => friend.userId.toString() === userId
+        (friend: any) => friend.userId.toString() === userIdStr
       );
       
       // Verificar se existe solicitação enviada
       const hasSentRequest = currentUser.sentFriendRequests?.some(
-        (request: any) => request.userId.toString() === userId
+        (request: any) => request.userId.toString() === userIdStr
       );
       
       // Verificar se existe solicitação recebida
       const hasReceivedRequest = currentUser.friendRequests?.some(
-        (request: any) => request.userId.toString() === userId
+        (request: any) => request.userId.toString() === userIdStr
       );
       
       // Determinar o status da relação
@@ -92,12 +89,20 @@ export async function GET(req: NextRequest) {
       
       // Retornar dados formatados
       return {
-        id: userId,
+        id: userIdStr,
         username: user.username,
-        avatar: user.profile?.avatar || '/images/avatars/default.svg',
-        status
+        avatarUrl: user.avatarUrl || '/images/avatars/default.svg',
+        level: user.profile?.level || 1,
+        status,
+        stats: user.stats || {
+          wins: 0,
+          matches: 0,
+          winRate: 0
+        }
       };
     });
+    
+    console.log(`Encontrados ${users.length} usuários para a busca: "${searchQuery}"`);
     
     // Retornar resultados
     return NextResponse.json({
