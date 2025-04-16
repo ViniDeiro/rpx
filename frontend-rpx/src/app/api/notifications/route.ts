@@ -43,9 +43,11 @@ export async function GET(request: Request) {
       }, { status: 401 });
     }
     
+    console.log('API Notifications - Buscando notificações para usuário:', userId);
+    
     const { db } = await connectToDatabase();
     
-    // Buscar notificações não lidas primeiro, ordenadas por data de criação decrescente
+    // Buscar notificações usando um único comando find
     const notifications = await db.collection('notifications')
       .find({ userId: new ObjectId(userId) })
       .toArray();
@@ -63,6 +65,8 @@ export async function GET(request: Request) {
     // Limitar a 20 notificações
     const limitedNotifications = notifications.slice(0, 20);
     
+    console.log(`API Notifications - Encontradas ${limitedNotifications.length} notificações`);
+    
     // Converter ID's ObjectId para strings para serialização JSON
     const serializedNotifications = limitedNotifications.map((notification: any) => {
       try {
@@ -72,6 +76,9 @@ export async function GET(request: Request) {
           return null;
         }
 
+        // Identificar o tipo de notificação para processamento específico
+        console.log(`Processando notificação tipo: ${notification.type}`);
+
         // Objeto base com valores seguros
         const serialized = {
           ...notification,
@@ -80,11 +87,14 @@ export async function GET(request: Request) {
           createdAt: notification.createdAt instanceof Date 
             ? notification.createdAt.toISOString() 
             : (notification.createdAt || new Date().toISOString()),
+          read: !!notification.read,
           data: { ...notification.data } // Cópia segura
         };
 
-        // Verificar e processar campos aninhados de forma segura
-        if (serialized.data) {
+        // Verificar e processar campos aninhados de forma segura para convites de lobby
+        if (notification.type === 'lobby_invite' && serialized.data) {
+          console.log('Processando convite de lobby:', JSON.stringify(serialized.data, null, 2));
+          
           // Processar inviter se existir
           if (serialized.data.inviter && serialized.data.inviter._id) {
             serialized.data.inviter = {
@@ -93,30 +103,27 @@ export async function GET(request: Request) {
             };
           }
 
+          // Processar sender para compatibilidade (se existir em vez de inviter)
+          if (serialized.data.sender && serialized.data.sender._id) {
+            // Renomear sender para inviter para manter consistência
+            serialized.data.inviter = {
+              ...serialized.data.sender,
+              _id: serialized.data.sender._id.toString()
+            };
+            // Remover o campo sender para evitar duplicidade
+            delete serialized.data.sender;
+          }
+
           // Processar invite se existir
           if (serialized.data.invite && serialized.data.invite._id) {
             serialized.data.invite = {
               ...serialized.data.invite,
               _id: serialized.data.invite._id.toString(),
               lobbyId: serialized.data.invite.lobbyId 
-                ? serialized.data.invite.lobbyId.toString() 
+                ? (typeof serialized.data.invite.lobbyId === 'object'
+                   ? serialized.data.invite.lobbyId.toString()
+                   : serialized.data.invite.lobbyId)
                 : ''
-            };
-          }
-
-          // Processar requester se existir
-          if (serialized.data.requester && serialized.data.requester._id) {
-            serialized.data.requester = {
-              ...serialized.data.requester,
-              _id: serialized.data.requester._id.toString()
-            };
-          }
-
-          // Processar request se existir
-          if (serialized.data.request && serialized.data.request._id) {
-            serialized.data.request = {
-              ...serialized.data.request,
-              _id: serialized.data.request._id.toString()
             };
           }
         }
@@ -127,6 +134,8 @@ export async function GET(request: Request) {
         return null;
       }
     }).filter(Boolean); // Remove itens nulos
+    
+    console.log(`API Notifications - Retornando ${serializedNotifications.length} notificações serializadas`);
     
     return NextResponse.json({
       status: 'success',

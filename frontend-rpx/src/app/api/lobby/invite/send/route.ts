@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const now = new Date();
     const inviteResult = await db.collection('lobbyinvites').insertOne({
       lobbyId: new ObjectId(lobbyId),
-      sender: new ObjectId(userId),
+      inviter: new ObjectId(userId),
       recipient: new ObjectId(friendId),
       status: 'pending',
       createdAt: now

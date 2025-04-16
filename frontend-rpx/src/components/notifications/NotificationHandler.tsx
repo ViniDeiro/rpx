@@ -16,22 +16,39 @@ const NotificationHandler: React.FC = () => {
     
     try {
       setLoading(true);
+      console.log('Buscando notificações para o usuário:', session.user.id);
+      
+      // Obter o token do localStorage para autenticação
+      const token = localStorage.getItem('auth_token');
+      
       const response = await axios.get('/api/notifications', {
-        timeout: 5000 // Adicionar timeout de 5 segundos
+        timeout: 10000, // Aumentando o timeout para 10 segundos
+        headers: {
+          'Authorization': `Bearer ${token || ''}`
+        }
       });
       
+      console.log('Resposta da API de notificações:', response.data);
+      
       if (response.data.status === 'success') {
-        setNotifications(response.data.notifications || []);
+        const notifs = response.data.notifications || [];
+        console.log(`Recebidas ${notifs.length} notificações`);
+        
+        // Log para verificar convites de lobby
+        const lobbyInvites = notifs.filter((n: any) => n.type === 'lobby_invite');
+        console.log(`Convites de lobby encontrados: ${lobbyInvites.length}`);
+        if (lobbyInvites.length > 0) {
+          console.log('Exemplo de convite:', JSON.stringify(lobbyInvites[0], null, 2));
+        }
+        
+        setNotifications(notifs);
       } else {
         console.error('Erro na resposta da API:', response.data);
-        // Mesmo com erro, não mostramos o spinner infinitamente
       }
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
-      // Adicionar toast para mostrar o erro ao usuário
       toast.error('Não foi possível carregar as notificações');
     } finally {
-      // Garantir que o loading será finalizado mesmo em caso de erro
       setLoading(false);
     }
   };
@@ -85,8 +102,32 @@ const NotificationHandler: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const renderNotification = (notification: Notification) => {
+    console.log('Renderizando notificação:', notification.type, notification._id);
+    
+    // Verificar se a notificação está completa antes de renderizar
+    if (!notification._id) {
+      console.error('Notificação com ID ausente:', notification);
+      return null;
+    }
+    
     switch (notification.type) {
       case 'lobby_invite':
+        // Verificar se os dados necessários existem
+        if (!notification.data || !notification.data.inviter || !notification.data.invite) {
+          console.error('Dados incompletos em um convite de lobby:', notification);
+          return (
+            <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
+              <p className="text-white">Convite de lobby (dados incompletos)</p>
+              <button 
+                onClick={() => handleCloseNotification(notification._id.toString())} 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"
+              >
+                Fechar
+              </button>
+            </div>
+          );
+        }
+        
         return (
           <LobbyInviteNotification
             key={notification._id.toString()}

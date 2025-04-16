@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -25,12 +25,36 @@ const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Log ao montar para debugging
+  useEffect(() => {
+    console.log('LobbyInviteNotification renderizado com dados:', { 
+      notification: notification ? notification._id : 'undefined', 
+      invite: invite ? invite._id : 'undefined' 
+    });
+    
+    if (notification?.data) {
+      console.log('Dados da notificação:', JSON.stringify(notification.data, null, 2));
+    }
+  }, [notification, invite]);
   
   // Determinar se estamos usando o modo de notificação ou o modo de convite direto
   const isNotificationMode = !!notification;
   
+  // Validação dos dados
   if (isNotificationMode && (!notification.data || !notification.data.inviter || !notification.data.invite)) {
-    return null;
+    console.error('Notificação com dados incompletos:', notification);
+    return (
+      <div className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
+        <p className="text-white">Convite inválido ou incompleto</p>
+        <button
+          onClick={onClose}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm rounded mt-2"
+        >
+          Fechar
+        </button>
+      </div>
+    );
   }
 
   // Extrair dados dependendo do modo
@@ -39,7 +63,25 @@ const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({
   const inviteId = isNotificationMode && notification?.data?.invite?._id ? notification.data.invite._id : invite?._id;
   const lobbyId = isNotificationMode && notification?.data?.invite?.lobbyId ? notification.data.invite.lobbyId : invite?.lobbyId;
   
+  // Verificar se temos os dados mínimos necessários
+  if (!inviteId || !lobbyId) {
+    console.error('Convite com dados essenciais faltando:', { inviteId, lobbyId });
+    return (
+      <div className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
+        <p className="text-white">Convite com dados incompletos</p>
+        <button
+          onClick={onClose}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm rounded mt-2"
+        >
+          Fechar
+        </button>
+      </div>
+    );
+  }
+  
   const handleAcceptInvite = async () => {
+    console.log('Tentando aceitar convite:', inviteId, 'para lobby:', lobbyId);
+    
     if (onAccept) {
       await onAccept(lobbyId);
       return;
@@ -49,6 +91,8 @@ const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({
       const response = await axios.post('/api/lobby/invite/accept', {
         inviteId: inviteId,
       });
+      
+      console.log('Resposta ao aceitar convite:', response.data);
       
       if (response.data.status === 'success') {
         toast.success('Convite aceito! Redirecionando para o lobby...');
@@ -65,6 +109,8 @@ const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({
   };
   
   const handleRejectInvite = async () => {
+    console.log('Tentando rejeitar convite:', inviteId);
+    
     if (onReject) {
       await onReject(inviteId);
       return;
@@ -74,6 +120,8 @@ const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({
       const response = await axios.post('/api/lobby/invite/reject', {
         inviteId: inviteId,
       });
+      
+      console.log('Resposta ao rejeitar convite:', response.data);
       
       if (response.data.status === 'success') {
         toast.success('Convite recusado');
