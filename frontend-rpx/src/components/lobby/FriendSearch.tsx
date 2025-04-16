@@ -3,7 +3,6 @@ import { Search, User, UserPlus, Check, X, AlertCircle } from 'react-feather';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { toast } from 'react-hot-toast';
 
 interface UserSearchResult {
   id: string;
@@ -114,26 +113,13 @@ export default function FriendSearch({ onInviteFriend }: FriendSearchProps) {
   };
   
   // Convidar para o lobby (usuários que já são amigos)
-  const inviteFriend = async (user: UserSearchResult) => {
-    if (!onInviteFriend) return;
-    
-    try {
-      await onInviteFriend({
+  const inviteFriend = (user: UserSearchResult) => {
+    if (onInviteFriend) {
+      onInviteFriend({
         id: user.id,
         name: user.username,
         avatar: user.avatarUrl,
         level: user.level
-      });
-      // Adicionar feedback visual
-      toast.success(`Convite enviado para ${user.username} com sucesso!`, {
-        position: "top-center",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao convidar amigo:', error);
-      toast.error(`Erro ao convidar ${user.username}. Tente novamente.`, {
-        position: "top-center",
-        duration: 5000,
       });
     }
   };

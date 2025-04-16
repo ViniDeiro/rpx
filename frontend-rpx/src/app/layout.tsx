@@ -11,6 +11,7 @@ import { Layout } from '@/components/layout/layout';
 import NotificationHandler from '@/components/notifications/NotificationHandler';
 import ThemeProvider from '@/components/providers/ThemeProvider';
 import SessionProvider from '@/components/providers/SessionProvider';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
                 <>
                   <Layout>{children}</Layout>
                   <NotificationHandler />
+                  <NotificationBell />
                 </>
               )}
               <Toaster />

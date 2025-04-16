@@ -13,6 +13,7 @@ import MatchRoomModal from '@/components/modals/MatchRoomModal';
 import SubmitResultModal from '@/components/modals/SubmitResultModal';
 import FriendSearch from '@/components/lobby/FriendSearch';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 // Tipos para o formato do lobby
 type LobbyType = 'solo' | 'duo' | 'squad';
@@ -282,15 +283,15 @@ export default function LobbyPage() {
     setShowInviteModal(true);
   };
   
-  // Nova função para convidar amigo
+  // Enviar convite para um amigo
   const inviteFriend = async (friendId: string) => {
-    // Verificar se já atingiu o limite do lobby
+    // Verificar se o lobby pode receber mais jogadores
     if (
       (lobbyType === 'solo' && players.length >= 1) ||
       (lobbyType === 'duo' && players.length >= 2) ||
       (lobbyType === 'squad' && players.length >= 4)
     ) {
-      alert('O lobby já está cheio');
+      toast.error('O lobby já está cheio');
       return;
     }
     
@@ -299,21 +300,45 @@ export default function LobbyPage() {
     
     if (friend) {
       try {
-        // Enviar convite via API
-        const response = await fetch('/api/lobby/invite/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            lobbyId: 'temporary-lobby-id', // ID temporário, será substituído pelo real quando o lobby for criado
-            friendId: friend.id
-          }),
+        console.log('Iniciando processo de convite para:', friend.name);
+        console.log('Informações do amigo:', friend);
+        
+        // Criar o lobby primeiro
+        console.log('Criando lobby...');
+        const createLobbyResponse = await axios.post('/api/lobby/create', {
+          lobbyType: lobbyType,
+          maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
         });
         
-        const data = await response.json();
+        console.log('Resposta da criação do lobby:', createLobbyResponse.data);
         
-        if (data.status === 'success') {
+        if (createLobbyResponse.data.status !== 'success') {
+          toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
+          return;
+        }
+        
+        const currentLobbyId = createLobbyResponse.data.lobbyId;
+        console.log('Lobby criado com ID:', currentLobbyId);
+        
+        // Verificar se o ID do lobby é válido
+        if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
+          console.error('ID do lobby inválido:', currentLobbyId);
+          toast.error('Erro: ID do lobby inválido');
+          return;
+        }
+        
+        // Enviar convite via API
+        console.log('Enviando convite para o usuário:', friendId, 'lobby:', currentLobbyId);
+        const response = await axios.post('/api/lobby/invite', {
+          recipientId: friendId,
+          lobbyId: currentLobbyId
+        });
+        
+        console.log('Resposta do envio de convite:', response.data);
+        
+        if (response.data.status === 'success') {
+          toast.success(`Convite enviado para ${friend.name}`);
+          
           // Adicionar mensagem ao chat
           setChatMessages([...chatMessages, {
             id: chatMessages.length + 1,
@@ -321,87 +346,32 @@ export default function LobbyPage() {
             message: `Convite enviado para ${friend.name}.`,
             isSystem: true
           }]);
-          
-          // Fechar o modal
-          setShowInviteModal(false);
-          
-          // Mostrar toast de confirmação
-          toast.success(`Convite enviado para ${friend.name} com sucesso!`, {
-            position: "top-center",
-            duration: 3000,
-          });
         } else {
-          // Mostrar erro
-          setChatMessages([...chatMessages, {
-            id: chatMessages.length + 1,
-            user: 'Sistema',
-            message: `Erro ao convidar ${friend.name}: ${data.error}`,
-            isSystem: true
-          }]);
-          
-          // Mostrar toast de erro
-          toast.error(`Erro ao convidar ${friend.name}: ${data.error}`, {
-            position: "top-center",
-            duration: 5000,
-          });
+          toast.error(response.data.error || 'Erro ao enviar convite');
         }
-      } catch (error) {
-        console.error('Erro ao enviar convite:', error);
-        setChatMessages([...chatMessages, {
-          id: chatMessages.length + 1,
-          user: 'Sistema',
-          message: `Erro ao convidar ${friend.name}.`,
-          isSystem: true
-        }]);
         
-        // Mostrar toast de erro
-        toast.error(`Erro ao convidar ${friend.name}. Tente novamente.`, {
-          position: "top-center",
-          duration: 5000,
-        });
+        // Fechar o modal
+        setShowInviteModal(false);
+      } catch (error) {
+        console.error('Erro detalhado ao enviar convite:', error);
+        if (axios.isAxiosError(error)) {
+          console.error('Detalhes da resposta:', error.response?.data);
+          toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
+        } else {
+          toast.error('Falha ao enviar convite para o lobby');
+        }
       }
     }
   };
   
   // Remover um jogador do lobby
   const removePlayer = (playerId: string) => {
-    // Verificar se o usuário atual é o líder
-    const isLeader = players.find(p => p.id === user?.id)?.isLeader;
-    
     // Não permite remover o líder (você mesmo)
     if (players.find(p => p.id === playerId)?.isLeader) {
       return;
     }
     
-    // Apenas o líder pode remover jogadores
-    if (!isLeader && playerId !== user?.id) {
-      setChatMessages([...chatMessages, {
-        id: chatMessages.length + 1,
-        user: 'Sistema',
-        message: `Apenas o capitão pode expulsar outros jogadores.`,
-        isSystem: true
-      }]);
-      return;
-    }
-    
-    // Remover o jogador
     setPlayers(players.filter(p => p.id !== playerId));
-    
-    // Adicionar mensagem ao chat
-    const playerName = players.find(p => p.id === playerId)?.name || 'Jogador';
-    setChatMessages([...chatMessages, {
-      id: chatMessages.length + 1,
-      user: 'Sistema',
-      message: playerId === user?.id 
-        ? `Você saiu do lobby.` 
-        : `${playerName} foi removido do lobby.`,
-      isSystem: true
-    }]);
-    
-    // Se for um jogador sendo expulso, enviar notificação
-    if (playerId !== user?.id) {
-      // TODO: Implementar notificação de expulsão
-    }
   };
   
   // Mudança de tipo de lobby
@@ -1113,16 +1083,12 @@ export default function LobbyPage() {
                                   <div className="text-xs text-white/50">Nível {player.level}</div>
                                 </div>
                               </div>
-                              {/* Mostrar botão de expulsar apenas para o capitão e não para o próprio jogador */}
-                              {players.find(p => p.id === user?.id)?.isLeader && player.id !== user?.id && (
-                                <button
-                                  onClick={() => removePlayer(player.id)}
-                                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-red-500/50 transition-all group/btn"
-                                  title="Expulsar jogador"
-                                >
-                                  <X size={12} className="text-white/80 group-hover/btn:text-white" />
-                                </button>
-                              )}
+                              <button
+                                onClick={() => removePlayer(player.id)}
+                                className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-red-500/50 transition-all group/btn"
+                              >
+                                <X size={12} className="text-white/80 group-hover/btn:text-white" />
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1259,26 +1225,50 @@ export default function LobbyPage() {
                   (lobbyType === 'duo' && players.length >= 2) ||
                   (lobbyType === 'squad' && players.length >= 4)
                 ) {
-                  alert('O lobby já está cheio');
+                  toast.error('O lobby já está cheio');
                   return;
                 }
                 
                 try {
-                  // Enviar convite via API
-                  const response = await fetch('/api/lobby/invite/send', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      lobbyId: 'temporary-lobby-id', // ID temporário, será substituído pelo real quando o lobby for criado
-                      friendId: friend.id
-                    }),
+                  console.log('Iniciando processo de convite para:', friend.name);
+                  console.log('Informações do amigo:', friend);
+                  
+                  // Criar o lobby primeiro
+                  console.log('Criando lobby...');
+                  const createLobbyResponse = await axios.post('/api/lobby/create', {
+                    lobbyType: lobbyType,
+                    maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
                   });
                   
-                  const data = await response.json();
+                  console.log('Resposta da criação do lobby:', createLobbyResponse.data);
                   
-                  if (data.status === 'success') {
+                  if (createLobbyResponse.data.status !== 'success') {
+                    toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
+                    return;
+                  }
+                  
+                  const currentLobbyId = createLobbyResponse.data.lobbyId;
+                  console.log('Lobby criado com ID:', currentLobbyId);
+                  
+                  // Verificar se o ID do lobby é válido
+                  if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
+                    console.error('ID do lobby inválido:', currentLobbyId);
+                    toast.error('Erro: ID do lobby inválido');
+                    return;
+                  }
+                  
+                  // Enviar convite via API
+                  console.log('Enviando convite para o usuário:', friend.id, 'lobby:', currentLobbyId);
+                  const response = await axios.post('/api/lobby/invite', {
+                    recipientId: friend.id,
+                    lobbyId: currentLobbyId
+                  });
+                  
+                  console.log('Resposta do envio de convite:', response.data);
+                  
+                  if (response.data.status === 'success') {
+                    toast.success(`Convite enviado para ${friend.name}`);
+                    
                     // Adicionar mensagem ao chat
                     setChatMessages([...chatMessages, {
                       id: chatMessages.length + 1,
@@ -1286,26 +1276,20 @@ export default function LobbyPage() {
                       message: `Convite enviado para ${friend.name}.`,
                       isSystem: true
                     }]);
-                    
-                    // Fechar o modal
-                    setShowInviteModal(false);
                   } else {
-                    // Mostrar erro
-                    setChatMessages([...chatMessages, {
-                      id: chatMessages.length + 1,
-                      user: 'Sistema',
-                      message: `Erro ao convidar ${friend.name}: ${data.error}`,
-                      isSystem: true
-                    }]);
+                    toast.error(response.data.error || 'Erro ao enviar convite');
                   }
+                  
+                  // Fechar o modal
+                  setShowInviteModal(false);
                 } catch (error) {
-                  console.error('Erro ao enviar convite:', error);
-                  setChatMessages([...chatMessages, {
-                    id: chatMessages.length + 1,
-                    user: 'Sistema',
-                    message: `Erro ao convidar ${friend.name}.`,
-                    isSystem: true
-                  }]);
+                  console.error('Erro detalhado ao enviar convite:', error);
+                  if (axios.isAxiosError(error)) {
+                    console.error('Detalhes da resposta:', error.response?.data);
+                    toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
+                  } else {
+                    toast.error('Falha ao enviar convite para o lobby');
+                  }
                 }
               }}
             />

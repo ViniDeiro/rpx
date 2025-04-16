@@ -260,4 +260,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
       </div>
     </div>
   );
-}; 
+};
+
+export default NotificationCenter; 

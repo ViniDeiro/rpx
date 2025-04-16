@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { 
   Users, Clock, Settings, ChevronRight, Play, Share2, 
-  MessageCircle, DollarSign, Copy, UserPlus, X
+  MessageCircle, DollarSign, Copy, UserPlus, X, UserX
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import CharacterDisplay, { PLAYER_TYPES } from './CharacterDisplay';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 // Dados mockados para exemplo
 const MOCK_PLAYERS = [
@@ -207,6 +208,36 @@ export default function LobbyRoom({
     
     setChatMessages([...chatMessages, newMessage]);
     setMessageInput('');
+  };
+  
+  // Nova função para expulsar um jogador do lobby
+  const handleKickPlayer = async (playerId) => {
+    if (!isCaptain) {
+      return;
+    }
+    
+    try {
+      const response = await axios.post('/api/lobby/kick', {
+        lobbyId: matchId,
+        memberId: playerId
+      });
+      
+      if (response.data.status === 'success') {
+        toast.success('Jogador expulso com sucesso');
+        
+        // Atualizar a lista de jogadores removendo o jogador expulso
+        const updatedPlayers = players.filter(p => p.id !== playerId);
+        setPlayers(updatedPlayers);
+        
+        // Fechar o modal de detalhes do jogador
+        setSelectedPlayer(null);
+      } else {
+        toast.error(response.data.error || 'Erro ao expulsar jogador');
+      }
+    } catch (error) {
+      console.error('Erro ao expulsar jogador:', error);
+      toast.error('Falha ao expulsar jogador');
+    }
   };
   
   return (
@@ -531,13 +562,24 @@ export default function LobbyRoom({
               </div>
             </div>
             
-            <div className="p-4 border-t border-border flex justify-end">
+            <div className="p-4 border-t border-border flex justify-between">
               <button
                 onClick={() => setSelectedPlayer(null)}
                 className="btn-secondary"
               >
                 Fechar
               </button>
+              
+              {/* Adicionar botão de expulsar para o capitão */}
+              {isCaptain && !selectedPlayer.isCaptain && (
+                <button
+                  onClick={() => handleKickPlayer(selectedPlayer.id)}
+                  className="btn-danger flex items-center gap-1"
+                >
+                  <UserX size={16} />
+                  Expulsar
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { IUser } from '@/models/User';
 
 // Chave secreta para assinar o token - deve ser armazenada em variáveis de ambiente
-const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_dev_environment';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'rpx-app-secret-key-muito-segura-2024';
 // Tempo de expiração do token (30 dias para desenvolvimento)
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 

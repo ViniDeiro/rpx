@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
-
-// Middleware para autenticação
-async function isAuthenticated() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || !session.user.id) {
-    return { isAuth: false, error: 'Não autorizado', userId: null };
-  }
-  
-  return { isAuth: true, error: null, userId: session.user.id };
-}
+import { isAuthenticated } from '@/lib/auth/verify';
 
 // POST: Aceitar convite para lobby
 export async function POST(request: Request) {
