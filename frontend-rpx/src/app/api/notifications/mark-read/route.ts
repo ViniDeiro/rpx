@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     // Marcar como lida
     await db.collection('notifications').updateOne(
       { _id: new ObjectId(notificationId) },
-      { $set: { read: true } }
+      { $set: { read: true, readAt: new Date() } }
     );
     
     return NextResponse.json({

@@ -3,21 +3,24 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Menu, X, User, DollarSign, ChevronDown } from 'react-feather';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X, User, DollarSign, ChevronDown, Bell } from 'react-feather';
 import OptimizedImage from '../ui/optimized-image';
 import ImagePaths from '@/utils/image-paths';
 import Image from 'next/image';
 import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications, Notification } from '@/hooks/useNotifications';
 
 export const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
+  const { unreadCount, notifications, fetchNotifications, acceptLobbyInvite, rejectLobbyInvite } = useNotifications();
 
   // Função para fazer logout
   const handleLogout = () => {
@@ -104,25 +107,124 @@ export const Header = () => {
           </nav>
 
           {/* Autenticação e perfil - Desktop */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center gap-2">
             {isAuthenticated && user ? (
               <>
-                {/* Carteira */}
-                <div className="flex items-center bg-purple-900/30 border border-gray-700 rounded-full px-3 py-1.5">
-                  <span className="text-sm font-medium text-white">{formatCurrency((user?.wallet as any)?.balance || (user as any).balance || 0)}</span>
+                {/* Botão de notificações */}
+                <div className="relative">
+                  <button
+                    className="relative p-2 text-foreground-muted hover:text-foreground rounded-full hover:bg-card-hover transition-all focus:outline-none"
+                    onClick={() => {
+                      setIsNotificationsOpen(!isNotificationsOpen);
+                      if (!isNotificationsOpen) {
+                        fetchNotifications();
+                      }
+                    }}
+                  >
+                    <Bell size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isNotificationsOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 mt-2 w-80 rounded-xl bg-card-bg border border-border shadow-rpx py-1 z-10"
+                      >
+                        <div className="p-3 border-b border-border flex justify-between items-center">
+                          <h3 className="font-semibold">Notificações</h3>
+                          <button 
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="text-foreground-muted hover:text-foreground"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="p-4 text-center text-foreground-muted">
+                              Nenhuma notificação
+                            </div>
+                          ) : (
+                            notifications.map((notification: Notification) => (
+                              <div 
+                                key={notification._id.toString()} 
+                                className="p-3 border-b border-border last:border-0 hover:bg-card-hover cursor-pointer"
+                              >
+                                {notification.type === 'lobby_invite' && (
+                                  <div>
+                                    <p className="text-sm">
+                                      <span className="font-medium">{notification.data?.inviter?.username || 'Alguém'}</span> te convidou para um lobby
+                                    </p>
+                                    <div className="mt-2 flex gap-2">
+                                      <button 
+                                        className="px-2 py-1 text-xs bg-primary hover:bg-primary-dark text-white rounded"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (notification.data?.invite?._id) {
+                                            acceptLobbyInvite(notification.data.invite._id.toString());
+                                            setIsNotificationsOpen(false);
+                                          }
+                                        }}
+                                      >
+                                        Aceitar
+                                      </button>
+                                      <button 
+                                        className="px-2 py-1 text-xs bg-card-hover hover:bg-card-hover/80 rounded"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (notification.data?.invite?._id) {
+                                            rejectLobbyInvite(notification.data.invite._id.toString());
+                                            setIsNotificationsOpen(false);
+                                          }
+                                        }}
+                                      >
+                                        Recusar
+                                      </button>
+                                    </div>
+                                    <p className="text-xs text-foreground-muted mt-1">
+                                      Agora
+                                    </p>
+                                  </div>
+                                )}
+                                {notification.type === 'friend_request' && (
+                                  <div>
+                                    <p className="text-sm">
+                                      <span className="font-medium">{notification.data?.requester?.username || 'Alguém'}</span> enviou uma solicitação de amizade
+                                    </p>
+                                    <p className="text-xs text-foreground-muted mt-1">
+                                      Agora
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="p-2 border-t border-border">
+                          <Link 
+                            href="/notifications" 
+                            className="block w-full text-center text-xs text-primary hover:underline"
+                            onClick={() => setIsNotificationsOpen(false)}
+                          >
+                            Ver todas
+                          </Link>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                
-                {/* Menu de perfil */}
+
                 <div className="relative">
                   <button 
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className={`
-                      flex items-center space-x-2 rounded-full px-2 py-1 
-                      transition-all focus:outline-none
-                      ${isProfileOpen 
-                        ? 'ring-2 ring-primary/30 shadow-rpx bg-card-bg/80' 
-                        : 'bg-card-bg border border-border hover:border-primary/30'}
-                    `}
+                    className="flex items-center gap-2 p-2 rounded-full hover:bg-card-hover transition-colors"
                   >
                     <div className="relative w-8 h-8 overflow-hidden rounded-full">
                       {(user as any).avatarUrl ? (
