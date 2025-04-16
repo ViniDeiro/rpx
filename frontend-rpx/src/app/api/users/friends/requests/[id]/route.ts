@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import { ObjectId } from 'mongodb';
 
 interface AuthenticatedRequest {
   user: any;
@@ -99,7 +100,7 @@ export async function PATCH(
     const friendRequest = await db
       .collection('friendRequests')
       .findOne({
-        _id: id,
+        _id: new ObjectId(id),
         recipientId: userId,
         status: 'pending'
       });
@@ -115,7 +116,7 @@ export async function PATCH(
     if (action === 'accept') {
       // Atualizar o status da solicitação
       await db.collection('friendRequests').updateOne(
-        { _id: id },
+        { _id: new ObjectId(id) },
         { $set: { status: 'accepted', updatedAt: new Date() } }
       );
       
@@ -137,7 +138,7 @@ export async function PATCH(
     } else {
       // Rejeitar a solicitação
       await db.collection('friendRequests').updateOne(
-        { _id: id },
+        { _id: new ObjectId(id) },
         { $set: { status: 'rejected', updatedAt: new Date() } }
       );
       
