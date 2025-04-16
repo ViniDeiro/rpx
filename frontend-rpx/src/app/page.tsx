@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Check, Flag, Star, Trophy, Users } from 'react-feather';
+import { ArrowRight, Check, Flag, Star, Users } from 'react-feather';
 import { formatCurrency } from '@/utils/formatters';
 import { SponsorPromoBanner } from '@/components/ui/SponsorPromoBanner';
 
