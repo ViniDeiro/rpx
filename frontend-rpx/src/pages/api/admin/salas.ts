@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb/connect';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Conectar ao MongoDB  
   try {
-    const { client, db } = await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     // Tratamento baseado no método da requisição
     switch (req.method) {
