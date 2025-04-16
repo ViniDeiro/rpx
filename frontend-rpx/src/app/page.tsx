@@ -3,12 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Check, Flag, Star, Users } from 'react-feather';
+import { ArrowRight, Check, Flag, Lock, Star, Users } from 'react-feather';
 import { formatCurrency } from '@/utils/formatters';
 import { SponsorPromoBanner } from '@/components/ui/SponsorPromoBanner';
 
 export default function Home() {
   const [isAdmin, setIsAdmin] = React.useState(false);
+  const [characterType, setCharacterType] = React.useState('default');
+  const [characterColor, setCharacterColor] = React.useState('#3498db');
+  const [animation, setAnimation] = React.useState('idle');
   
   React.useEffect(() => {
     // Verificar se o usuário é administrador
