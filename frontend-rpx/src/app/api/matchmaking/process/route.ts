@@ -12,7 +12,20 @@ export async function GET(request: Request) {
   try {
     // Verificação básica de autenticação (para ambiente de desenvolvimento)
     const session = await getServerSession(authOptions);
-    const isAdmin = session?.user?.role === 'admin';
+    
+    // Verificar se é admin usando verificação na base de dados
+    let isAdmin = false;
+    if (session?.user?.id) {
+      try {
+        const { db } = await connectToDatabase();
+        const user = await db.collection('users').findOne({
+          _id: new ObjectId(session.user.id),
+        });
+        isAdmin = user?.role === 'admin';
+      } catch (error) {
+        console.error('Erro ao verificar permissões de admin:', error);
+      }
+    }
     
     // Em produção, verificar uma chave de API ou token especial
     const url = new URL(request.url);
