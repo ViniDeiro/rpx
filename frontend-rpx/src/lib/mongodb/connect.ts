@@ -34,10 +34,6 @@ export async function connectToDatabase() {
     // String de conexão Atlas fixa
     const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://vinideirolopess:c7MVBr6XpIkQwGaZ@cluster0.vocou4s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
     
-    if (!MONGODB_URI) {
-      throw new Error('MONGODB_URI não definida');
-    }
-    
     // Configurar opções do mongoose
     mongoose.set('strictQuery', false);
     
