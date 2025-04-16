@@ -1,190 +1,174 @@
-import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId } from 'mongodb';
+import { ObjectId, Collection, Db, WithId } from 'mongodb';
+
+// Definindo interfaces para os documentos do MongoDB
+interface LobbyDocument {
+  _id: ObjectId;
+  lobbyId: string;
+  createdAt: Date | string;
+  players: {
+    userId: string;
+    username: string;
+    avatar?: string;
+    rank?: string;
+  }[];
+  gameType: string;
+  status: string;
+  teamSize?: number;
+}
+
+interface MatchDocument {
+  _id: ObjectId;
+  matchId: string;
+  lobbies: string[];
+  players: {
+    userId: string;
+    username: string;
+    avatar?: string;
+    rank?: string;
+    lobbyId: string;
+  }[];
+  gameType: string;
+  status: string;
+  createdAt: Date;
+}
+
+// Interface para grupos de lobbies
+interface LobbyGroups {
+  [key: string]: WithId<LobbyDocument>[];
+}
 
 // Esta rota é geralmente chamada por um job agendado ou webhook
 // No ambiente de produção, deve ser protegida por uma API key ou similar
 
+// Definir interface para lobbies na fila
+interface QueuedLobby {
+  _id: string;
+  createdAt: string | Date;
+  lobbyId: string;
+  createdBy: string;
+  gameType: string;
+  betAmount: number;
+  players: {
+    userId: string;
+    username: string;
+    avatar?: string;
+  }[];
+}
+
+interface PlayerMatch {
+  userId: string;
+  username: string;
+  avatar?: string;
+}
+
 // GET: Processar a fila de matchmaking
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    // Verificação básica de autenticação (para ambiente de desenvolvimento)
     const session = await getServerSession(authOptions);
     
-    // Verificar se é admin usando verificação na base de dados
-    let isAdmin = false;
-    if (session?.user?.id) {
-      try {
-        const { db } = await connectToDatabase();
-        const user = await db.collection('users').findOne({
-          _id: new ObjectId(session.user.id),
-        });
-        isAdmin = user?.role === 'admin';
-      } catch (error) {
-        console.error('Erro ao verificar permissões de admin:', error);
-      }
-    }
-    
-    // Em produção, verificar uma chave de API ou token especial
-    const url = new URL(request.url);
-    const apiKey = url.searchParams.get('apiKey');
-    const isValidApiKey = apiKey === process.env.MATCHMAKING_API_KEY;
-    
-    if (!isAdmin && !isValidApiKey) {
-      return NextResponse.json({
-        status: 'error',
-        error: 'Não autorizado'
-      }, { status: 401 });
+    // Verificar se é uma chamada autorizada (opcional, dependendo da sua configuração)
+    if (!session?.user?.email) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     
     const { db } = await connectToDatabase();
     
-    // Obter lobbies na fila de matchmaking, ordenados pelo tempo de espera
-    const queuedLobbies = await db.collection('matchmakingQueue')
-      .find({})
-      .sort({ createdAt: 1 })
-      .toArray();
+    // Obter lobbies na fila de matchmaking
+    const queueCollection = db.collection('matchmakingQueue') as unknown as Collection<LobbyDocument>;
     
-    if (queuedLobbies.length < 2) {
-      return NextResponse.json({
-        status: 'success',
-        message: 'Não há lobbies suficientes na fila para matchmaking',
-        processed: 0
-      });
+    // Buscar os lobbies e converter para array
+    const queuedLobbiesRaw = await queueCollection.find({}).toArray();
+
+    // Ordenar os lobbies por data de criação de forma segura
+    const queuedLobbies = [...queuedLobbiesRaw].sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return dateA - dateB;
+    });
+
+    // Agrupar lobbies por tipo de jogo e tamanho da equipe
+    const lobbyGroups: LobbyGroups = {};
+    
+    for (const lobby of queuedLobbies) {
+      const gameType = lobby.gameType || 'default';
+      const teamSize = lobby.teamSize || 1;
+      const key = `${gameType}-${teamSize}`;
+      
+      if (!lobbyGroups[key]) {
+        lobbyGroups[key] = [];
+      }
+      
+      lobbyGroups[key].push(lobby);
     }
     
-    // Agrupar lobbies por tamanho de equipe
-    const lobbiesByTeamSize = {};
-    queuedLobbies.forEach(lobby => {
-      const size = lobby.teamSize.toString();
-      if (!lobbiesByTeamSize[size]) {
-        lobbiesByTeamSize[size] = [];
-      }
-      lobbiesByTeamSize[size].push(lobby);
-    });
-    
-    let matchesCreated = 0;
-    const processedLobbyIds = [];
-    
-    // Para cada grupo de tamanho, tentar fazer matches
-    for (const teamSize in lobbiesByTeamSize) {
-      const lobbies = lobbiesByTeamSize[teamSize];
+    // Processamento de matchmaking
+    const processedLobbyIds: string[] = [];
+    const matchesCreated: string[] = [];
+
+    // Para cada grupo de lobbies, processar matchmaking
+    for (const key in lobbyGroups) {
+      const lobbies = lobbyGroups[key];
+      const [gameType, teamSizeStr] = key.split('-');
+      const teamSize = parseInt(teamSizeStr, 10);
       
-      // Precisamos de pelo menos 2 lobbies do mesmo tamanho
-      if (lobbies.length < 2) continue;
+      // Lógica para fazer o matchmaking
+      // Por exemplo, para um jogo 1v1, precisamos de 2 jogadores (2 lobbies de tamanho 1)
+      // Para um jogo 2v2, precisamos de 4 jogadores (podemos ter 2 lobbies de tamanho 2, ou 4 lobbies de tamanho 1)
       
-      // Processar lobbies em pares
-      for (let i = 0; i < lobbies.length; i += 2) {
-        if (i + 1 >= lobbies.length) break;
+      while (lobbies.length >= 2) {  // Exemplo simples para jogos 1v1
+        const lobby1 = lobbies.shift();
+        const lobby2 = lobbies.shift();
         
-        const lobby1 = lobbies[i];
-        const lobby2 = lobbies[i + 1];
-        
-        // Verificar compatibilidade adicional se necessário
-        // Exemplo: verificar região, skill, etc.
-        
-        // Buscar informações completas dos lobbies
-        const lobby1Data = await db.collection('lobbies').findOne({
-          _id: new ObjectId(lobby1.lobbyId)
-        });
-        
-        const lobby2Data = await db.collection('lobbies').findOne({
-          _id: new ObjectId(lobby2.lobbyId)
-        });
-        
-        if (!lobby1Data || !lobby2Data) continue;
-        
-        // Criar uma nova partida
-        const matchResult = await db.collection('matches').insertOne({
-          status: 'preparing',
-          teams: [
-            {
-              lobbyId: lobby1.lobbyId,
-              members: lobby1Data.members,
-              captain: lobby1Data.owner
-            },
-            {
-              lobbyId: lobby2.lobbyId,
-              members: lobby2Data.members,
-              captain: lobby2Data.owner
-            }
-          ],
-          config: {
-            gameType: 'squad',
-            teamSize: parseInt(teamSize),
-            // Outras configurações
-          },
-          roomInfo: {
-            // Será preenchido pelo admin mais tarde
-            roomId: null,
-            password: null,
-            createdBy: null,
-            createdAt: null
-          },
-          createdAt: new Date(),
-          startedAt: null,
-          endedAt: null
-        });
-        
-        const matchId = matchResult.insertedId;
-        
-        // Atualizar status dos lobbies
-        await db.collection('lobbies').updateOne(
-          { _id: new ObjectId(lobby1.lobbyId) },
-          { $set: { status: 'in_match', matchId } }
-        );
-        
-        await db.collection('lobbies').updateOne(
-          { _id: new ObjectId(lobby2.lobbyId) },
-          { $set: { status: 'in_match', matchId } }
-        );
-        
-        // Notificar todos os membros dos lobbies
-        const allMembers = [
-          ...(lobby1Data.members || []), 
-          ...(lobby2Data.members || [])
-        ];
-        
-        for (const memberId of allMembers) {
-          await db.collection('notifications').insertOne({
-            userId: new ObjectId(memberId.toString()),
-            type: 'match_found',
-            read: false,
-            data: {
-              message: 'Uma partida foi encontrada! Clique para entrar na sala.',
-              matchId: matchId.toString()
-            },
+        if (lobby1 && lobby2) {
+          // Criar um novo match
+          const matchId = new ObjectId().toString();
+          
+          // Criar documento do match no banco de dados
+          await db.collection('matches').insertOne({
+            matchId,
+            lobbies: [lobby1.lobbyId, lobby2.lobbyId],
+            players: [
+              ...(lobby1.players || []).map(p => ({ ...p, lobbyId: lobby1.lobbyId })),
+              ...(lobby2.players || []).map(p => ({ ...p, lobbyId: lobby2.lobbyId }))
+            ],
+            gameType,
+            status: 'pending',
             createdAt: new Date()
           });
+          
+          // Adicionar os lobbies à lista de processados
+          processedLobbyIds.push(lobby1.lobbyId, lobby2.lobbyId);
+          matchesCreated.push(matchId);
         }
-        
-        // Remover lobbies da fila de matchmaking
-        processedLobbyIds.push(lobby1.lobbyId, lobby2.lobbyId);
-        matchesCreated++;
       }
     }
     
     // Remover todos os lobbies processados da fila
     if (processedLobbyIds.length > 0) {
-      await db.collection('matchmakingQueue').deleteMany({
-        lobbyId: { $in: processedLobbyIds.map(id => new ObjectId(id)) }
+      await queueCollection.deleteMany({
+        lobbyId: { $in: processedLobbyIds }
       });
     }
     
-    return NextResponse.json({
-      status: 'success',
-      message: `Processamento de matchmaking concluído. ${matchesCreated} partidas criadas.`,
-      matchesCreated,
-      processedLobbies: processedLobbyIds.length
+    return new Response(JSON.stringify({ 
+      success: true, 
+      processed: processedLobbyIds.length,
+      matches: matchesCreated 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
-    
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao processar matchmaking:', error);
-    return NextResponse.json({
-      status: 'error',
-      error: 'Erro ao processar matchmaking'
-    }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 } 
