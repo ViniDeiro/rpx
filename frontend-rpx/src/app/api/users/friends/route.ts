@@ -464,13 +464,13 @@ export async function DELETE(req: NextRequest) {
     }
     
     // Atualizar a lista de amigos do usuário atual
-    await db.collection('users').updateOne(
+    await (db.collection('users') as any).updateOne(
       { _id: new ObjectId(userId) },
       { $pull: { friends: { userId: friendId } } }
     );
     
     // Atualizar a lista de amigos do outro usuário
-    await db.collection('users').updateOne(
+    await (db.collection('users') as any).updateOne(
       { _id: new ObjectId(friendId) },
       { $pull: { friends: { userId: userId } } }
     );
