@@ -240,6 +240,12 @@ export default function MatchDetailsPage() {
   // Confirmar entrada na sala
   const handleConfirmEntry = async () => {
     try {
+      if (!params || !params.id) {
+        console.error('ID da partida não encontrado');
+        toast.error('ID da partida não encontrado');
+        return;
+      }
+
       const response = await fetch(`/api/matches/${params.id}`, {
         method: 'PATCH',
         headers: {
