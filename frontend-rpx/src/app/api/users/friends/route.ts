@@ -3,6 +3,7 @@ import { getModels } from '@/lib/mongodb/models';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import jwt from 'jsonwebtoken';
+import { ObjectId } from 'mongodb';
 
 // Interface para friend
 interface Friend {
@@ -454,7 +455,7 @@ export async function DELETE(req: NextRequest) {
     const { db } = await connectToDatabase();
     
     // Verificar se o amigo existe
-    const friend = await db.collection('users').findOne({ _id: friendId });
+    const friend = await db.collection('users').findOne({ _id: new ObjectId(friendId) });
     if (!friend) {
       return NextResponse.json(
         { error: 'Usuário amigo não encontrado' },
@@ -464,14 +465,14 @@ export async function DELETE(req: NextRequest) {
     
     // Atualizar a lista de amigos do usuário atual
     await db.collection('users').updateOne(
-      { _id: userId },
-      { $pull: { friends: friendId } }
+      { _id: new ObjectId(userId) },
+      { $pull: { friends: friendId.toString() } }
     );
     
     // Atualizar a lista de amigos do outro usuário
     await db.collection('users').updateOne(
-      { _id: friendId },
-      { $pull: { friends: userId } }
+      { _id: new ObjectId(friendId) },
+      { $pull: { friends: userId.toString() } }
     );
     
     // Atualizar solicitações de amizade para mostrar como removidas
