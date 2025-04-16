@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Estilos específicos para área de admin */
+.admin-page input,
+.admin-page textarea,
+.admin-page select,
+.admin-page button,
+.admin-page label,
+.admin-page span,
+.admin-page div,
+.admin-page p {
+  color: #000 !important;
+}
+
+.admin-page input, 
+.admin-page textarea, 
+.admin-page select {
+  background-color: white !important;
+  border: 1px solid #ccc !important;
+}
+
+.admin-page button.bg-purple-600 {
+  color: white !important;
+}
+
 :root {
   --foreground-rgb: 248, 249, 250;
   --background-rgb: 15, 10, 31;

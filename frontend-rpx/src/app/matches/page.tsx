@@ -151,23 +151,54 @@ function MatchesContent() {
     const fetchMatches = async () => {
       try {
         setIsLoading(true);
-        const response = await api.get('/matches');
+        setError(null);
+        
+        console.log('Buscando desafios...');
+        
+        // Adicionar timeout para evitar problemas de rede
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await api.get('/matches', {
+          signal: controller.signal,
+          timeout: 10000
+        });
+        
+        clearTimeout(timeoutId);
+        
+        console.log('Resposta da API:', response.data);
+        
         const matchesData = Array.isArray(response.data) ? response.data : [];
         
-        // Se a API não retornar nada, começar com um array vazio
+        // Se a API não retornar nada, mostrar mensagem ou usar dados simulados
         if (matchesData.length === 0) {
-          setMatches([]);
-          setFilteredMatches([]);
+          console.log('Nenhum desafio encontrado. Usando dados simulados.');
+          // Aqui podemos usar dados simulados se necessário
+          setMatches(generateMockMatches());
+          setFilteredMatches(generateMockMatches());
         } else {
+          console.log(`${matchesData.length} desafios encontrados`);
           setMatches(matchesData);
           setFilteredMatches(matchesData);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao carregar desafios:', err);
-        // Iniciar com array vazio em caso de erro
-        setMatches([]);
-        setFilteredMatches([]);
-        setError('Não foi possível carregar os desafios. Por favor, tente novamente mais tarde.');
+        
+        // Mostrar mensagem de erro detalhada
+        if (err.name === 'AbortError') {
+          setError('A requisição demorou muito tempo. Por favor, tente novamente.');
+        } else if (err.response) {
+          setError(`Erro ${err.response.status}: ${err.response.data.error || 'Falha ao carregar os desafios'}`);
+        } else if (err.request) {
+          setError('Não foi possível conectar ao servidor. Verifique sua conexão.');
+        } else {
+          setError('Não foi possível carregar os desafios. Por favor, tente novamente mais tarde.');
+        }
+        
+        // Usar dados simulados em caso de erro para manter a interface funcionando
+        console.log('Usando dados simulados devido ao erro');
+        setMatches(generateMockMatches());
+        setFilteredMatches(generateMockMatches());
       } finally {
         setIsLoading(false);
       }
@@ -232,38 +263,66 @@ function MatchesContent() {
 
   // Gerar dados de exemplo para desafios
   const generateMockMatches = (): Match[] => {
+    console.log('Gerando desafios simulados');
     const modes = ['solo', 'duo', 'squad'];
-    const platforms = ['emulator', 'mobile', 'mixed', 'tactical'];
+    const platforms: Platform[] = ['emulator', 'mobile', 'mixed', 'tactical'];
     const statuses = ['open', 'in_progress', 'completed'];
-    const standardFees = [2, 3, 5, 10, 20, 50, 100];
     
-    return Array(15).fill(null).map((_, i) => {
+    return Array(15).fill(null).map((_, index) => {
       const mode = modes[Math.floor(Math.random() * modes.length)];
+      const platform = platforms[Math.floor(Math.random() * platforms.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
       const teamSize = mode === 'solo' ? 1 : mode === 'duo' ? 2 : 4;
-      const totalPlayers = teamSize * 2;
-      const entryFee = standardFees[Math.floor(Math.random() * standardFees.length)];
-      const randomPlayers = Math.floor(Math.random() * (totalPlayers - 1));
       
-      // Gerar odd aleatória entre 1.80 e 2.15
-      const odd = Math.round((1.80 + Math.random() * 0.35) * 100) / 100;
+      const createdDate = new Date(Date.now() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000));
       
       return {
-        id: `match-${i}`,
-        title: `Desafio ${i + 1}`,
+        id: `mock-${index}`,
+        title: `Desafio ${mode.toUpperCase()} #${index + 1}`,
         mode,
         teamSize,
-        type: Math.random() > 0.5 ? 'ranked' : 'casual',
-        platform: platforms[Math.floor(Math.random() * platforms.length)] as any,
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        entryFee,
-        odd,
-        // Prêmio é o retorno potencial (entrada * odd)
-        prize: Math.round(entryFee * odd),
-        playersJoined: randomPlayers,
-        totalPlayers,
-        teamFormation: mode !== 'solo' ? (Math.random() > 0.5 ? 'formed' : 'random') : undefined,
-        paymentOption: mode !== 'solo' ? (Math.random() > 0.5 ? 'captain' : 'split') : undefined,
-        startTime: new Date(Date.now() + Math.floor(Math.random() * 3600000)).toISOString()
+        platform,
+        entryFee: [5, 10, 20, 50, 100][Math.floor(Math.random() * 5)],
+        status,
+        type: 'casual',
+        createdAt: createdDate.toISOString(), // Convertendo para string
+        createdBy: 'user1',
+        prize: 100,
+        totalPlayers: teamSize * 2,
+        playersJoined: Math.floor(Math.random() * teamSize * 2),
+        teams: [
+          {
+            id: `team1-${index}`,
+            name: 'Time 1',
+            players: [
+              {
+                id: 'user1',
+                name: 'Jogador 1',
+                isReady: true,
+                isCaptain: true
+              },
+              {
+                id: 'user2',
+                name: 'Jogador 2',
+                isReady: false,
+                isCaptain: false
+              }
+            ]
+          },
+          {
+            id: `team2-${index}`,
+            name: 'Time 2',
+            players: status !== 'open' ? [
+              {
+                id: 'user3',
+                name: 'Jogador 3',
+                isReady: status === 'in_progress',
+                isCaptain: true
+              }
+            ] : []
+          }
+        ],
+        startTime: new Date(Date.now() + 3600000).toISOString()
       };
     });
   };

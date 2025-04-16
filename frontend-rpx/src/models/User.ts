@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
@@ -9,7 +9,16 @@ export interface IUser extends Document {
   birthdate?: Date;
   phone?: string;
   avatarUrl?: string;
+  bannerUrl?: string;
   balance: number;
+  friends: mongoose.Types.ObjectId[];
+  pendingFriendRequests: mongoose.Types.ObjectId[];
+  sentFriendRequests: mongoose.Types.ObjectId[];
+  lobbyInvites: {
+    from: mongoose.Types.ObjectId;
+    lobbyId: string;
+    createdAt: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -61,10 +70,24 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: null,
     },
+    bannerUrl: {
+      type: String,
+      default: null,
+    },
     balance: {
       type: Number,
       default: 500, // Saldo inicial para novos usuários
     },
+    friends: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    pendingFriendRequests: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    sentFriendRequests: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    lobbyInvites: [
+      {
+        from: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        lobbyId: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ]
   },
   {
     timestamps: true, // Adiciona createdAt e updatedAt automaticamente
@@ -104,4 +127,6 @@ UserSchema.statics.hashPassword = async function(password: string): Promise<stri
 };
 
 // Verifica se o modelo já existe para evitar sobreposição
-export default (mongoose.models.User || mongoose.model<IUser, UserModel>('User', UserSchema)) as UserModel; 
+const User = (mongoose.models.User || mongoose.model<IUser, UserModel>('User', UserSchema)) as UserModel;
+
+export default User; 

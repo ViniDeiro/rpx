@@ -158,7 +158,7 @@ export const Header = () => {
                       <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-card-hover">
                         Meu Perfil
                       </Link>
-                      <Link href="/profile/bets" className="block px-4 py-2 text-sm hover:bg-card-hover">
+                      <Link href="/apostas/minhas-apostas" className="block px-4 py-2 text-sm hover:bg-card-hover">
                         Minhas Apostas
                       </Link>
                       <Link href="/profile/wallet" className="block px-4 py-2 text-sm hover:bg-card-hover">
@@ -277,6 +277,15 @@ export const Header = () => {
                   >
                     <User size={18} className="mr-3" />
                     <span>Perfil</span>
+                  </Link>
+                  
+                  <Link
+                    href="/apostas/minhas-apostas"
+                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover flex items-center"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <DollarSign size={18} className="mr-3" />
+                    <span>Minhas Apostas</span>
                   </Link>
                   
                   <button 

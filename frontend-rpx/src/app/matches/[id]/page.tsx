@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Clock, Info, Award, X } from 'react-feather';
+import { ArrowLeft, Calendar, Clock, Info, Award, X, Users, DollarSign, ChevronLeft, AlertTriangle } from 'react-feather';
 import ImagePaths from '@/utils/image-paths';
 import { SponsorBanner } from '@/components/ui/SponsorBanner';
+import Image from 'next/image';
+import { toast } from 'react-toastify';
+import MatchRoomCard from '@/components/match/MatchRoomCard';
 
 interface Team {
   id: string;
@@ -19,7 +22,7 @@ interface Match {
   team2: Team;
   date: string;
   tournament: string;
-  status: 'upcoming' | 'live' | 'completed';
+  status: 'upcoming' | 'live' | 'completed' | 'waiting' | 'ready' | 'ongoing' | 'finished' | 'canceled';
   odds?: {
     team1: number;
     draw: number;
@@ -33,6 +36,16 @@ interface Match {
   venue?: string;
   entryFee?: number;
   prize?: number;
+  gameMode?: string;
+  players?: string[];
+  playersInfo?: {
+    _id: string;
+    username: string;
+    avatarUrl?: string;
+  }[];
+  betAmount?: number;
+  roomId?: string;
+  roomPassword?: string;
 }
 
 interface BetOption {
@@ -54,6 +67,46 @@ export default function MatchDetailsPage() {
   const [betAmount, setBetAmount] = useState<number>(10);
   const [potentialReturn, setPotentialReturn] = useState<number>(0);
   const [showBetSlip, setShowBetSlip] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Buscar detalhes da partida
+  useEffect(() => {
+    const fetchMatchDetails = async () => {
+      if (!params?.id) return;
+      
+      try {
+        setIsLoading(true);
+        
+        const response = await fetch(`/api/matches/${params.id}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          setMatch(data.match);
+        } else {
+          setError(data.error || 'Erro ao carregar detalhes da partida');
+          toast.error(data.error || 'Erro ao carregar detalhes da partida');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar detalhes da partida:', error);
+        setError('Erro ao carregar detalhes da partida');
+        toast.error('Erro ao carregar detalhes da partida');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchMatchDetails();
+    
+    // Configurar polling para atualizar a cada 10 segundos
+    const interval = setInterval(fetchMatchDetails, 10000);
+    
+    return () => clearInterval(interval);
+  }, [params?.id]);
 
   // Simulação de fetch da partida
   useEffect(() => {
@@ -184,6 +237,32 @@ export default function MatchDetailsPage() {
     { id: 'total_booyahs', name: 'Total de Booyahs' },
   ];
 
+  // Confirmar entrada na sala
+  const handleConfirmEntry = async () => {
+    try {
+      const response = await fetch(`/api/matches/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'confirm_entry'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast.success('Entrada confirmada com sucesso!');
+      } else {
+        toast.error(data.error || 'Erro ao confirmar entrada');
+      }
+    } catch (error) {
+      console.error('Erro ao confirmar entrada:', error);
+      toast.error('Erro ao confirmar entrada na sala');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container py-16">
@@ -194,17 +273,20 @@ export default function MatchDetailsPage() {
     );
   }
 
-  if (!match) {
+  if (error || !match) {
     return (
       <div className="container py-16">
-        <div className="card text-center py-12">
-          <h2 className="text-2xl font-bold mb-4">Partida não encontrada</h2>
-          <p className="text-muted mb-6">
-            Não foi possível encontrar detalhes para esta partida.
-          </p>
-          <Link href="/matches" className="btn-primary">
-            Voltar para partidas
-          </Link>
+        <div className="bg-card-bg rounded-lg p-6 border border-red-500/20 text-center">
+          <AlertTriangle size={48} className="mx-auto mb-4 text-red-500" />
+          <h2 className="text-xl font-bold mb-2">Erro ao carregar partida</h2>
+          <p className="text-gray-400 mb-4">{error || 'Partida não encontrada'}</p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-card-hover hover:bg-card-hover/80 rounded-lg flex items-center mx-auto"
+          >
+            <ChevronLeft size={16} className="mr-1" />
+            Voltar
+          </button>
         </div>
       </div>
     );
@@ -535,6 +617,123 @@ export default function MatchDetailsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full md:w-2/3">
+            <div className="bg-card-bg rounded-lg p-6 mb-6 border border-primary/10">
+              <h1 className="text-2xl font-bold mb-4">
+                {match.gameMode === 'squad' ? 'Partida Squad' : 
+                 match.gameMode === 'duo' ? 'Partida Duo' : 'Partida Solo'}
+              </h1>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card-hover rounded-lg p-4 text-center">
+                  <DollarSign size={24} className="text-primary mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Valor da Aposta</p>
+                  <p className="text-xl font-bold">R$ {match.betAmount}</p>
+                </div>
+                
+                <div className="bg-card-hover rounded-lg p-4 text-center">
+                  <Users size={24} className="text-blue-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Jogadores</p>
+                  <p className="text-xl font-bold">{match.players?.length || 0}</p>
+                </div>
+                
+                <div className="bg-card-hover rounded-lg p-4 text-center">
+                  <Award size={24} className="text-yellow-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Modo</p>
+                  <p className="text-xl font-bold capitalize">{match.gameMode}</p>
+                </div>
+                
+                <div className="bg-card-hover rounded-lg p-4 text-center">
+                  <Clock size={24} className="text-green-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Status</p>
+                  <p className="text-xl font-bold capitalize">
+                    {match.status === 'waiting' ? 'Aguardando' :
+                     match.status === 'ready' ? 'Pronto' :
+                     match.status === 'ongoing' ? 'Em Andamento' : 
+                     match.status === 'finished' ? 'Finalizado' : 'Cancelado'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Lista de jogadores */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3 flex items-center">
+                  <Users size={18} className="mr-2 text-primary" />
+                  Jogadores
+                </h3>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {match.playersInfo?.map(player => (
+                    <div key={player._id} className="bg-card-hover rounded-lg p-3 flex items-center">
+                      <div className="w-10 h-10 rounded-full overflow-hidden mr-3 bg-primary/10">
+                        <Image
+                          src={player.avatarUrl || '/images/avatars/default.jpg'}
+                          alt={player.username}
+                          width={40}
+                          height={40}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium">{player.username}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="w-full md:w-1/3">
+            {match.status === 'waiting' ? (
+              <div className="bg-card-bg rounded-lg p-6 border border-primary/10">
+                <h3 className="text-lg font-bold mb-4">Aguardando sala</h3>
+                <p className="text-gray-400 mb-4">
+                  O administrador ainda não configurou a sala do jogo. 
+                  Por favor, aguarde enquanto a sala é preparada.
+                </p>
+                <div className="animate-pulse flex space-x-4 items-center">
+                  <div className="rounded-full bg-primary/20 h-10 w-10"></div>
+                  <div className="flex-1 space-y-3">
+                    <div className="h-2 bg-primary/20 rounded"></div>
+                    <div className="h-2 bg-primary/20 rounded w-5/6"></div>
+                  </div>
+                </div>
+              </div>
+            ) : match.status === 'ready' && match.roomId && match.roomPassword ? (
+              <MatchRoomCard 
+                match={match} 
+                onConfirmEntry={handleConfirmEntry} 
+              />
+            ) : match.status === 'ongoing' ? (
+              <div className="bg-card-bg rounded-lg p-6 border border-primary/10">
+                <h3 className="text-lg font-bold mb-4">Partida em andamento</h3>
+                <p className="text-gray-400 mb-4">
+                  Sua partida já está em andamento. Se você já entrou na sala,
+                  continue jogando até o final da partida.
+                </p>
+              </div>
+            ) : match.status === 'finished' ? (
+              <div className="bg-card-bg rounded-lg p-6 border border-primary/10">
+                <h3 className="text-lg font-bold mb-4">Partida finalizada</h3>
+                <p className="text-gray-400 mb-4">
+                  Esta partida já foi finalizada. Confira os resultados na 
+                  página do seu histórico de partidas.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-card-bg rounded-lg p-6 border border-primary/10">
+                <h3 className="text-lg font-bold mb-4">Partida cancelada</h3>
+                <p className="text-gray-400 mb-4">
+                  Esta partida foi cancelada. O valor da aposta será 
+                  estornado para sua carteira.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

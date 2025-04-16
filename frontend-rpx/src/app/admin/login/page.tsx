@@ -79,8 +79,8 @@ export default function AdminLogin() {
       
       // Verificar se o usuário é admin (verificando tanto roles quanto role)
       const isAdmin = 
-        (userInfo?.roles && Array.isArray(userInfo.roles) && userInfo.roles.includes('admin')) || // Verificar pelo array roles
-        userInfo?.role === 'admin'; // Verificar pelo campo role diretamente
+        (userInfo?.roles && Array.isArray(userInfo.roles) && (userInfo.roles.includes('admin') || userInfo.roles.includes('superadmin'))) || // Verificar pelo array roles
+        userInfo?.role === 'admin' || userInfo?.role === 'superadmin'; // Verificar pelo campo role diretamente
       
       if (isAdmin) {
         localStorage.setItem('rpx-admin-auth', 'authenticated');
@@ -112,16 +112,16 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-100 admin-page">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-2">RPX Admin</h1>
-          <h2 className="text-xl font-semibold text-gray-700">Painel Administrativo</h2>
-        </div>
+        <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">RPX Admin</h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Painel Administrativo
+        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-md rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-start">
@@ -141,9 +141,10 @@ export default function AdminLogin() {
                   type="text"
                   autoComplete="username"
                   required
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-black bg-white"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  style={{ color: 'black', backgroundColor: 'white' }}
                 />
               </div>
             </div>
@@ -159,9 +160,10 @@ export default function AdminLogin() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-black bg-white"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  style={{ color: 'black', backgroundColor: 'white' }}
                 />
               </div>
             </div>
@@ -197,8 +199,8 @@ export default function AdminLogin() {
               </div>
             </div>
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-500">Usuário: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">admin</span></p>
-              <p className="mt-1 text-xs text-gray-500">Senha: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">rpx123</span></p>
+              <p className="text-xs text-gray-500">Usuário: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">master</span></p>
+              <p className="mt-1 text-xs text-gray-500">Senha: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">Vini200!</span></p>
             </div>
           </div>
         </div>

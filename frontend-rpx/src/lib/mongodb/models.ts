@@ -9,7 +9,8 @@ const userSchema = new mongoose.Schema({
   phone: { type: String },
   cpf: { type: String },
   birthdate: { type: String },
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
+  isHidden: { type: Boolean, default: false }, // Para ocultar usuários na listagem admin
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   avatarUrl: { type: String },

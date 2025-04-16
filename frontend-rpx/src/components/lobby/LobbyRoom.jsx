@@ -144,17 +144,52 @@ export default function LobbyRoom({
   };
   
   // Iniciar partida (apenas para capitão)
-  const handleStartMatch = () => {
+  const handleStartMatch = async () => {
     if (!allPlayersReady) {
       toast.error('Nem todos os jogadores estão prontos!');
       return;
     }
     
-    toast.success('Iniciando partida...');
-    // Em uma implementação real, enviaria requisição para iniciar a partida
-    setTimeout(() => {
-      router.push(`/matches/${matchId}/game`);
-    }, 2000);
+    try {
+      toast.loading('Criando partida...');
+      
+      // Identificadores dos jogadores no lobby
+      const playerIds = players.map(p => p.id);
+      
+      // Criar partida no banco de dados através da API
+      const response = await fetch('/api/matches', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({
+          lobbyId: matchId,
+          playerIds,
+          betAmount: matchDetails.entryFee,
+          gameMode: matchDetails.mode
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast.dismiss();
+        toast.success('Partida criada! Aguardando sala...');
+        
+        // Em uma implementação real, redirecionaria para a página de aguardo da partida
+        setTimeout(() => {
+          router.push(`/matches/${data.match._id}`);
+        }, 1500);
+      } else {
+        toast.dismiss();
+        toast.error(data.error || 'Erro ao criar partida');
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar partida:', error);
+      toast.dismiss();
+      toast.error('Erro ao iniciar partida. Tente novamente.');
+    }
   };
   
   // Enviar mensagem no chat

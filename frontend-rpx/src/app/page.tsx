@@ -1,20 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Award, Shield, Zap, Lock } from 'react-feather';
+import Image from 'next/image';
+import { ArrowRight, Check, Flag, Star, Trophy, Users } from 'react-feather';
 import { formatCurrency } from '@/utils/formatters';
 import { SponsorPromoBanner } from '@/components/ui/SponsorPromoBanner';
-import Character2D from '../components/2d/Character2D';
-import '../components/2d/Character2D.css';
 
 export default function Home() {
-  const [characterType, setCharacterType] = useState('default');
-  const [characterColor, setCharacterColor] = useState('#3498db');
-  const [animation, setAnimation] = useState('idle');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = React.useState(false);
   
-  useEffect(() => {
+  React.useEffect(() => {
     // Verificar se o usuário é administrador
     const checkAdmin = () => {
       try {
@@ -246,93 +242,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Character Demo */}
-      <section className="py-12 bg-muted/50">
-        <div className="container px-4 mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Personagens RPX</h2>
-
-          <div className="max-w-md mx-auto bg-background p-6 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold text-center mb-4 text-gray-800">
-              Personagem 2D - {characterType.charAt(0).toUpperCase() + characterType.slice(1)}
-            </h3>
-            
-            <div className="h-48 w-full flex justify-center items-center mb-4">
-              <Character2D 
-                type={characterType} 
-                color={characterColor} 
-                animation={animation}
-                size="large"
-              />
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
-              <button 
-                onClick={handleChangeType}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                Mudar Tipo
-              </button>
-              <button 
-                onClick={handleChangeColor}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                Mudar Cor
-              </button>
-              <button 
-                onClick={handleChangeAnimation}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                Animação: {animation}
-              </button>
-            </div>
-
-            <div className="text-center">
-              <Link 
-                href="/character-demo" 
-                className="inline-flex items-center text-sm font-medium text-primary hover:underline"
-              >
-                Ver mais personagens
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer com link Admin */}
-      <footer className="bg-gray-900 text-gray-300 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div>
-              <h3 className="text-white text-lg font-bold mb-2">RPX</h3>
-              <p className="text-sm">© {new Date().getFullYear()} RPX. Todos os direitos reservados.</p>
-            </div>
-            
-            <div className="mt-4 md:mt-0 flex items-center space-x-4">
-              <Link href="/terms" className="text-gray-400 hover:text-white text-sm">
-                Termos de Uso
-              </Link>
-              <Link href="/privacy" className="text-gray-400 hover:text-white text-sm">
-                Privacidade
-              </Link>
-              <span 
-                className="text-gray-400 hover:text-white text-sm cursor-pointer"
-                onClick={() => {
-                  if (isAdmin) {
-                    localStorage.removeItem('rpx-admin-auth');
-                    setIsAdmin(false);
-                    window.location.reload();
-                  } else {
-                    window.location.href = '/admin/login';
-                  }
-                }}
-              >
-                {isAdmin ? 'Sair do Modo Admin' : 'Admin'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

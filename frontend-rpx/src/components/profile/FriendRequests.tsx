@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Check, X, User, UserMinus } from 'react-feather';
+import { UserPlus, Check, X, User, UserMinus, Award } from 'react-feather';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface FriendItem {
   id: string;
   username: string;
   avatarUrl: string;
   level: number;
+  stats?: {
+    matches: number;
+    winRate: number;
+  };
 }
 
 interface FriendRequestsProps {
@@ -264,30 +269,48 @@ export default function FriendRequests({ onStatusChange }: FriendRequestsProps) 
               >
                 <div className="flex items-center">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-primary/30 p-0.5 overflow-hidden">
-                    <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                      <Image 
-                        src={friend.avatarUrl} 
-                        alt={friend.username}
-                        width={40} 
-                        height={40}
-                        className="w-full h-full object-cover"
-                      />
+                    <img 
+                      src={friend.avatarUrl || '/images/avatars/default.svg'} 
+                      alt={friend.username}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  </div>
+                  <div className="ml-3">
+                    <div className="text-white font-medium flex items-center">
+                      {friend.username}
+                      <span className="ml-2 text-xs bg-primary/30 text-primary-light px-1.5 py-0.5 rounded">
+                        Nv. {friend.level || 1}
+                      </span>
+                    </div>
+                    <div className="text-xs text-white/60">
+                      <span className="flex items-center">
+                        {friend.stats?.matches ? (
+                          <>
+                            <Award className="w-3 h-3 mr-1 text-yellow-500" />
+                            <span>Taxa de vitória: {friend.stats.winRate}%</span>
+                          </>
+                        ) : (
+                          'Nenhuma partida jogada'
+                        )}
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="ml-3">
-                    <div className="font-medium text-white">{friend.username}</div>
-                    <div className="text-xs text-white/50">Nível {friend.level}</div>
-                  </div>
                 </div>
-                
-                <div>
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href={`/profile/${friend.username}`}
+                    className="p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+                    title="Ver perfil"
+                  >
+                    <User size={16} />
+                  </Link>
+                  
                   {requestStatus[friend.id] === 'loading' ? (
                     <div className="w-8 h-8 flex items-center justify-center">
                       <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   ) : requestStatus[friend.id] === 'removed' ? (
-                    <span className="px-3 py-1.5 rounded bg-gray-600/20 text-gray-400 text-sm">
+                    <span className="px-3 py-1.5 rounded bg-red-600/20 text-red-400 text-sm">
                       Removido
                     </span>
                   ) : (

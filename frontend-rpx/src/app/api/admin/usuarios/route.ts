@@ -1,4 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getModels } from '@/lib/mongodb/models';
+import { connectToDatabase } from '@/lib/mongodb/connect';
+import { authMiddleware, isAdmin } from '@/lib/auth/middleware';
 
 // Definindo os tipos com base no que esperamos do banco de dados
 interface UserDB {
@@ -14,103 +17,41 @@ interface UserDB {
   } | null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Aqui você faria a conexão real com o banco de dados
-    // No momento estamos usando dados simulados
-    const usuarios: UserDB[] = [
-      {
-        id: 1,
-        name: 'João Silva',
-        email: 'joao.silva@email.com',
-        role: 'USER',
-        status: 'ATIVO',
-        createdAt: new Date('2023-10-15'),
-        lastLogin: new Date('2024-04-05'),
-        wallet: { balance: 350.75 }
-      },
-      {
-        id: 2,
-        name: 'Maria Oliveira',
-        email: 'maria.oliveira@email.com',
-        role: 'USER',
-        status: 'ATIVO',
-        createdAt: new Date('2023-11-20'),
-        lastLogin: new Date('2024-04-06'),
-        wallet: { balance: 127.50 }
-      },
-      {
-        id: 3,
-        name: 'Admin Principal',
-        email: 'admin@rpx.com',
-        role: 'ADMIN',
-        status: 'ATIVO',
-        createdAt: new Date('2023-01-01'),
-        lastLogin: new Date('2024-04-07'),
-        wallet: null
-      },
-      {
-        id: 4,
-        name: 'Pedro Santos',
-        email: 'pedro.santos@email.com',
-        role: 'USER',
-        status: 'BLOQUEADO',
-        createdAt: new Date('2023-12-10'),
-        lastLogin: new Date('2024-03-20'),
-        wallet: { balance: 0 }
-      },
-      {
-        id: 5,
-        name: 'Ana Ferreira',
-        email: 'ana.ferreira@email.com',
-        role: 'USER',
-        status: 'INATIVO',
-        createdAt: new Date('2024-01-05'),
-        lastLogin: new Date('2024-02-15'),
-        wallet: { balance: 75.25 }
-      },
-      {
-        id: 6,
-        name: 'Carlos Mendes',
-        email: 'carlos.mendes@email.com',
-        role: 'USER',
-        status: 'ATIVO',
-        createdAt: new Date('2024-02-18'),
-        lastLogin: new Date('2024-04-05'),
-        wallet: { balance: 230.00 }
-      },
-      {
-        id: 7,
-        name: 'Moderador Sistema',
-        email: 'moderador@rpx.com',
-        role: 'ADMIN',
-        status: 'ATIVO',
-        createdAt: new Date('2023-05-12'),
-        lastLogin: new Date('2024-04-06'),
-        wallet: null
-      },
-      {
-        id: 8,
-        name: 'Lúcia Pereira',
-        email: 'lucia.pereira@email.com',
-        role: 'USER',
-        status: 'ATIVO',
-        createdAt: new Date('2024-03-01'),
-        lastLogin: new Date('2024-04-07'),
-        wallet: { balance: 500.50 }
-      }
-    ];
+    // Autenticação e verificação de admin
+    const req = await authMiddleware(request);
+    if (req instanceof NextResponse) return req; // Erro de autenticação
+    
+    if (!isAdmin(req)) {
+      return NextResponse.json(
+        { error: 'Acesso negado. É necessário ser administrador.' },
+        { status: 403 }
+      );
+    }
+    
+    // Conectar ao banco
+    await connectToDatabase();
+    const { User } = await getModels();
+    
+    // Buscar usuários, excluindo superadmins e usuários ocultos
+    const usuarios = await User.find({ 
+      $and: [
+        { role: { $ne: 'superadmin' } },
+        { isHidden: { $ne: true } }
+      ]
+    }).select('-password');
 
-    // Formatar os dados para o formato esperado pela interface Usuario
-    const formattedUsuarios = usuarios.map((user: UserDB) => ({
-      id: user.id,
-      nome: user.name || '',
+    // Formatar os dados para a resposta
+    const formattedUsuarios = usuarios.map(user => ({
+      id: user._id,
+      nome: user.profile?.name || user.username,
       email: user.email,
-      tipoUsuario: user.role === 'ADMIN' ? 'admin' : 'jogador',
-      status: (user.status || 'ATIVO').toLowerCase() as 'ativo' | 'inativo' | 'bloqueado',
-      dataCadastro: user.createdAt.toISOString().split('T')[0],
-      ultimoLogin: user.lastLogin ? user.lastLogin.toISOString().split('T')[0] : null,
-      saldo: user.role !== 'ADMIN' ? user.wallet?.balance || 0 : undefined,
+      tipoUsuario: user.role,
+      status: user.status || 'ativo',
+      dataCadastro: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '',
+      ultimoLogin: user.lastLogin ? new Date(user.lastLogin).toISOString().split('T')[0] : '',
+      saldo: user.wallet?.balance || 0,
     }));
 
     return NextResponse.json(formattedUsuarios);

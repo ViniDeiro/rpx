@@ -318,37 +318,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para atualizar customizações do perfil
   const updateCustomization = async (type: 'avatar' | 'banner', itemId: string) => {
-    setIsLoading(true);
-    
     try {
-      // Atualização usando a API
-      const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      setIsLoading(true);
       
-      if (!authToken) {
-        throw new Error('Usuário não autenticado');
+      // Verificar se o usuário está logado
+      if (!user) {
+        throw new Error('Você precisa estar logado para realizar esta ação');
+      }
+      
+      // Verificar se itemId é válido
+      if (!itemId) {
+        throw new Error('ID do item não fornecido');
       }
       
       const response = await fetch('/api/users/customization', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ type, itemId }),
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || `Erro ao atualizar ${type}`);
+        // Tentar obter a mensagem de erro da API
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Erro ao atualizar ${type} (${response.status})`);
+        } catch (jsonError) {
+          // Se não conseguir processar o JSON, usar a mensagem do status
+          throw new Error(`Erro ao atualizar ${type}: ${response.statusText || response.status}`);
+        }
       }
       
       const data = await response.json();
       
-      // Atualizar estado do usuário
-      setUser(data.user);
+      // Atualizar o usuário no contexto
+      if (type === 'avatar') {
+        setUser(prev => prev ? { ...prev, avatarId: itemId } : null);
+      } else {
+        setUser(prev => prev ? { ...prev, bannerId: itemId } : null);
+      }
+      
+      return data;
     } catch (error: any) {
-      console.error(`Erro ao atualizar ${type}:`, error);
-      throw new Error(error.message || `Falha ao atualizar ${type}. Tente novamente mais tarde.`);
+      console.error('Erro ao atualizar customização:', error);
+      // Repassa o erro para ser tratado pelo componente chamador
+      throw error;
     } finally {
       setIsLoading(false);
     }

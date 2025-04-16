@@ -1,76 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModels } from '@/lib/mongodb/models';
-import { authMiddleware, isAdmin } from '@/lib/auth/middleware';
+import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb/connect';
 
-// GET - Listar usuários (apenas para administradores)
+// GET - Obter todos os usuários cadastrados
 export async function GET(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
-  
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult;
-  
-  // Verificar se o usuário é administrador
-  if (!isAdmin(authenticatedReq)) {
-    return NextResponse.json(
-      { error: 'Acesso não autorizado. Apenas administradores podem acessar esta rota.' },
-      { status: 403 }
-    );
-  }
-  
   try {
     // Obter parâmetros de consulta
-    const url = new URL(authenticatedReq.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const url = new URL(req.url);
+    const limit = parseInt(url.searchParams.get('limit') || '50');
     const search = url.searchParams.get('search') || '';
+    const includeAvatars = url.searchParams.get('includeAvatars') === 'true';
     
-    // Calcular o skip para paginação
-    const skip = (page - 1) * limit;
+    console.log(`Buscando usuários com includeAvatars=${includeAvatars}`);
     
-    // Obter os modelos do MongoDB
-    const { User } = await getModels();
+    // Conectar ao MongoDB
+    await connectToDatabase();
+    const db = mongoose.connection.db;
     
-    // Construir a consulta de filtro
-    const filter = search 
-      ? {
-          $or: [
-            { username: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
-            { 'profile.name': { $regex: search, $options: 'i' } }
-          ]
-        } 
-      : {};
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
     
-    // Executar a consulta com paginação
-    const users = await User.find(filter)
-      .select('-password') // Excluir o campo de senha
-      .skip(skip)
+    // Preparar filtro de busca
+    const searchFilter: any = {};
+    if (search) {
+      searchFilter.$or = [
+        { username: { $regex: search, $options: 'i' } },
+        { 'profile.name': { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Definir campos a projetar
+    const projectFields: any = {
+      _id: 1,
+      username: 1,
+      'profile.name': 1,
+      'profile.avatar': 1,
+      email: 1,
+      createdAt: 1,
+      status: 1
+    };
+    
+    // Incluir avatarUrl se solicitado
+    if (includeAvatars) {
+      projectFields.avatarUrl = 1;
+    }
+    
+    // Buscar usuários
+    const users = await db.collection('users')
+      .find(searchFilter)
+      .project(projectFields)
+      .sort({ createdAt: -1 })
       .limit(limit)
-      .sort({ createdAt: -1 }); // Ordenar por data de criação (mais recente primeiro)
+      .toArray();
     
-    // Contar o total de usuários para a paginação
-    const total = await User.countDocuments(filter);
+    console.log(`Encontrados ${users.length} usuários`);
     
-    // Retornar os usuários e informações de paginação
-    return NextResponse.json({
-      users,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
+    // Formatar dados para resposta
+    const formattedUsers = users.map(user => {
+      const formatted = {
+        _id: user._id.toString(),
+        id: user._id.toString(),
+        username: user.username,
+        name: user.profile?.name || user.username,
+        avatar: user.profile?.avatar || null,
+        email: user.email,
+        createdAt: user.createdAt,
+        status: user.status || 'active'
+      };
+      
+      // Incluir avatarUrl se estiver disponível e solicitado
+      if (includeAvatars && user.avatarUrl) {
+        // Se avatarUrl for muito grande, cortar para log
+        const avatarPreview = typeof user.avatarUrl === 'string' && user.avatarUrl.length > 50 
+          ? user.avatarUrl.substring(0, 20) + '...' + user.avatarUrl.substring(user.avatarUrl.length - 20)
+          : 'não é string';
+        
+        console.log(`Usuário ${user.username} tem avatarUrl (tamanho: ${typeof user.avatarUrl === 'string' ? user.avatarUrl.length : 'N/A'}, preview: ${avatarPreview})`);
+        
+        (formatted as any).avatarUrl = user.avatarUrl;
       }
+      
+      return formatted;
+    });
+    
+    // Registrar quantos usuários têm avatarUrl
+    if (includeAvatars) {
+      const withAvatars = formattedUsers.filter((user: any) => user.avatarUrl).length;
+      console.log(`${withAvatars} de ${formattedUsers.length} usuários têm avatarUrl`);
+    }
+    
+    // Retornar dados formatados
+    return NextResponse.json({
+      users: formattedUsers,
+      count: formattedUsers.length,
+      timestamp: new Date()
     });
   } catch (error) {
-    console.error('Erro ao listar usuários:', error);
+    console.error('Erro ao obter usuários:', error);
     return NextResponse.json(
-      { error: 'Erro ao listar usuários' },
+      { error: 'Erro ao obter usuários' },
       { status: 500 }
     );
   }

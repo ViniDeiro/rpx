@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { X, Lock, Check, ChevronLeft, ChevronRight, ShoppingBag } from 'react-feather';
 import { CustomizationItem, isItemUnlocked } from '@/data/customization';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'react-toastify';
 
 interface CustomizationSelectorProps {
   type: 'avatar' | 'banner';
@@ -13,334 +14,366 @@ interface CustomizationSelectorProps {
 
 export default function CustomizationSelector({ type, items, selectedItemId, onClose }: CustomizationSelectorProps) {
   const { user, updateCustomization, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState(0);
-  const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState(selectedItemId);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [previewItem, setPreviewItem] = useState<CustomizationItem | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const itemsPerPage = 8;
   
-  const itemsPerPage = 6;
+  // Filtrar items unlocked
+  const userLevel = user?.level || 1;
+  const userAchievements = user?.achievements || [];
+  const userPurchases = user?.purchases || [];
+  
+  // Função para paginar os itens
+  const paginatedItems = items.slice(
+    currentPage * itemsPerPage, 
+    (currentPage + 1) * itemsPerPage
+  );
+  
+  // Total de páginas
   const totalPages = Math.ceil(items.length / itemsPerPage);
-  const paginatedItems = items.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
   
+  // Navegar para a próxima página
   const nextPage = () => {
     if (currentPage < totalPages - 1) {
-      setCurrentPage(prev => prev + 1);
+      setCurrentPage(prevPage => prevPage + 1);
     }
   };
   
+  // Navegar para a página anterior
   const prevPage = () => {
     if (currentPage > 0) {
-      setCurrentPage(prev => prev - 1);
+      setCurrentPage(prevPage => prevPage - 1);
     }
   };
   
-  const handleSelect = async (itemId: string) => {
-    setSelectedId(itemId);
+  // Lidar com a seleção de um item
+  const handleSelectItem = async (item: CustomizationItem) => {
+    // Verificar se o item está desbloqueado
+    const canUse = isItemUnlocked(item, userLevel, userAchievements, userPurchases);
+    
+    if (!canUse) {
+      // Se não estiver desbloqueado, exibir mensagem e não fazer nada
+      setErrorMessage(`Este ${type === 'avatar' ? 'avatar' : 'banner'} está bloqueado. ${item.unlockCondition} ${item.unlockValue}.`);
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+    
+    // Se estiver desbloqueado, atualizar a seleção
+    setSelectedId(item.id);
+    
+    // Se for banner, fechar a pré-visualização
+    if (type === 'banner') {
+      setShowPreview(false);
+      setPreviewId(null);
+    }
+    
+    // Tentar salvar a seleção
+    try {
+      setIsSaving(true);
+      setErrorMessage(null);
+      
+      // Chamar a função de atualização
+      await updateCustomization(type, item.id);
+      
+      // Mostrar mensagem de sucesso
+      if (typeof toast !== 'undefined') {
+        toast.success(`${type === 'avatar' ? 'Avatar' : 'Banner'} atualizado com sucesso!`);
+      }
+      
+      // Fechar o seletor após um pequeno delay
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (error: any) {
+      console.error(`Erro ao atualizar ${type}:`, error);
+      setErrorMessage(error.message || `Erro ao salvar ${type}. Tente novamente.`);
+      
+      // Mostrar mensagem de erro
+      if (typeof toast !== 'undefined') {
+        toast.error(`Erro ao atualizar ${type}: ${error.message || 'Tente novamente'}`);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
   
-  const handleSave = async () => {
-    if (selectedId === selectedItemId || saving) return;
+  // Pré-visualizar um banner
+  const handlePreview = (item: CustomizationItem) => {
+    setPreviewId(item.id);
+    setShowPreview(true);
+  };
+  
+  // Fechar pré-visualização
+  const closePreview = () => {
+    setShowPreview(false);
+    setPreviewId(null);
+  };
+  
+  // Salvar alteração no backend
+  const handleSaveCustomization = async () => {
+    if (selectedId === selectedItemId) {
+      // Se não houve alteração, apenas fechar
+      onClose();
+      return;
+    }
     
     try {
-      setSaving(true);
+      setIsSaving(true);
+      setErrorMessage(null);
+      
+      // Chamar a função de atualização
       await updateCustomization(type, selectedId);
-      onClose();
-    } catch (error) {
-      console.error(`Erro ao salvar ${type}:`, error);
-      alert(`Erro ao salvar: ${(error as Error).message}`);
+      
+      // Mostrar mensagem de sucesso
+      if (typeof toast !== 'undefined') {
+        toast.success(`${type === 'avatar' ? 'Avatar' : 'Banner'} atualizado com sucesso!`);
+      }
+      
+      // Fechar o seletor após um pequeno delay
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (error: any) {
+      console.error(`Erro ao atualizar ${type}:`, error);
+      setErrorMessage(error.message || `Erro ao salvar ${type}. Tente novamente.`);
+      
+      // Mostrar mensagem de erro
+      if (typeof toast !== 'undefined') {
+        toast.error(`Erro ao atualizar ${type}: ${error.message || 'Tente novamente'}`);
+      }
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
-  };
-  
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'comum': return 'border-gray-400 bg-gray-600/20';
-      case 'raro': return 'border-blue-400 bg-blue-600/20';
-      case 'épico': return 'border-purple-400 bg-purple-600/20';
-      case 'lendário': return 'border-yellow-400 bg-yellow-600/20';
-      default: return 'border-gray-400 bg-gray-600/20';
-    }
-  };
-  
-  const getUnlockText = (item: CustomizationItem) => {
-    if (item.unlockMethod === 'inicial') return 'Disponível desde o início';
-    if (item.unlockMethod === 'level') return `Nível ${item.unlockValue} necessário`;
-    if (item.unlockMethod === 'conquista') return `Conquista: ${item.unlockCondition}`;
-    if (item.unlockMethod === 'torneio') return `Evento: ${item.unlockCondition}`;
-    if (item.unlockMethod === 'compra') return `${item.unlockCondition} ${item.unlockValue} moedas`;
-    return 'Bloqueado';
-  };
-  
-  // Verificar se o item está desbloqueado
-  const isUnlocked = (item: CustomizationItem) => {
-    if (!user) return false;
-    return isItemUnlocked(
-      item, 
-      user.level || 0,
-      user.achievements || [],
-      user.purchases || []
-    );
-  };
-  
-  const handlePreview = (item: CustomizationItem) => {
-    if (!isUnlocked(item)) return;
-    setPreviewItem(item);
-    setPreviewMode(true);
-  };
-
-  const closePreview = () => {
-    setPreviewMode(false);
-    setPreviewItem(null);
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
-      <div 
-        className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-xl w-full max-w-4xl p-6 shadow-2xl shadow-purple-900/20 border border-purple-500/30 animate-fade-up"
-        style={{ animationDuration: '0.3s' }}
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold flex items-center">
-            {type === 'avatar' ? 'Selecionar avatar' : 'Personalizar seu banner'}
-            <span className="ml-2 bg-gradient-to-r from-purple-500 to-blue-500 text-xs py-1 px-2 rounded-md">VIP</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      {/* Modal principal */}
+      <div className="bg-[#171335] rounded-xl w-full max-w-2xl animate-fade-up shadow-xl border border-[#3D2A85]/20 overflow-hidden relative">
+        {/* Cabeçalho */}
+        <div className="p-4 flex justify-between items-center border-b border-[#3D2A85]/20">
+          <h2 className="text-xl font-bold text-white">
+            {type === 'avatar' ? 'Escolher Avatar' : 'Escolher Banner'}
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10"
+            className="p-2 text-gray-400 hover:text-white transition-colors"
+            aria-label="Fechar"
           >
             <X size={20} />
           </button>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {paginatedItems.map(item => {
-            const isItemSelected = selectedId === item.id;
-            const canUse = isUnlocked(item);
-            const rarityClass = getRarityColor(item.rarity);
-            
-            return (
-              <div 
-                key={item.id}
-                className={`
-                  relative rounded-lg overflow-hidden transition-all duration-300 transform
-                  ${isItemSelected ? 'scale-[1.02] ring-2 ring-purple-500 shadow-lg shadow-purple-500/30' : 
-                    canUse ? 'hover:scale-[1.01]' : 'opacity-75'
-                  }
-                  ${canUse ? 'cursor-pointer group' : 'cursor-not-allowed grayscale'}
-                  border-2 ${isItemSelected ? 'border-purple-500' : `${rarityClass}`}
-                  h-full
-                `}
-              >
-                {/* Thumbnail com efeito de hover */}
-                <div 
-                  className="aspect-[16/9] w-full bg-gray-900 overflow-hidden"
-                  onClick={() => canUse && type === 'banner' && handlePreview(item)}
-                >
-                  {type === 'banner' ? (
-                    <div className="w-full h-full relative">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        width={400}
-                        height={225}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {canUse && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                          <span className="text-white text-sm font-medium bg-purple-500/80 px-3 py-1 rounded-full">
-                            {isItemSelected ? 'Selecionado' : 'Ver prévia'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 py-4">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        width={100}
-                        height={100}
-                        className="w-24 h-24 rounded-full"
-                      />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Caption com informações aprimoradas */}
-                <div className="p-4 bg-gray-900/80 backdrop-blur-sm flex flex-col h-[120px]">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-white flex items-center">
-                      {item.name}
-                      {item.unlockMethod === 'compra' && (
-                        <span className="ml-2 text-xs text-yellow-400 flex items-center">
-                          <ShoppingBag size={12} className="mr-1" /> Premium
-                        </span>
-                      )}
-                    </h3>
-                    {!canUse ? (
-                      <Lock size={16} className="text-gray-400" />
-                    ) : isItemSelected ? (
-                      <div className="bg-green-500/20 p-1 rounded-full">
-                        <Check size={16} className="text-green-500" />
-                      </div>
-                    ) : null}
-                  </div>
-                  
-                  {/* Mostrar raridade */}
-                  <div className="flex items-center mt-2 mb-1">
-                    <span className={`inline-block h-2 w-2 rounded-full mr-2 ${
-                      item.rarity === 'comum' ? 'bg-gray-400' :
-                      item.rarity === 'raro' ? 'bg-blue-400' :
-                      item.rarity === 'épico' ? 'bg-purple-400' :
-                      'bg-yellow-400'
-                    }`}></span>
-                    <span className="text-xs text-gray-300 capitalize">{item.rarity}</span>
-                  </div>
-                  
-                  <p className={`text-sm mt-1 flex-grow ${canUse ? 'text-gray-300' : 'text-red-400'} line-clamp-2`}>
-                    {canUse ? item.description : getUnlockText(item)}
-                  </p>
-                  
-                  {/* Botões de ação */}
-                  <div className="mt-auto pt-2 flex justify-between">
-                    {canUse ? (
-                      <button 
-                        onClick={() => handleSelect(item.id)}
-                        className={`text-xs py-1.5 px-3 rounded-md transition-colors ${
-                          isItemSelected ? 'bg-green-600/20 text-green-400 cursor-default' : 'bg-purple-600/30 hover:bg-purple-600/50 text-purple-200'
-                        }`}
-                      >
-                        {isItemSelected ? 'Selecionado' : 'Selecionar'}
-                      </button>
-                    ) : (
-                      item.unlockMethod === 'compra' ? (
-                        <button 
-                          className="text-xs py-1.5 px-3 rounded-md bg-yellow-600/40 hover:bg-yellow-600/60 text-yellow-200 transition-colors flex items-center gap-1"
-                        >
-                          <ShoppingBag size={12} /> Comprar ({item.unlockValue})
-                        </button>
-                      ) : (
-                        <span className="text-xs py-1.5 px-3 rounded-md bg-red-500/20 text-red-300">
-                          Bloqueado
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-                
-                {/* Overlay para itens bloqueados */}
-                {!canUse && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="bg-gray-900/80 px-4 py-2 rounded-lg flex items-center space-x-2 backdrop-blur-sm border border-white/10">
-                      <Lock size={16} />
-                      <span className="text-sm font-medium">Bloqueado</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Paginação com visual aprimorado */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 mb-6">
-            <button
-              onClick={prevPage}
-              disabled={currentPage === 0}
-              className={`p-2 rounded-full transition-colors ${
-                currentPage === 0 ? 'text-gray-500 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className="text-sm bg-gray-800 px-4 py-1.5 rounded-full">
-              Página {currentPage + 1} de {totalPages}
-            </span>
-            <button
-              onClick={nextPage}
-              disabled={currentPage === totalPages - 1}
-              className={`p-2 rounded-full transition-colors ${
-                currentPage === totalPages - 1 ? 'text-gray-500 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              <ChevronRight size={20} />
-            </button>
+        {/* Mensagem de erro */}
+        {errorMessage && (
+          <div className="mx-4 mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200">
+            <p>{errorMessage}</p>
           </div>
         )}
         
-        {/* Botões de ação */}
-        <div className="flex justify-end gap-3">
+        {/* Grid de itens */}
+        <div className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {paginatedItems.map(item => {
+              const isItemSelected = selectedId === item.id;
+              const canUse = isItemUnlocked(item, userLevel, userAchievements, userPurchases);
+              
+              return (
+                <div 
+                  key={item.id}
+                  className={`
+                    relative rounded-lg overflow-hidden border transition-all group
+                    ${isItemSelected 
+                      ? 'border-[#8860FF] shadow-lg shadow-[#8860FF]/20' 
+                      : canUse 
+                        ? 'border-[#3D2A85]/30 hover:border-[#8860FF]/50' 
+                        : 'border-gray-700 opacity-60'
+                    }
+                  `}
+                >
+                  {/* Indicador de selecionado */}
+                  {isItemSelected && (
+                    <div className="absolute top-2 right-2 z-10 bg-[#8860FF] rounded-full p-1">
+                      <Check size={16} />
+                    </div>
+                  )}
+                  
+                  {/* Indicador de bloqueado */}
+                  {!canUse && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 p-2">
+                      <Lock size={24} className="text-white/70 mb-2" />
+                      <p className="text-xs text-center text-white/70">
+                        {item.unlockCondition} {item.unlockValue}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Item */}
+                  <div 
+                    className="aspect-[16/9] w-full bg-gray-900 overflow-hidden"
+                    onClick={() => canUse && type === 'banner' && handlePreview(item)}
+                  >
+                    {type === 'banner' ? (
+                      <div className="w-full h-full relative">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          width={400}
+                          height={225}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        {canUse && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                            <span className="text-white text-sm font-medium bg-purple-500/80 px-3 py-1 rounded-full">
+                              {isItemSelected ? 'Selecionado' : 'Ver prévia'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 py-4">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          width={100}
+                          height={100}
+                          className="w-24 h-24 rounded-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Caption com informações aprimoradas */}
+                  <div className="p-3 bg-[#232048]">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-medium text-white text-sm">{item.name}</h3>
+                      <div className={`text-xs px-1.5 py-0.5 rounded ${
+                        item.rarity === 'comum' ? 'bg-gray-700 text-gray-300' :
+                        item.rarity === 'raro' ? 'bg-blue-900/40 text-blue-300' :
+                        item.rarity === 'épico' ? 'bg-purple-900/40 text-purple-300' :
+                        'bg-amber-900/40 text-amber-300'
+                      }`}>
+                        {item.rarity}
+                      </div>
+                    </div>
+                    
+                    {canUse && (
+                      <button
+                        onClick={() => handleSelectItem(item)}
+                        disabled={isItemSelected || isLoading || isSaving}
+                        className={`
+                          mt-2 w-full py-1.5 rounded-md text-sm font-medium text-center transition-colors
+                          ${isItemSelected 
+                            ? 'bg-[#8860FF]/30 text-[#8860FF] cursor-default' 
+                            : 'bg-[#8860FF] hover:bg-[#7D55EF] text-white'
+                          }
+                          ${(isLoading || isSaving) ? 'opacity-50 cursor-wait' : ''}
+                        `}
+                      >
+                        {isItemSelected ? 'Selecionado' : 'Selecionar'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <button
+                onClick={prevPage}
+                disabled={currentPage === 0}
+                className={`p-2 rounded-md ${
+                  currentPage === 0 
+                    ? 'text-gray-500 cursor-not-allowed' 
+                    : 'text-white hover:bg-[#232048]'
+                }`}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="text-white">
+                Página {currentPage + 1} de {totalPages}
+              </div>
+              
+              <button
+                onClick={nextPage}
+                disabled={currentPage === totalPages - 1}
+                className={`p-2 rounded-md ${
+                  currentPage === totalPages - 1 
+                    ? 'text-gray-500 cursor-not-allowed' 
+                    : 'text-white hover:bg-[#232048]'
+                }`}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Footer com botões */}
+        <div className="p-4 border-t border-[#3D2A85]/20 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-gray-200"
+            className="px-4 py-2 bg-[#232048] hover:bg-[#2c295c] text-white rounded-md transition-colors"
           >
             Cancelar
           </button>
+          
           <button
-            onClick={handleSave}
-            disabled={selectedId === selectedItemId || saving}
+            onClick={handleSaveCustomization}
+            disabled={selectedId === selectedItemId || isLoading || isSaving}
             className={`
-              px-4 py-2 rounded-lg transition-colors flex items-center gap-2
-              ${selectedId !== selectedItemId && !saving
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white' 
-                : 'bg-gray-600 cursor-not-allowed text-gray-300'
+              px-4 py-2 rounded-md transition-colors
+              ${selectedId === selectedItemId 
+                ? 'bg-[#232048] text-gray-400 cursor-not-allowed' 
+                : 'bg-[#8860FF] hover:bg-[#7D55EF] text-white'
               }
+              ${(isLoading || isSaving) ? 'animate-pulse cursor-wait' : ''}
             `}
           >
-            {saving && (
-              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-            )}
-            Salvar alterações
+            {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </div>
       
-      {/* Preview Modal para banners */}
-      {previewMode && previewItem && type === 'banner' && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <div className="w-full max-w-5xl p-4">
-            <div className="relative w-full h-80 rounded-xl overflow-hidden">
+      {/* Preview de Banner */}
+      {showPreview && previewId && type === 'banner' && (
+        <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 bg-black/80 backdrop-blur-md animate-fade">
+          <div className="w-full max-w-4xl">
+            <div className="relative w-full h-64 overflow-hidden rounded-xl">
               <Image
-                src={previewItem.image}
-                alt={previewItem.name}
+                src={items.find(item => item.id === previewId)?.image || ''}
+                alt="Preview do banner"
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
-              <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center">
-                <span className="text-white font-semibold mr-2">{previewItem.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  previewItem.rarity === 'comum' ? 'bg-gray-400 text-gray-900' :
-                  previewItem.rarity === 'raro' ? 'bg-blue-500 text-white' :
-                  previewItem.rarity === 'épico' ? 'bg-purple-500 text-white' :
-                  'bg-yellow-500 text-yellow-900'
-                }`}>
-                  {previewItem.rarity.toUpperCase()}
-                </span>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-center gap-4">
-              <button
-                onClick={closePreview}
-                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-              >
-                Voltar
-              </button>
-              {selectedId !== previewItem.id && (
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
+              
+              <div className="absolute top-4 right-4 flex gap-2">
                 <button
-                  onClick={() => {
-                    handleSelect(previewItem.id);
-                    closePreview();
-                  }}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 transition-colors"
+                  onClick={() => handleSelectItem(items.find(item => item.id === previewId)!)}
+                  disabled={isLoading || isSaving}
+                  className="px-4 py-2 bg-[#8860FF] hover:bg-[#7D55EF] text-white rounded-md transition-colors flex items-center gap-2"
                 >
-                  Selecionar este banner
+                  <Check size={16} />
+                  <span>Selecionar</span>
                 </button>
-              )}
+                
+                <button
+                  onClick={closePreview}
+                  className="p-2 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

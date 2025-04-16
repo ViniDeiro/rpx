@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, User, UserPlus, Check, X, AlertCircle } from 'react-feather';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 interface UserSearchResult {
   id: string;
@@ -9,6 +10,10 @@ interface UserSearchResult {
   avatarUrl: string;
   level: number;
   status?: 'none' | 'friend' | 'sent' | 'received';
+  stats?: {
+    matches: number;
+    winRate: number;
+  };
 }
 
 interface FriendSearchProps {
@@ -199,25 +204,37 @@ export default function FriendSearch({ onInviteFriend }: FriendSearchProps) {
         {searchResults.map((user) => (
           <div key={user.id} className="bg-card-hover border border-border hover:border-primary/30 rounded-lg p-3 flex items-center justify-between transition-all">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary/20 to-primary/30 p-0.5 overflow-hidden">
-                <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                  <Image 
-                    src={user.avatarUrl} 
-                    alt={user.username}
-                    width={40} 
-                    height={40}
-                    className="w-full h-full object-cover"
-                  />
+              <div className="w-10 h-10 rounded-full bg-card overflow-hidden">
+                <Image 
+                  src={user.avatarUrl || '/images/avatars/default.svg'} 
+                  alt={user.username} 
+                  width={40} 
+                  height={40} 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <div className="ml-3">
+                <div className="text-white font-medium">{user.username}</div>
+                <div className="text-xs text-white/60 flex items-center">
+                  <span className="bg-primary/20 text-primary-light px-1.5 py-0.5 rounded mr-2">
+                    Nv. {user.level || 1}
+                  </span>
+                  {user.stats?.matches ? 
+                    `${user.stats.winRate}% de vitórias` : 
+                    'Novo jogador'
+                  }
                 </div>
               </div>
-              
-              <div className="ml-3">
-                <div className="font-medium text-white">{user.username}</div>
-                <div className="text-xs text-white/50">Nível {user.level}</div>
-              </div>
             </div>
-            
-            <div>
+            <div className="flex items-center space-x-2">
+              <Link 
+                href={`/profile/${user.username}`} 
+                className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex items-center transition-all"
+              >
+                <User size={12} className="mr-1" />
+                Ver perfil
+              </Link>
+              
               {user.status === 'friend' ? (
                 <button
                   onClick={() => inviteFriend(user)}
@@ -240,22 +257,13 @@ export default function FriendSearch({ onInviteFriend }: FriendSearchProps) {
                   Aceitar
                 </button>
               ) : friendRequests[user.id] === 'loading' ? (
-                <span className="px-3 py-1.5 rounded bg-primary/30 text-white/70 text-sm flex items-center">
-                  <div className="w-3 h-3 border-2 border-white/70 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-                  Enviando
-                </span>
-              ) : friendRequests[user.id] === 'error' ? (
-                <button
-                  onClick={() => sendFriendRequest(user.id)}
-                  className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm flex items-center transition-all"
-                >
-                  <AlertCircle size={14} className="mr-1.5" />
-                  Tentar novamente
-                </button>
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
               ) : (
                 <button
                   onClick={() => sendFriendRequest(user.id)}
-                  className="px-3 py-1.5 rounded bg-primary hover:bg-primary/80 text-white text-sm flex items-center transition-all"
+                  className="px-3 py-1.5 rounded bg-primary hover:bg-primary-dark text-white text-sm flex items-center transition-all"
                 >
                   <UserPlus size={14} className="mr-1.5" />
                   Adicionar
