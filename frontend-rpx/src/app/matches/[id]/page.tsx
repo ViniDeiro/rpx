@@ -712,7 +712,22 @@ export default function MatchDetailsPage() {
               </div>
             ) : match.status === 'ready' && match.roomId && match.roomPassword ? (
               <MatchRoomCard 
-                match={match} 
+                match={{
+                  _id: match.id,
+                  title: `Partida ${match.gameMode || 'Padrão'}`,
+                  gameType: match.gameMode || 'battle_royale',
+                  maxPlayers: match.players?.length || 4,
+                  status: match.status,
+                  players: match.players || [],
+                  playersInfo: match.playersInfo?.map(player => ({
+                    _id: player._id,
+                    username: player.username,
+                    avatarUrl: player.avatarUrl || null
+                  })) || [],
+                  confirmedPlayers: [],
+                  createdAt: match.date,
+                  playerConfirmed: false
+                }}
                 onConfirmEntry={handleConfirmEntry} 
               />
             ) : match.status === 'ongoing' ? (
