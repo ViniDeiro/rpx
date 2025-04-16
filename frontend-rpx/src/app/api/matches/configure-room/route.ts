@@ -86,16 +86,19 @@ export async function POST(request: Request) {
     );
     
     // Notificar todos os jogadores
-    const allMembers = [];
-    match.teams.forEach(team => {
+    const allMembers: string[] = [];
+    match.teams.forEach((team: any) => {
       if (team.members && Array.isArray(team.members)) {
-        allMembers.push(...team.members);
+        // Garantir que cada membro é convertido para string
+        team.members.forEach((member: any) => {
+          allMembers.push(member.toString());
+        });
       }
     });
     
     for (const memberId of allMembers) {
       await db.collection('notifications').insertOne({
-        userId: new ObjectId(memberId.toString()),
+        userId: new ObjectId(memberId),
         type: 'match_ready',
         read: false,
         data: {
