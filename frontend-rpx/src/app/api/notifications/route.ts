@@ -5,6 +5,7 @@ import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
+import { Collection, FindCursor } from 'mongodb';
 
 // Interface para notificações
 interface Notification {
@@ -57,32 +58,34 @@ export async function GET(request: Request) {
       }
       
       // Buscar notificações tradicionais
-      let notificationQuery = db.collection('notifications').find({ 
+      const notificationsCollection = db.collection('notifications');
+      const notificationsQuery = notificationsCollection.find({ 
         $or: [
           { userId: new ObjectId(userId) },
           { userId: userId.toString() }
         ]
       });
       
-      // Aplicar ordenação e limite se o objeto suportar
-      if (typeof notificationQuery.sort === 'function') {
-        notificationQuery = notificationQuery.sort({ createdAt: -1 });
-      }
+      // Buscar notificações e ordenar manualmente
+      const notifications = await notificationsQuery.toArray();
       
-      if (typeof notificationQuery.limit === 'function') {
-        notificationQuery = notificationQuery.limit(20);
-      }
+      // Ordenar notificações por data de criação (mais recentes primeiro)
+      notifications.sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
       
-      const notifications = await notificationQuery.toArray();
+      // Limitar a 20 notificações
+      const limitedNotifications = notifications.slice(0, 20);
       
-      console.log(`API Notifications - Encontradas ${notifications.length} notificações regulares`);
+      console.log(`API Notifications - Encontradas ${limitedNotifications.length} notificações regulares`);
       
       // Buscar também convites de lobby pendentes
       const userIdString = userId.toString();
       console.log('Buscando convites para o ID (string):', userIdString);
       
       // Buscar convites específicos para este usuário
-      let inviteQuery = db.collection('lobbyinvites').find({ 
+      const lobbyInvitesCollection = db.collection('lobbyinvites');
+      const invitesQuery = lobbyInvitesCollection.find({ 
         $or: [
           { recipient: new ObjectId(userId) },
           { recipient: userId.toString() }
@@ -90,12 +93,16 @@ export async function GET(request: Request) {
         status: 'pending' 
       });
       
-      // Aplicar ordenação se o objeto suportar
-      if (typeof inviteQuery.sort === 'function') {
-        inviteQuery = inviteQuery.sort({ createdAt: -1 });
-      }
+      // Buscar convites e ordenar manualmente
+      const allInvites = await invitesQuery.toArray();
       
-      const userInvites = await inviteQuery.toArray();
+      // Ordenar convites por data de criação (mais recentes primeiro)
+      allInvites.sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      
+      // Limitar a 20 convites
+      const userInvites = allInvites.slice(0, 20);
       
       console.log(`API Notifications - Encontrados ${userInvites.length} convites de lobby para o usuário`);
       
@@ -103,26 +110,14 @@ export async function GET(request: Request) {
       if (userInvites.length === 0) {
         // Verificar se há convites pendentes no sistema
         try {
-          const inviteCollection = db.collection('lobbyinvites');
-          let pendingCount = 0;
-          
-          // Verificar se o método countDocuments existe
-          if (typeof inviteCollection.countDocuments === 'function') {
-            pendingCount = await inviteCollection.countDocuments({ status: 'pending' });
-          } else if (typeof inviteCollection.count === 'function') {
-            // Fallback para o método count mais antigo
-            pendingCount = await inviteCollection.count({ status: 'pending' });
-          } else {
-            // Última opção: buscar todos e contar manualmente
-            const allPending = await inviteCollection.find({ status: 'pending' }).toArray();
-            pendingCount = allPending.length;
-          }
+          // Buscar todos os convites pendentes e contar manualmente
+          const pendingInvites = await lobbyInvitesCollection.find({ status: 'pending' }).toArray();
+          const pendingCount = pendingInvites.length;
           
           console.log(`Existem ${pendingCount} convites pendentes no sistema no total`);
           
           if (pendingCount > 0) {
-            const sampleInvite = await db.collection('lobbyinvites')
-              .findOne({ status: 'pending' });
+            const sampleInvite = pendingInvites[0];
             
             if (sampleInvite) {
               console.log('Exemplo de convite pendente:');
@@ -189,7 +184,7 @@ export async function GET(request: Request) {
       }));
       
       // Juntar todas as notificações
-      const allNotifications = [...notifications, ...inviteNotifications];
+      const allNotifications = [...limitedNotifications, ...inviteNotifications];
       
       // Ordenar manualmente por lidas e data
       allNotifications.sort((a, b) => {
@@ -202,12 +197,12 @@ export async function GET(request: Request) {
       });
       
       // Limitar a 20 notificações
-      const limitedNotifications = allNotifications.slice(0, 20);
+      const limitedNotificationsFinal = allNotifications.slice(0, 20);
       
-      console.log(`API Notifications - Total de ${limitedNotifications.length} notificações combinadas`);
+      console.log(`API Notifications - Total de ${limitedNotificationsFinal.length} notificações combinadas`);
       
       // Converter ID's ObjectId para strings para serialização JSON
-      const serializedNotifications = limitedNotifications.map((notification: any) => {
+      const serializedNotifications = limitedNotificationsFinal.map((notification: any) => {
         try {
           // Verificar se o objeto notification existe e tem os campos necessários
           if (!notification || !notification._id) {
