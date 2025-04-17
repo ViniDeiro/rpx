@@ -8,14 +8,14 @@ import { toast } from 'react-hot-toast';
 import { rejectLobbyInvite, acceptLobbyInvite } from '@/lib/api/lobby';
 
 interface NotificationProps {
-  notification: any;
+  invite: any;
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onDismiss?: (id: string) => void;
 }
 
 export default function LobbyInviteNotification({ 
-  notification, 
+  invite, 
   onAccept, 
   onReject,
   onDismiss
@@ -23,23 +23,23 @@ export default function LobbyInviteNotification({
   const [loading, setLoading] = useState<'accept' | 'reject' | null>(null);
 
   // Debug: mostrar a estrutura da notificação
-  console.log('Recebida notificação de convite:', notification);
+  console.log('Recebida notificação de convite:', invite);
 
   // Função para extrair os dados necessários do objeto de notificação
   const extractNotificationData = () => {
     try {
       // Verificar primeiro se a notificação está no formato direto (da API de notificações)
-      if (notification.type === 'lobby_invite') {
+      if (invite.type === 'lobby_invite') {
         console.log('Notificação no formato direto');
         return {
-          id: notification._id || '',
-          inviterId: notification.inviter || '',
-          inviterName: notification.inviterName || 'Usuário',
-          inviterAvatar: notification.inviterAvatar || '/images/avatars/default.png',
-          lobbyId: notification.lobbyId || '',
-          lobbyName: notification.lobbyName || 'Lobby',
-          createdAt: notification.createdAt || new Date(),
-          gameMode: notification.gameMode || 'casual'
+          id: invite._id || '',
+          inviterId: invite.inviter || '',
+          inviterName: invite.inviterName || 'Usuário',
+          inviterAvatar: invite.inviterAvatar || '/images/avatars/default.png',
+          lobbyId: invite.lobbyId || '',
+          lobbyName: invite.lobbyName || 'Lobby',
+          createdAt: invite.createdAt || new Date(),
+          gameMode: invite.gameMode || 'casual'
         };
       }
       
@@ -47,19 +47,19 @@ export default function LobbyInviteNotification({
       console.log('Tentando extrair do formato aninhado');
       
       // Verificar se existe data.invite
-      if (notification.data && notification.data.invite) {
-        const invite = notification.data.invite;
-        const inviter = notification.data.inviter || {};
+      if (invite.data && invite.data.invite) {
+        const inviteData = invite.data.invite;
+        const inviter = invite.data.inviter || {};
         
         return {
-          id: invite._id || '',
+          id: inviteData._id || '',
           inviterId: inviter._id || '',
           inviterName: inviter.username || 'Usuário',
           inviterAvatar: inviter.avatar || '/images/avatars/default.png',
-          lobbyId: invite.lobbyId || '',
+          lobbyId: inviteData.lobbyId || '',
           lobbyName: 'Lobby', // Não temos esse dado no formato aninhado
-          createdAt: invite.createdAt || notification.createdAt || new Date(),
-          gameMode: invite.gameMode || 'casual'
+          createdAt: inviteData.createdAt || invite.createdAt || new Date(),
+          gameMode: inviteData.gameMode || 'casual'
         };
       }
       
@@ -67,11 +67,11 @@ export default function LobbyInviteNotification({
       throw new Error('Formato de notificação desconhecido');
     } catch (error) {
       console.error('Erro ao extrair dados da notificação:', error);
-      console.error('Estrutura da notificação:', notification);
+      console.error('Estrutura da notificação:', invite);
       
       // Dados de fallback
       return {
-        id: notification._id || notification.id || '',
+        id: invite._id || invite.id || '',
         inviterId: '',
         inviterName: 'Usuário',
         inviterAvatar: '/images/avatars/default.png',
