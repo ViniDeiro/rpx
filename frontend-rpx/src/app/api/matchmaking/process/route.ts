@@ -17,6 +17,8 @@ interface LobbyDocument {
   gameType: string;
   status: string;
   teamSize?: number;
+  platformMode?: string;
+  gameplayMode?: string;
 }
 
 interface MatchDocument {
@@ -51,6 +53,8 @@ interface QueuedLobby {
   createdBy: string;
   gameType: string;
   betAmount: number;
+  platformMode?: string;
+  gameplayMode?: string;
   players: {
     userId: string;
     username: string;
@@ -98,7 +102,9 @@ export async function GET() {
     for (const lobby of queuedLobbies) {
       const gameType = lobby.gameType || 'default';
       const teamSize = lobby.teamSize || 1;
-      const key = `${gameType}-${teamSize}`;
+      const platformMode = lobby.platformMode || 'mixed';
+      const gameplayMode = lobby.gameplayMode || 'normal';
+      const key = `${gameType}-${teamSize}-${platformMode}-${gameplayMode}`;
       
       if (!lobbyGroups[key]) {
         lobbyGroups[key] = [];
@@ -114,7 +120,7 @@ export async function GET() {
     // Para cada grupo de lobbies, processar matchmaking
     for (const key in lobbyGroups) {
       const lobbies = lobbyGroups[key];
-      const [gameType, teamSizeStr] = key.split('-');
+      const [gameType, teamSizeStr, platformMode, gameplayMode] = key.split('-');
       const teamSize = parseInt(teamSizeStr, 10);
       
       // Lógica para fazer o matchmaking
@@ -138,6 +144,8 @@ export async function GET() {
               ...(lobby2.players || []).map(p => ({ ...p, lobbyId: lobby2.lobbyId }))
             ],
             gameType,
+            platformMode,
+            gameplayMode,
             status: 'pending',
             createdAt: new Date()
           });

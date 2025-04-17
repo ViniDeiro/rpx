@@ -10,6 +10,8 @@ import { connectToDatabase } from '@/lib/mongodb/connect';
 export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'canceled';
 export type MatchType = 'solo' | 'duo' | 'squad' | 'tournament';
 export type Platform = 'emulator' | 'mobile' | 'mixed' | 'tactical';
+export type PlatformMode = 'emulator' | 'mobile' | 'mixed';
+export type GameplayMode = 'normal' | 'tactical' | 'infinite_ice';
 
 export interface MatchPlayer {
   id: string;
@@ -45,6 +47,8 @@ export interface Match {
   status: MatchStatus;
   teamSize: number;
   platform: Platform;
+  platformMode?: PlatformMode;
+  gameplayMode?: GameplayMode;
   entryFee: number;
   prize: number;
   teams: MatchTeam[];
@@ -63,6 +67,8 @@ export interface MatchFilters {
   mode?: string;
   type?: MatchType;
   platform?: Platform;
+  platformMode?: PlatformMode;
+  gameplayMode?: GameplayMode;
   status?: MatchStatus;
   minEntryFee?: number;
   maxEntryFee?: number;
@@ -75,6 +81,8 @@ export interface CreateMatchParams {
   type: MatchType;
   teamSize: number;
   platform: Platform;
+  platformMode?: PlatformMode;
+  gameplayMode?: GameplayMode;
   entryFee: number;
   paymentOption: 'captain' | 'split';
   createdBy: string;

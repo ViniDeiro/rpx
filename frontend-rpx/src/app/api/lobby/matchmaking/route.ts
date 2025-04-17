@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { lobbyId } = body;
+    const { lobbyId, platformMode = 'mixed', gameplayMode = 'normal' } = body;
     
     if (!lobbyId) {
       return NextResponse.json({
@@ -68,7 +68,9 @@ export async function POST(request: Request) {
             ...lobby.config,
             // Opções de matchmaking podem ser adicionadas aqui
             skill: lobby.config?.skill || 'any',
-            region: lobby.config?.region || 'brasil'
+            region: lobby.config?.region || 'brasil',
+            platformMode: platformMode,
+            gameplayMode: gameplayMode
           }
         }
       }
@@ -80,6 +82,8 @@ export async function POST(request: Request) {
       teamSize: memberCount,
       skill: lobby.config?.skill || 'any',
       region: lobby.config?.region || 'brasil',
+      platformMode: platformMode,
+      gameplayMode: gameplayMode,
       createdAt: new Date()
     });
     

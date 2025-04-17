@@ -415,22 +415,23 @@ export default function FriendProfile({ params }: { params: { username: string }
           {/* Informações do usuário */}
           <div className="p-4 md:p-6 relative">
             {/* Avatar */}
-            <div className="absolute -top-20 left-6 md:left-10">
-              <div className="rounded-full p-1 bg-gradient-to-r from-[#8860FF] to-[#5D3FD4] inline-block shadow-lg">
-                <div className="bg-[#171335] p-1 rounded-full">
+            <div className="absolute -top-16 left-6 md:left-10">
+              <div className="rounded-[100px] p-[2px] bg-gradient-to-r from-[#8860FF] to-[#5D3FD4] inline-block shadow-purple-500/30 shadow-lg relative">
+                <div className="bg-[#171335] p-1 rounded-[100px]">
                   <Image
                     src={profile.avatarUrl || '/images/avatars/default.svg'}
                     alt={profile.username}
                     width={100}
-                    height={100}
-                    className="rounded-full"
+                    height={140}
+                    className="rounded-[100px] h-[140px] w-[100px] object-cover"
                   />
                 </div>
+                <div className="absolute inset-0 rounded-[100px] opacity-40 blur-[2px] bg-gradient-to-r from-[#8860FF] to-[#5D3FD4] -z-10"></div>
               </div>
             </div>
             
             {/* Nome e detalhes */}
-            <div className="pl-32 md:pl-36 pt-2 flex flex-col md:flex-row justify-between items-start">
+            <div className="pl-32 md:pl-36 pt-8 flex flex-col md:flex-row justify-between items-start">
               <div className="text-left">
                 <h1 className="text-2xl font-bold text-white">{profile.username}</h1>
                 <p className="text-[#A89ECC]">{profile.profile?.bio || "Sem biografia"}</p>

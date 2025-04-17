@@ -5,6 +5,8 @@ export interface IMatch extends Document {
   lobbyId: string;
   betAmount: number;
   gameMode: string;
+  platformMode?: string;
+  gameplayMode?: string;
   status: 'waiting' | 'ready' | 'ongoing' | 'finished' | 'cancelled';
   roomId?: string;
   roomPassword?: string;
@@ -35,6 +37,16 @@ const MatchSchema = new Schema<IMatch>(
       type: String,
       required: true,
       enum: ['solo', 'duo', 'squad', 'custom']
+    },
+    platformMode: {
+      type: String,
+      enum: ['emulator', 'mobile', 'mixed'],
+      default: 'mixed'
+    },
+    gameplayMode: {
+      type: String,
+      enum: ['normal', 'tactical', 'infinite_ice'],
+      default: 'normal'
     },
     status: {
       type: String,

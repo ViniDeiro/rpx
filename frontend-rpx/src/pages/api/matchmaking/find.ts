@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Extrair parâmetros da requisição
-    const { userId, mode, type, platform, teamSize } = req.body;
+    const { userId, mode, type, platform, platformMode, gameplayMode, teamSize } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'ID do usuário é obrigatório' });
@@ -34,6 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mode,
       type,
       teamSize,
+      platformMode: platformMode || 'mixed',
+      gameplayMode: gameplayMode || 'normal',
       status: 'waiting',
       userId: { $ne: userId }, // Não incluir o próprio usuário
     }).toArray();
@@ -194,6 +196,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: 'waiting_players',
         teamSize,
         platform,
+        platformMode: platformMode || 'mixed',
+        gameplayMode: gameplayMode || 'normal',
         entryFee: 10,
         prize: 18,
         odd: 1.8,
@@ -218,12 +222,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         type,
         platform,
         teamSize,
+        platformMode: platformMode || 'mixed',
+        gameplayMode: gameplayMode || 'normal',
         status: 'waiting',
         createdAt: new Date()
       });
       
-      // Criar partida temporária para mostrar ao usuário que ele está na fila
-      // Este objeto não será salvo no banco, só será usado na interface
+      // Criar a partida temporária
       match = {
         id: `waiting-${Date.now()}`,
         title: `Aguardando partida ${mode.charAt(0).toUpperCase() + mode.slice(1)}`,
@@ -232,6 +237,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: 'waiting',
         teamSize,
         platform,
+        platformMode: platformMode || 'mixed',
+        gameplayMode: gameplayMode || 'normal',
         entryFee: 10,
         prize: 18,
         odd: 1.8,
@@ -261,10 +268,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     }
 
-    // Retornar o resultado do matchmaking
-    res.status(200).json(match);
+    // Retornar a partida
+    return res.status(200).json(match);
   } catch (error) {
-    console.error('Erro no serviço de matchmaking:', error);
-    res.status(500).json({ error: 'Erro interno no servidor' });
+    console.error('Erro no matchmaking:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 } 

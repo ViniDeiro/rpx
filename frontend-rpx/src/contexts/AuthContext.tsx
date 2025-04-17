@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { preloadImage } from '@/hooks/useImagePreload';
 
 // Interface para o usuário que vem da API
 type User = {
@@ -198,8 +199,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('auth_token', data.token);
       }
       
+      // Pré-carregar a imagem do avatar para garantir que estará disponível
+      if (data.user) {
+        // Determinar a URL da imagem: pode ser a avatarUrl ou a do perfil
+        const avatarUrl = data.user.avatarUrl || (data.user.profile?.avatar) || '/images/avatar-placeholder.svg';
+        
+        console.log('Pré-carregando avatar:', avatarUrl);
+        
+        // Pré-carregar a imagem
+        if (avatarUrl && typeof window !== 'undefined') {
+          // Usar a função utilitária para pré-carregar a imagem
+          await preloadImage(avatarUrl, 3000);
+        }
+      }
+      
       setToken(data.token);
       setUser(data.user);
+      setIsAuthenticated(true);
       
       // Redirecionar para a página principal
       router.push('/profile');

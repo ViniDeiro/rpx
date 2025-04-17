@@ -1,178 +1,199 @@
-import React, { useEffect } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { AvatarImage, Avatar, AvatarFallback } from '../ui/avatar';
+import { Button } from '../ui/button';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
-import { useSession } from 'next-auth/react';
-import { Notification } from '@/types/notification';
-import axios from 'axios';
+import { rejectLobbyInvite, acceptLobbyInvite } from '@/lib/api/lobby';
 
-interface LobbyInviteNotificationProps {
-  notification?: Notification;
-  invite?: any;
-  onClose?: () => void;
-  refetch?: () => void;
-  onAccept?: (lobbyId: string) => Promise<void>;
-  onReject?: (inviteId: string) => Promise<void>;
+interface NotificationProps {
+  notification: any;
+  onAccept?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onDismiss?: (id: string) => void;
 }
 
-const LobbyInviteNotification: React.FC<LobbyInviteNotificationProps> = ({ 
+export function LobbyInviteNotification({ 
   notification, 
-  invite,
-  onClose,
-  refetch,
-  onAccept,
-  onReject
-}) => {
-  const router = useRouter();
-  const { data: session } = useSession();
+  onAccept, 
+  onReject,
+  onDismiss
+}: NotificationProps) {
+  const [loading, setLoading] = useState<'accept' | 'reject' | null>(null);
 
-  // Log ao montar para debugging
-  useEffect(() => {
-    console.log('LobbyInviteNotification renderizado com dados:', { 
-      notification: notification ? notification._id : 'undefined', 
-      invite: invite ? invite._id : 'undefined' 
-    });
-    
-    if (notification?.data) {
-      console.log('Dados da notificação:', JSON.stringify(notification.data, null, 2));
+  // Debug: mostrar a estrutura da notificação
+  console.log('Recebida notificação de convite:', notification);
+
+  // Função para extrair os dados necessários do objeto de notificação
+  const extractNotificationData = () => {
+    try {
+      // Verificar primeiro se a notificação está no formato direto (da API de notificações)
+      if (notification.type === 'lobby_invite') {
+        console.log('Notificação no formato direto');
+        return {
+          id: notification._id || '',
+          inviterId: notification.inviter || '',
+          inviterName: notification.inviterName || 'Usuário',
+          inviterAvatar: notification.inviterAvatar || '/images/avatars/default.png',
+          lobbyId: notification.lobbyId || '',
+          lobbyName: notification.lobbyName || 'Lobby',
+          createdAt: notification.createdAt || new Date(),
+          gameMode: notification.gameMode || 'casual'
+        };
+      }
+      
+      // Formato aninhado (da API de convites)
+      console.log('Tentando extrair do formato aninhado');
+      
+      // Verificar se existe data.invite
+      if (notification.data && notification.data.invite) {
+        const invite = notification.data.invite;
+        const inviter = notification.data.inviter || {};
+        
+        return {
+          id: invite._id || '',
+          inviterId: inviter._id || '',
+          inviterName: inviter.username || 'Usuário',
+          inviterAvatar: inviter.avatar || '/images/avatars/default.png',
+          lobbyId: invite.lobbyId || '',
+          lobbyName: 'Lobby', // Não temos esse dado no formato aninhado
+          createdAt: invite.createdAt || notification.createdAt || new Date(),
+          gameMode: invite.gameMode || 'casual'
+        };
+      }
+      
+      // Throw error para cair no fallback
+      throw new Error('Formato de notificação desconhecido');
+    } catch (error) {
+      console.error('Erro ao extrair dados da notificação:', error);
+      console.error('Estrutura da notificação:', notification);
+      
+      // Dados de fallback
+      return {
+        id: notification._id || notification.id || '',
+        inviterId: '',
+        inviterName: 'Usuário',
+        inviterAvatar: '/images/avatars/default.png',
+        lobbyId: '',
+        lobbyName: 'Lobby',
+        createdAt: new Date(),
+        gameMode: 'casual'
+      };
     }
-  }, [notification, invite]);
-  
-  // Determinar se estamos usando o modo de notificação ou o modo de convite direto
-  const isNotificationMode = !!notification;
-  
-  // Validação dos dados
-  if (isNotificationMode && (!notification.data || !notification.data.inviter || !notification.data.invite)) {
-    console.error('Notificação com dados incompletos:', notification);
-    return (
-      <div className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-        <p className="text-white">Convite inválido ou incompleto</p>
-        <button
-          onClick={onClose}
-          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm rounded mt-2"
-        >
-          Fechar
-        </button>
-      </div>
-    );
-  }
+  };
 
-  // Extrair dados dependendo do modo
-  const inviter = isNotificationMode && notification?.data?.inviter ? notification.data.inviter : invite?.inviter;
-  const inviteData = isNotificationMode && notification?.data?.invite ? notification.data.invite : invite;
-  const inviteId = isNotificationMode && notification?.data?.invite?._id ? notification.data.invite._id : invite?._id;
-  const lobbyId = isNotificationMode && notification?.data?.invite?.lobbyId ? notification.data.invite.lobbyId : invite?.lobbyId;
-  
-  // Verificar se temos os dados mínimos necessários
-  if (!inviteId || !lobbyId) {
-    console.error('Convite com dados essenciais faltando:', { inviteId, lobbyId });
-    return (
-      <div className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-        <p className="text-white">Convite com dados incompletos</p>
-        <button
-          onClick={onClose}
-          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm rounded mt-2"
-        >
-          Fechar
-        </button>
-      </div>
-    );
-  }
-  
-  const handleAcceptInvite = async () => {
-    console.log('Tentando aceitar convite:', inviteId, 'para lobby:', lobbyId);
-    
-    if (onAccept) {
-      await onAccept(lobbyId);
+  const { 
+    id, 
+    inviterId, 
+    inviterName, 
+    inviterAvatar, 
+    lobbyId, 
+    lobbyName, 
+    createdAt, 
+    gameMode 
+  } = extractNotificationData();
+
+  // Formatação de data relativa
+  const timeAgo = createdAt 
+    ? formatDistanceToNow(new Date(createdAt), { addSuffix: true, locale: ptBR }) 
+    : 'recentemente';
+
+  // Handler para aceitar convite
+  const handleAccept = async () => {
+    if (!id) {
+      toast.error('ID do convite não encontrado');
       return;
     }
     
     try {
-      const response = await axios.post('/api/lobby/invite/accept', {
-        inviteId: inviteId,
-      });
+      setLoading('accept');
+      const response = await acceptLobbyInvite(id);
       
-      console.log('Resposta ao aceitar convite:', response.data);
-      
-      if (response.data.status === 'success') {
-        toast.success('Convite aceito! Redirecionando para o lobby...');
-        onClose?.();
-        refetch?.();
-        router.push(`/lobby/${response.data.lobbyId}`);
+      if (response.success) {
+        toast.success('Convite aceito com sucesso!');
+        if (onAccept) onAccept(id);
       } else {
-        toast.error(response.data.error || 'Erro ao aceitar convite');
+        toast.error(response.message || 'Não foi possível aceitar o convite');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao aceitar convite:', error);
-      toast.error(error.response?.data?.error || 'Falha ao aceitar convite');
+      toast.error('Ocorreu um erro ao aceitar o convite');
+    } finally {
+      setLoading(null);
     }
   };
-  
-  const handleRejectInvite = async () => {
-    console.log('Tentando rejeitar convite:', inviteId);
-    
-    if (onReject) {
-      await onReject(inviteId);
+
+  // Handler para rejeitar convite
+  const handleReject = async () => {
+    if (!id) {
+      toast.error('ID do convite não encontrado');
       return;
     }
     
     try {
-      const response = await axios.post('/api/lobby/invite/reject', {
-        inviteId: inviteId,
-      });
+      setLoading('reject');
+      const response = await rejectLobbyInvite(id);
       
-      console.log('Resposta ao rejeitar convite:', response.data);
-      
-      if (response.data.status === 'success') {
-        toast.success('Convite recusado');
-        onClose?.();
-        refetch?.();
+      if (response.success) {
+        toast.success('Convite rejeitado');
+        if (onReject) onReject(id);
       } else {
-        toast.error(response.data.error || 'Erro ao recusar convite');
+        toast.error(response.message || 'Não foi possível rejeitar o convite');
       }
-    } catch (error: any) {
-      console.error('Erro ao recusar convite:', error);
-      toast.error(error.response?.data?.error || 'Falha ao recusar convite');
+    } catch (error) {
+      console.error('Erro ao rejeitar convite:', error);
+      toast.error('Ocorreu um erro ao rejeitar o convite');
+    } finally {
+      setLoading(null);
     }
   };
-
-  const inviterAvatar = inviter?.avatar || '/images/avatars/default.png';
-  const inviterName = inviter?.username || 'Usuário';
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-      <div className="flex items-start">
-        <div className="flex-shrink-0 mr-3">
-          <Image
-            src={inviterAvatar}
-            alt={inviterName}
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
-        </div>
-        <div className="flex-1">
-          <p className="text-white">
-            <span className="font-semibold">{inviterName}</span> convidou você para um lobby!
-          </p>
-          <div className="mt-2 flex space-x-2">
-            <button
-              onClick={handleAcceptInvite}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm rounded"
+    <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-lg shadow-sm">
+      <div className="flex-shrink-0">
+        <Avatar>
+          <AvatarImage src={inviterAvatar} alt={inviterName} />
+          <AvatarFallback>{inviterName[0]}</AvatarFallback>
+        </Avatar>
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <div className="space-y-1">
+          <div className="flex justify-between items-start gap-2">
+            <div>
+              <p className="font-medium text-sm text-primary">
+                <span className="font-bold">{inviterName}</span> te convidou para um lobby
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lobbyName} • Modo {gameMode === 'ranked' ? 'Ranqueado' : 'Casual'} • {timeAgo}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 mt-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleAccept}
+              disabled={loading !== null}
+              className="min-w-20"
             >
-              Aceitar
-            </button>
-            <button
-              onClick={handleRejectInvite}
-              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm rounded"
+              {loading === 'accept' ? 'Aceitando...' : 'Aceitar'}
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleReject}
+              disabled={loading !== null}
+              className="min-w-20"
             >
-              Recusar
-            </button>
+              {loading === 'reject' ? 'Rejeitando...' : 'Rejeitar'}
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default LobbyInviteNotification; 
+} 

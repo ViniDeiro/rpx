@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, TrendingUp, Target, Filter, Users, ChevronUp, ChevronDown, Star, Award, Activity, DollarSign } from 'react-feather';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Player {
   id: string;
@@ -207,10 +208,11 @@ const getAvatarUrl = (player: Player) => {
   return `/images${path}`;
 };
 
-// Componente de Avatar com fallback melhorado
+// Componente de Avatar com fallback melhorado e navegação para o perfil
 const PlayerAvatar = ({ player, size = 'md' }: { player: Player, size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
+  const router = useRouter();
   
   const sizeClasses = {
     'sm': 'w-10 h-10',
@@ -231,6 +233,10 @@ const PlayerAvatar = ({ player, size = 'md' }: { player: Player, size?: 'sm' | '
     'md': 'border-2',
     'lg': 'border-3',
     'xl': 'border-4'
+  };
+
+  const navigateToProfile = () => {
+    router.push(`/profile/${player.username}`);
   };
   
   // Inicializar a fonte da imagem
@@ -304,7 +310,10 @@ const PlayerAvatar = ({ player, size = 'md' }: { player: Player, size?: 'sm' | '
   // Se não temos fonte de imagem ou houve erro, exibir fallback
   if (hasError || !imgSrc) {
     return (
-      <div className={`${sizeClasses[size]} bg-gradient-to-b from-card-bg to-background rounded-full flex items-center justify-center overflow-hidden ${borderClasses[size]} border-primary/50 shadow-rpx transition-all duration-300 hover:scale-105 hover:shadow-rpx-hover`}>
+      <div 
+        onClick={navigateToProfile}
+        className={`${sizeClasses[size]} bg-gradient-to-b from-card-bg to-background rounded-full flex items-center justify-center overflow-hidden ${borderClasses[size]} border-primary/50 shadow-rpx transition-all duration-300 hover:scale-105 hover:shadow-rpx-hover cursor-pointer`}
+      >
         <div className={`${fontSize[size]} font-bold text-primary-light`}>
           {player.username.charAt(0).toUpperCase()}
         </div>
@@ -314,7 +323,10 @@ const PlayerAvatar = ({ player, size = 'md' }: { player: Player, size?: 'sm' | '
   
   // Exibir imagem
   return (
-    <div className={`${sizeClasses[size]} bg-gradient-to-b from-card-bg to-background rounded-full flex items-center justify-center overflow-hidden ${borderClasses[size]} border-primary/50 shadow-rpx transition-all duration-300 hover:scale-105 hover:shadow-rpx-hover`}>
+    <div 
+      onClick={navigateToProfile}
+      className={`${sizeClasses[size]} bg-gradient-to-b from-card-bg to-background rounded-full flex items-center justify-center overflow-hidden ${borderClasses[size]} border-primary/50 shadow-rpx transition-all duration-300 hover:scale-105 hover:shadow-rpx-hover cursor-pointer`}
+    >
       <img 
         src={imgSrc} 
         alt={player.username} 
@@ -369,15 +381,15 @@ const RankProgressBar = ({ player }: { player: Player }) => {
 export default function RankingPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('rankPoints');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [timeFrame, setTimeFrame] = useState('all');
+  const [selectedGameType, setSelectedGameType] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-  const [timeFrame, setTimeFrame] = useState<'all' | 'month' | 'week'>('all');
-  const [selectedGameType, setSelectedGameType] = useState<'all' | 'solo' | 'duo' | 'squad'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const router = useRouter();
 
   // Buscar o usuário atual
   useEffect(() => {
@@ -860,7 +872,10 @@ export default function RankingPage() {
                         </div>
                       </div>
                       <div className="mt-4 text-center w-full">
-                        <div className="font-bold text-md truncate max-w-full text-white">
+                        <div 
+                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => router.push(`/profile/${filteredPlayers[1].username}`)}
+                        >
                           {filteredPlayers[1].username}
                         </div>
                         <div className={`text-sm truncate ${getRankColor(filteredPlayers[1].rank)}`}>
@@ -897,7 +912,10 @@ export default function RankingPage() {
                         </div>
                       </div>
                       <div className="mt-4 text-center w-full">
-                        <div className="font-bold text-xl truncate max-w-full text-white">
+                        <div 
+                          className="font-bold text-xl truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => router.push(`/profile/${filteredPlayers[0].username}`)}
+                        >
                           {filteredPlayers[0].username}
                         </div>
                         <div className={`text-sm truncate ${getRankColor(filteredPlayers[0].rank)}`}>
@@ -931,7 +949,10 @@ export default function RankingPage() {
                         </div>
                       </div>
                       <div className="mt-4 text-center w-full">
-                        <div className="font-bold text-md truncate max-w-full text-white">
+                        <div 
+                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => router.push(`/profile/${filteredPlayers[2].username}`)}
+                        >
                           {filteredPlayers[2].username}
                         </div>
                         <div className={`text-sm truncate ${getRankColor(filteredPlayers[2].rank)}`}>
@@ -1026,7 +1047,12 @@ export default function RankingPage() {
                               <PlayerAvatar player={player} size="sm" />
                             </div>
                             <div className="ml-3 max-w-[120px] md:max-w-[200px]">
-                              <div className="font-medium truncate text-white">{player.username}</div>
+                              <div 
+                                className="font-medium truncate text-white cursor-pointer hover:text-primary transition-colors" 
+                                onClick={() => router.push(`/profile/${player.username}`)}
+                              >
+                                {player.username}
+                              </div>
                               <div className={`text-sm truncate ${getRankColor(player.rank)}`}>
                                 {typeof player.rank === 'string' ? player.rank : `Rank #${player.rank}`}
                               </div>

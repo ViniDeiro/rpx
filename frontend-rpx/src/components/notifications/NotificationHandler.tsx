@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 import { Notification } from '@/types/notification';
-import LobbyInviteNotification from './LobbyInviteNotification';
+import { LobbyInviteNotification } from './LobbyInviteNotification';
 
 const NotificationHandler: React.FC = () => {
   const { data: session } = useSession();
@@ -41,13 +41,27 @@ const NotificationHandler: React.FC = () => {
           console.log('Exemplo de convite:', JSON.stringify(lobbyInvites[0], null, 2));
         }
         
-        setNotifications(notifs);
+        // Garantir que todas as notificações possuam um ID
+        const validNotifications = notifs.filter((n: any) => n && n._id);
+        
+        if (validNotifications.length < notifs.length) {
+          console.warn(`Filtradas ${notifs.length - validNotifications.length} notificações inválidas`);
+        }
+        
+        setNotifications(validNotifications);
       } else {
         console.error('Erro na resposta da API:', response.data);
+        // Mostrar toast de erro para o usuário
+        toast.error('Erro ao carregar notificações');
       }
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
-      toast.error('Não foi possível carregar as notificações');
+      // Verificar se é um erro de timeout
+      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+        toast.error('Tempo limite excedido ao buscar notificações');
+      } else {
+        toast.error('Não foi possível carregar as notificações');
+      }
     } finally {
       setLoading(false);
     }
@@ -82,9 +96,13 @@ const NotificationHandler: React.FC = () => {
 
   const handleCloseNotification = async (notificationId: string) => {
     try {
+      console.log('Marcando notificação como lida:', notificationId);
+      
       await axios.post('/api/notifications/mark-read', {
         notificationId
       });
+      
+      console.log('Notificação marcada como lida com sucesso');
       
       // Atualizar a lista de notificações localmente
       setNotifications(prev => 
@@ -92,11 +110,32 @@ const NotificationHandler: React.FC = () => {
       );
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
+      toast.error('Não foi possível marcar a notificação como lida');
     }
+  };
+
+  const handleAcceptInvite = async (id: string) => {
+    // A lógica de aceitar foi movida para o componente LobbyInviteNotification
+    // Remover a notificação após aceitar
+    handleCloseNotification(id);
+    // Recarregar notificações
+    fetchNotifications();
+  };
+
+  const handleRejectInvite = async (id: string) => {
+    // A lógica de rejeitar foi movida para o componente LobbyInviteNotification
+    // Remover a notificação após rejeitar
+    handleCloseNotification(id);
+    // Recarregar notificações
+    fetchNotifications();
   };
 
   const toggleNotifications = () => {
     setShowNotifications(prev => !prev);
+    // Recarregar notificações ao abrir
+    if (!showNotifications) {
+      fetchNotifications();
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -112,12 +151,40 @@ const NotificationHandler: React.FC = () => {
     
     switch (notification.type) {
       case 'lobby_invite':
-        // Verificar se os dados necessários existem
-        if (!notification.data || !notification.data.inviter || !notification.data.invite) {
-          console.error('Dados incompletos em um convite de lobby:', notification);
+        // Usar o componente LobbyInviteNotification para convites de lobby
+        return (
+          <LobbyInviteNotification
+            key={notification._id.toString()}
+            notification={notification}
+            onAccept={handleAcceptInvite}
+            onReject={handleRejectInvite}
+            onDismiss={() => handleCloseNotification(notification._id.toString())}
+          />
+        );
+      
+      case 'friend_request':
+        // Verificação de tipo para friend_request
+        if ('data' in notification && notification.data?.requester) {
           return (
             <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-              <p className="text-white">Convite de lobby (dados incompletos)</p>
+              <p className="text-white">Nova solicitação de amizade</p>
+              <button 
+                onClick={() => handleCloseNotification(notification._id.toString())} 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"
+              >
+                Visualizar
+              </button>
+            </div>
+          );
+        }
+        return null;
+        
+      default:
+        // Verificação de tipo para mensagens do sistema
+        if ('data' in notification && notification.data?.message) {
+          return (
+            <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
+              <p className="text-white">{notification.data.message}</p>
               <button 
                 onClick={() => handleCloseNotification(notification._id.toString())} 
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"
@@ -127,32 +194,9 @@ const NotificationHandler: React.FC = () => {
             </div>
           );
         }
-        
-        return (
-          <LobbyInviteNotification
-            key={notification._id.toString()}
-            notification={notification}
-            onClose={() => handleCloseNotification(notification._id.toString())}
-            refetch={fetchNotifications}
-          />
-        );
-      case 'friend_request':
-        // Implementar componente para solicitações de amizade
         return (
           <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-            <p className="text-white">Nova solicitação de amizade</p>
-            <button 
-              onClick={() => handleCloseNotification(notification._id.toString())} 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"
-            >
-              Visualizar
-            </button>
-          </div>
-        );
-      default:
-        return (
-          <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
-            <p className="text-white">{notification.data?.message || 'Nova notificação'}</p>
+            <p className="text-white">Nova notificação</p>
             <button 
               onClick={() => handleCloseNotification(notification._id.toString())} 
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"

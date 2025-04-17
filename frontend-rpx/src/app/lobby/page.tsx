@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Plus, X, UserPlus, Share2, MessageCircle, Settings, PlayCircle, DollarSign, Users, ChevronRight, Shield, Globe, Award, Gift, Star, Clock, Zap, Menu, CheckCircle, RefreshCw, AlertCircle } from 'react-feather';
+import { User, Plus, X, UserPlus, Share2, MessageCircle, Settings, PlayCircle, DollarSign, Users, ChevronRight, Shield, Globe, Award, Gift, Star, Clock, Zap, Menu, CheckCircle, RefreshCw, AlertCircle, Check, MessageSquare, Bell, ChevronDown, MoreHorizontal } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,8 +15,11 @@ import FriendSearch from '@/components/lobby/FriendSearch';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
-// Tipos para o formato do lobby
+// Adicionar os tipos
+
 type LobbyType = 'solo' | 'duo' | 'squad';
+type PlatformMode = 'emulator' | 'mobile' | 'mixed';
+type GameplayMode = 'normal' | 'tactical' | 'infinite_ice';
 
 // Tipo para jogador no lobby
 interface LobbyPlayer {
@@ -28,6 +31,7 @@ interface LobbyPlayer {
   isLeader?: boolean;
   position?: number;
   character?: string;
+  username?: string; // Adicionando campo username para navegação ao perfil
 }
 
 // Tipo estendido para usuário que inclui stats
@@ -49,6 +53,8 @@ export default function LobbyPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, token } = useAuth();
   const [lobbyType, setLobbyType] = useState<LobbyType>('solo');
+  const [platformMode, setPlatformMode] = useState<PlatformMode>('mixed');
+  const [gameplayMode, setGameplayMode] = useState<GameplayMode>('normal');
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [showLobbyAnimation, setShowLobbyAnimation] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -61,6 +67,7 @@ export default function LobbyPage() {
   const [readyStatus, setReadyStatus] = useState(false);
   const [selectedBetAmount, setSelectedBetAmount] = useState(10); // Valor padrão de aposta
   const [multiplier, setMultiplier] = useState(1.8); // Multiplicador padrão
+  const [settingsTab, setSettingsTab] = useState<'game-modes' | 'platforms' | 'payment'>('game-modes'); // Nova state para as abas de configuração
   
   // Nova state para o modal de convite
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -93,6 +100,7 @@ export default function LobbyPage() {
     avatar: string;
     level: number;
     status: string;
+    username?: string; // Adicionando campo username para navegação
   }>>([]);
   
   // Carregar amigos do usuário
@@ -118,7 +126,8 @@ export default function LobbyPage() {
         name: friend.username,
         avatar: friend.avatarUrl,
         level: friend.level,
-        status: 'online' // Por padrão, todos são mostrados como online
+        status: 'online', // Por padrão, todos são mostrados como online
+        username: friend.username // Adicionando username para navegação
       }));
       
       setOnlineFriends(formattedFriends);
@@ -132,12 +141,12 @@ export default function LobbyPage() {
   // Define amigos padrão caso a API falhe
   const setDefaultFriends = () => {
     setOnlineFriends([
-      { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
-      { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online' },
-      { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game' },
-      { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online' },
-      { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle' },
-      { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online' },
+      { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online', username: 'cadu.a' },
+      { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online', username: 'panda' },
+      { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game', username: 'raxi' },
+      { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online', username: 'dacruz' },
+      { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle', username: 'apel' },
+      { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online', username: 'gb' },
     ]);
   };
   
@@ -169,6 +178,55 @@ export default function LobbyPage() {
   const [characterScale, setCharacterScale] = useState(1);
   const [particlesVisible, setParticlesVisible] = useState(true);
   
+  // Definir lista mockada de amigos online
+  useEffect(() => {
+    // Mockup de amigos online quando o componente é montado
+    const mockFriends = [
+      {
+        id: '1',
+        name: 'Lucas Silva',
+        avatar: '/images/avatars/user1.jpg',
+        level: 42,
+        status: 'online',
+        username: 'lucas.silva'  // Adicionando username para navegação
+      },
+      {
+        id: '2',
+        name: 'Amanda Reis',
+        avatar: '/images/avatars/user2.jpg',
+        level: 38,
+        status: 'in_game',
+        username: 'amanda.reis'  // Adicionando username para navegação
+      },
+      {
+        id: '3',
+        name: 'Carlos Mendes',
+        avatar: '/images/avatars/user3.jpg',
+        level: 25,
+        status: 'online',
+        username: 'carlos.mendes'  // Adicionando username para navegação
+      },
+      {
+        id: '4',
+        name: 'Juliana Costa',
+        avatar: '/images/avatars/user4.jpg',
+        level: 56,
+        status: 'online',
+        username: 'juliana.costa'  // Adicionando username para navegação
+      },
+      {
+        id: '5',
+        name: 'Pedro Alves',
+        avatar: '/images/avatars/user5.jpg',
+        level: 31,
+        status: 'in_game',
+        username: 'pedro.alves'  // Adicionando username para navegação
+      }
+    ];
+    
+    setOnlineFriends(mockFriends);
+  }, []);
+  
   // Verificar autenticação
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -189,6 +247,7 @@ export default function LobbyPage() {
         rank: 'diamante', // Exemplo, idealmente viria do perfil do usuário
         isLeader: true,
         position: 0,
+        username: user.username, // Adicionando campo username para navegação
       };
       
       setPlayers([currentPlayer]);
@@ -517,6 +576,8 @@ export default function LobbyPage() {
           mode: lobbyType,
           type: lobbyType,
           platform: 'mixed',
+          platformMode: platformMode,
+          gameplayMode: gameplayMode,
           teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
         }),
       });
@@ -696,6 +757,31 @@ export default function LobbyPage() {
             {/* Glass card effect */}
             <div className="absolute -top-6 -right-6 w-20 h-32 bg-primary/5 rotate-45 blur-md"></div>
             
+            {/* Tabs de navegação para as diferentes configurações */}
+            <div className="flex border-b border-white/10 mb-4">
+              <button 
+                onClick={() => setSettingsTab('game-modes')}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'game-modes' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+              >
+                Modos
+              </button>
+              <button 
+                onClick={() => setSettingsTab('platforms')}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'platforms' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+              >
+                Plataforma
+              </button>
+              <button 
+                onClick={() => setSettingsTab('payment')}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'payment' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+              >
+                Pagamento
+              </button>
+            </div>
+            
+            {/* Conteúdo das abas */}
+            {settingsTab === 'game-modes' && (
+              <>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Modos de Jogo</h2>
               <div className="flex items-center gap-2">
@@ -709,7 +795,7 @@ export default function LobbyPage() {
               </div>
             </div>
             
-            <div className="space-y-3">
+                <div className="space-y-3 mb-4">
             <button
               onClick={() => changeLobbyType('solo')}
                 className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
@@ -779,10 +865,174 @@ export default function LobbyPage() {
             </button>
           </div>
             
-            {/* Adicionando seletor de valores de aposta com valores fixos */}
-            <div className="mt-6">
-              <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Valor da Aposta</h2>
-              
+                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Modo de Jogo</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setGameplayMode('normal')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      gameplayMode === 'normal' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        gameplayMode === 'normal' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'normal' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${gameplayMode === 'normal' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Normal</div>
+                        <div className="text-xs text-white/50">Modo padrão</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setGameplayMode('tactical')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      gameplayMode === 'tactical' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        gameplayMode === 'tactical' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'tactical' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                          <line x1="6" y1="1" x2="6" y2="4"></line>
+                          <line x1="10" y1="1" x2="10" y2="4"></line>
+                          <line x1="14" y1="1" x2="14" y2="4"></line>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${gameplayMode === 'tactical' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Tático</div>
+                        <div className="text-xs text-white/50">Jogabilidade estratégica</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setGameplayMode('infinite_ice')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      gameplayMode === 'infinite_ice' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        gameplayMode === 'infinite_ice' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'infinite_ice' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <path d="M2 12h20"></path>
+                          <path d="M12 2v20"></path>
+                          <path d="M12 18L7.5 12 12 6"></path>
+                          <path d="M12 6l4.5 6-4.5 6"></path>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${gameplayMode === 'infinite_ice' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Gelo Infinito</div>
+                        <div className="text-xs text-white/50">Modo de deslizamento</div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+            
+            {settingsTab === 'platforms' && (
+              <>
+                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Plataforma</h2>
+                <div className="space-y-3 mb-4">
+                  <button
+                    onClick={() => setPlatformMode('emulator')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      platformMode === 'emulator' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        platformMode === 'emulator' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'emulator' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                          <rect x="9" y="9" width="6" height="6"></rect>
+                          <line x1="9" y1="2" x2="9" y2="4"></line>
+                          <line x1="15" y1="2" x2="15" y2="4"></line>
+                          <line x1="9" y1="20" x2="9" y2="22"></line>
+                          <line x1="15" y1="20" x2="15" y2="22"></line>
+                          <line x1="20" y1="9" x2="22" y2="9"></line>
+                          <line x1="20" y1="14" x2="22" y2="14"></line>
+                          <line x1="2" y1="9" x2="4" y2="9"></line>
+                          <line x1="2" y1="14" x2="4" y2="14"></line>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${platformMode === 'emulator' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Emulador</div>
+                        <div className="text-xs text-white/50">PC ou emuladores</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setPlatformMode('mobile')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      platformMode === 'mobile' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        platformMode === 'mobile' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mobile' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                          <line x1="12" y1="18" x2="12" y2="18"></line>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${platformMode === 'mobile' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Mobile</div>
+                        <div className="text-xs text-white/50">Smartphones e tablets</div>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setPlatformMode('mixed')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      platformMode === 'mixed' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        platformMode === 'mixed' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mixed' ? 'text-white' : 'text-white/70'} transition-all`}>
+                          <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                          <line x1="16" y1="8" x2="2" y2="22"></line>
+                          <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${platformMode === 'mixed' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Misto</div>
+                        <div className="text-xs text-white/50">Todas as plataformas</div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                
+                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Valor da Aposta</h2>
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
                   {[2, 5, 10].map((value) => (
@@ -828,69 +1078,68 @@ export default function LobbyPage() {
                   ))}
                 </div>
               </div>
-            </div>
+              </>
+            )}
             
-            <div className="mt-6">
-              <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Opções de Pagamento</h2>
-              
-              <div className="space-y-2">
-              <button
-                onClick={() => setPaymentOption('captain')}
-                  className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
-                    paymentOption === 'captain' 
-                      ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
-                      : 'hover:bg-white/10'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                    paymentOption === 'captain' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
-                  }`}>
-                    {paymentOption === 'captain' && (
-                      <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
-                    )}
+            {settingsTab === 'payment' && (
+              <>
+                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Opções de Pagamento</h2>
+                 <div className="space-y-2 mb-6">
+                  <button
+                    onClick={() => setPaymentOption('captain')}
+                    className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
+                      paymentOption === 'captain' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
+                        : 'hover:bg-white/10'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                      paymentOption === 'captain' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
+                    }`}>
+                      {paymentOption === 'captain' && (
+                        <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
+                      )}
+                    </div>
+                    <span className={`ml-3 text-sm transition-all ${paymentOption === 'captain' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
+                      Capitão paga
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setPaymentOption('split')}
+                    className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
+                      paymentOption === 'split' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
+                        : 'hover:bg-white/10'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                      paymentOption === 'split' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
+                    }`}>
+                      {paymentOption === 'split' && (
+                        <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
+                      )}
+                    </div>
+                    <span className={`ml-3 text-sm transition-all ${paymentOption === 'split' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
+                      Custos divididos
+                    </span>
+                  </button>
                 </div>
-                  <span className={`ml-3 text-sm transition-all ${paymentOption === 'captain' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
-                    Capitão paga
-                  </span>
-              </button>
-              
-              <button
-                onClick={() => setPaymentOption('split')}
-                  className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
-                    paymentOption === 'split' 
-                      ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
-                      : 'hover:bg-white/10'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                    paymentOption === 'split' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
-                  }`}>
-                    {paymentOption === 'split' && (
-                      <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
-                    )}
-                  </div>
-                  <span className={`ml-3 text-sm transition-all ${paymentOption === 'split' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
-                    Custos divididos
-                  </span>
-                </button>
-              </div>
-            </div>
+                
+                {/* Removi a seção de Status e o botão "Marcar como pronto" */}
+               </>
+             )}
             
-            <div className="mt-auto pt-6">
+            {/* Botão de iniciar partida fixo na parte inferior */}
+            <div className="mt-auto pt-4 border-t border-white/10">
               <button
-                onClick={() => setReadyStatus(!readyStatus)}
-                className={`w-full py-3 rounded-xl flex items-center justify-center transition-all ${
-                  readyStatus 
-                    ? 'bg-gradient-to-r from-[#0ACF83] to-[#02AB6C] text-white shadow-glow-green' 
-                    : 'bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 text-white/80 hover:from-[#A44BE1]/40 hover:to-[#5271FF]/40 hover:shadow-glow-sm'
-                }`}
+                onClick={startGame}
+                className="w-full py-3 rounded-xl flex items-center justify-center bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white shadow-glow-sm hover:shadow-glow transition-all"
               >
-                {readyStatus ? (
-                  <span className="flex items-center">
-                    <div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse"></div>
-                    Pronto
-                  </span>
-                ) : 'Marcar como pronto'}
+                <span className="flex items-center">
+                  <PlayCircle size={18} className="mr-2" />
+                  Iniciar Partida
+                </span>
               </button>
             </div>
           </div>
@@ -969,7 +1218,10 @@ export default function LobbyPage() {
                           </div>
                           {/* Borda iluminada especial para capitão */}
                           <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 opacity-30 blur-sm"></div>
-                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)] flex items-center justify-center overflow-hidden group relative z-10">
+                          <div 
+                            className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)] flex items-center justify-center overflow-hidden group relative z-10 cursor-pointer"
+                            onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
+                          >
                             {/* Borda decorativa interna */}
                             <div className="absolute inset-0 rounded-full border-2 border-yellow-400/50 p-0.5 z-20"></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-amber-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -986,7 +1238,12 @@ export default function LobbyPage() {
                             )}
                           </div>
                         </div>
-                        <span className="text-base text-white font-medium mt-3">{players[0]?.name || 'Usuário'}</span>
+                        <span 
+                          className="text-base text-white font-medium mt-3 cursor-pointer hover:underline"
+                          onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
+                        >
+                          {players[0]?.name || 'Usuário'}
+                        </span>
                         <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center mt-1">
                           <span className="mr-1">Capitão</span> • Lvl {players[0]?.level || 1}
                         </div>
@@ -996,7 +1253,10 @@ export default function LobbyPage() {
                       {(lobbyType === 'duo' || lobbyType === 'squad') && (
                         players.length >= 2 ? (
                           <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative">
+                            <div 
+                              className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative cursor-pointer"
+                              onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
+                            >
                               {/* Borda decorativa */}
                               <div className="absolute inset-0 rounded-full border-2 border-[#5271FF]/40 p-0.5 z-20"></div>
                               <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -1008,7 +1268,12 @@ export default function LobbyPage() {
                                 className="w-full h-full object-cover rounded-full"
                               />
                             </div>
-                            <span className="text-sm text-white/90 font-medium mt-3">{players[1].name}</span>
+                            <span 
+                              className="text-sm text-white/90 font-medium mt-3 cursor-pointer hover:underline"
+                              onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
+                            >
+                              {players[1].name}
+                            </span>
                             <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30 mt-1">
                               Lvl {players[1].level}
                             </div>
@@ -1029,7 +1294,10 @@ export default function LobbyPage() {
                       {lobbyType === 'squad' && (
                         players.length >= 4 ? (
                           <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative">
+                            <div 
+                              className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative cursor-pointer"
+                              onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
+                            >
                               {/* Borda decorativa */}
                               <div className="absolute inset-0 rounded-full border-2 border-[#5271FF]/40 p-0.5 z-20"></div>
                               <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -1041,7 +1309,12 @@ export default function LobbyPage() {
                                 className="w-full h-full object-cover rounded-full"
                               />
                             </div>
-                            <span className="text-sm text-white/90 font-medium mt-3">{players[3].name}</span>
+                            <span 
+                              className="text-sm text-white/90 font-medium mt-3 cursor-pointer hover:underline"
+                              onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
+                            >
+                              {players[3].name}
+                            </span>
                             <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30 mt-1">
                               Lvl {players[3].level}
                             </div>
@@ -1066,7 +1339,10 @@ export default function LobbyPage() {
                         <div className="space-y-1">
                           {players.slice(Math.min(players.length, lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1)).map((player) => (
                             <div key={player.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-1 border border-border hover:border-border hover:bg-card transition-all group">
-                              <div className="flex items-center">
+                              <div 
+                                className="flex items-center cursor-pointer"
+                                onClick={() => router.push(`/profile/${player.username || player.name}`)}
+                              >
                                 <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
                                   <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
                                     <Image
@@ -1079,7 +1355,7 @@ export default function LobbyPage() {
                                   </div>
                                 </div>
                                 <div className="ml-2">
-                                  <div className="text-sm text-white group-hover:drop-shadow-glow transition-all">{player.name}</div>
+                                  <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{player.name}</div>
                                   <div className="text-xs text-white/50">Nível {player.level}</div>
                                 </div>
                               </div>
@@ -1162,7 +1438,10 @@ export default function LobbyPage() {
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: "calc(100% - 50px)" }}>
               {onlineFriends.map((friend) => (
                 <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-border hover:bg-card transition-all group">
-                  <div className="flex items-center">
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => router.push(`/profile/${friend.username || friend.name}`)}
+                  >
                     <div className="relative">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
                         <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
@@ -1181,7 +1460,7 @@ export default function LobbyPage() {
                       }`}></div>
                     </div>
                     <div className="ml-2">
-                      <div className="text-sm text-white group-hover:drop-shadow-glow transition-all">{friend.name}</div>
+                      <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{friend.name}</div>
                       <div className="text-xs text-white/50">Nível {friend.level}</div>
                     </div>
                   </div>

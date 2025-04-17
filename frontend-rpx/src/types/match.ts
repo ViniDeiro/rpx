@@ -11,6 +11,11 @@ export interface GameDetails {
   serverRegion: string;
 }
 
+// Tipos para os modos de jogo
+export type GameTypeMode = 'solo' | 'duo' | 'squad';
+export type PlatformMode = 'emulator' | 'mobile' | 'mixed';
+export type GameplayMode = 'normal' | 'tactical' | 'infinite_ice';
+
 export interface Match {
   id: string;
   title?: string;
@@ -36,7 +41,9 @@ export interface Match {
   roomId?: string;
   roomPassword?: string;
   isOfficialRoom?: boolean;
-  gameType?: 'solo' | 'duo' | 'squad';
+  gameType?: GameTypeMode;
+  platformMode?: PlatformMode;
+  gameplayMode?: GameplayMode;
   roomCapacity?: number;
   gameDetails?: GameDetails;
   teams?: Array<{

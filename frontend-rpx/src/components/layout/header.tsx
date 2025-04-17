@@ -10,6 +10,7 @@ import ImagePaths from '@/utils/image-paths';
 import Image from 'next/image';
 import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
+import { UserAvatar } from '../ui/user-avatar';
 
 export const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -124,27 +125,13 @@ export const Header = () => {
                         : 'bg-card-bg border border-border hover:border-primary/30'}
                     `}
                   >
-                    <div className="relative w-8 h-8 overflow-hidden rounded-full">
-                      {(user as any).avatarUrl ? (
-                        <Image 
-                          src={(user as any).avatarUrl}
-                          alt={user.username || 'Usuário'}
-                          width={32}
-                          height={32}
-                          className="object-cover transform -translate-y-2.5"
-                          priority
-                        />
-                      ) : (
-                        <Image 
-                          src={(user as any).profile?.avatar || '/images/avatar-placeholder.svg'}
-                          alt={user.username || 'Usuário'}
-                          width={32}
-                          height={32}
-                          className="object-cover"
-                          priority
-                        />
-                      )}
-                    </div>
+                    <UserAvatar 
+                      src={(user as any).avatarUrl || (user as any).profile?.avatar}
+                      username={user?.username}
+                      name={user?.name}
+                      size="sm"
+                      transform={(user as any).avatarUrl ? true : false}
+                    />
                     <ChevronDown className={`transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} size={16} />
                   </button>
                   
@@ -241,27 +228,14 @@ export const Header = () => {
               {isAuthenticated && user ? (
                 <>
                   <div className="flex items-center px-4 py-2">
-                    <div className="relative w-10 h-10 overflow-hidden rounded-full mr-3">
-                      {(user as any).avatarUrl ? (
-                        <Image 
-                          src={(user as any).avatarUrl}
-                          alt={user.username || 'Usuário'}
-                          width={40}
-                          height={40}
-                          className="object-cover transform -translate-y-3"
-                          priority
-                        />
-                      ) : (
-                        <Image 
-                          src={(user as any).profile?.avatar || '/images/avatar-placeholder.svg'}
-                          alt={user.username || 'Usuário'}
-                          width={40}
-                          height={40}
-                          className="object-cover"
-                          priority
-                        />
-                      )}
-                    </div>
+                    <UserAvatar 
+                      src={(user as any).avatarUrl || (user as any).profile?.avatar}
+                      username={user?.username}
+                      name={user?.name}
+                      size="md"
+                      transform={(user as any).avatarUrl ? true : false}
+                      className="mr-3"
+                    />
                     <div>
                       <div className="font-medium">{(user as any).username || (user as any).profile?.name || 'Usuário'}</div>
                       <div className="text-sm text-gray-300">

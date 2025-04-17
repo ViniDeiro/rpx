@@ -27,11 +27,31 @@ export interface NotificationData {
   message?: string;
 }
 
-export interface Notification {
+// Interface base para notificações
+export interface BaseNotification {
   _id: string | ObjectId;
-  userId: string | ObjectId;
   type: 'lobby_invite' | 'friend_request' | 'system';
   read: boolean;
-  data: NotificationData;
   createdAt: Date | string;
-} 
+}
+
+// Notificação no formato padrão do sistema
+export interface StandardNotification extends BaseNotification {
+  userId: string | ObjectId;
+  data: NotificationData;
+}
+
+// Notificação de convite de lobby (formato direto do banco de dados)
+export interface DirectLobbyInviteNotification extends BaseNotification {
+  inviter: string | ObjectId;
+  recipient: string | ObjectId;
+  lobbyId: string | ObjectId;
+  gameMode?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  inviterName?: string;
+  inviterAvatar?: string;
+  lobbyName?: string;
+}
+
+// União dos tipos para suportar ambos os formatos
+export type Notification = StandardNotification | DirectLobbyInviteNotification; 

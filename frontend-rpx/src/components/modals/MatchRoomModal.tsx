@@ -527,6 +527,37 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
           <div className="flex flex-col sm:flex-row justify-between gap-4">
             {matchStatus === 'waiting' && (
               <>
+                {/* Opções de pagamento para modos não-solo */}
+                {match.gameType !== 'solo' && (
+                  <div className="w-full mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-medium">Opção de Pagamento</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          // Aqui implementaríamos a lógica para atualizar a opção de pagamento
+                          console.log('Capitão paga selecionado');
+                        }}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+                      >
+                        <Crown size={16} className="text-yellow-400" />
+                        <span className="text-sm">Capitão paga</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Aqui implementaríamos a lógica para atualizar a opção de pagamento
+                          console.log('Dividir custos selecionado');
+                        }}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+                      >
+                        <Users size={16} className="text-blue-400" />
+                        <span className="text-sm">Dividir custos</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={handleReady}
                   className={`btn flex-1 flex items-center justify-center ${
