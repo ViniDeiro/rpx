@@ -117,6 +117,14 @@ export async function POST(request: NextRequest) {
       }, { status: isAuth ? 403 : 401 });
     }
     
+    // Verificar se o userId existe
+    if (!userId) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'ID do usuário não disponível'
+      }, { status: 400 });
+    }
+    
     const body = await request.json();
     
     // Validar dados obrigatórios
@@ -138,7 +146,7 @@ export async function POST(request: NextRequest) {
     // Conectar ao banco de dados
     await connectToDatabase();
     
-    // Criar o torneio
+    // Criar o torneio com userId seguro (não nulo)
     const tournament = await Tournament.create({
       ...body,
       createdBy: new mongoose.Types.ObjectId(userId),
