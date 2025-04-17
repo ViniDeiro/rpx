@@ -155,7 +155,7 @@ const NotificationHandler: React.FC = () => {
         return (
           <LobbyInviteNotification
             key={notification._id.toString()}
-            notification={notification}
+            invite={notification}
             onAccept={handleAcceptInvite}
             onReject={handleRejectInvite}
             onDismiss={() => handleCloseNotification(notification._id.toString())}
