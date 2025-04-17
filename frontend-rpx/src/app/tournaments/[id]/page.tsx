@@ -131,7 +131,8 @@ const TournamentBracket = ({ matches, status }: { matches: any, status: string }
 // Página de detalhes do torneio
 export default function TournamentDetail() {
   const router = useRouter();
-  const { id } = useParams();
+  const params = useParams() || {};
+  const tournamentId = params?.id as string;
   const { data: session } = useSession();
   
   const [tournament, setTournament] = useState<any>(null);
@@ -144,11 +145,11 @@ export default function TournamentDetail() {
   // Buscar detalhes do torneio
   useEffect(() => {
     async function fetchTournamentDetails() {
-      if (!id) return;
+      if (!tournamentId) return;
       
       setLoading(true);
       try {
-        const response = await fetch(`/api/tournaments/${id}`);
+        const response = await fetch(`/api/tournaments/${tournamentId}`);
         
         if (!response.ok) {
           throw new Error('Falha ao buscar detalhes do torneio');
@@ -179,10 +180,10 @@ export default function TournamentDetail() {
     
     // Buscar partidas do torneio
     async function fetchTournamentMatches() {
-      if (!id) return;
+      if (!tournamentId) return;
       
       try {
-        const response = await fetch(`/api/tournaments/${id}/matches`);
+        const response = await fetch(`/api/tournaments/${tournamentId}/matches`);
         
         if (!response.ok) {
           throw new Error('Falha ao buscar partidas do torneio');
@@ -200,7 +201,7 @@ export default function TournamentDetail() {
     
     fetchTournamentDetails();
     fetchTournamentMatches();
-  }, [id, session]);
+  }, [tournamentId, session]);
   
   // Função para registrar-se no torneio
   const handleRegister = async () => {
@@ -211,7 +212,7 @@ export default function TournamentDetail() {
     
     setRegistrationLoading(true);
     try {
-      const response = await fetch(`/api/tournaments/${id}/register`, {
+      const response = await fetch(`/api/tournaments/${tournamentId}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -243,7 +244,7 @@ export default function TournamentDetail() {
     
     setRegistrationLoading(true);
     try {
-      const response = await fetch(`/api/tournaments/${id}/register`, {
+      const response = await fetch(`/api/tournaments/${tournamentId}/register`, {
         method: 'DELETE'
       });
       
