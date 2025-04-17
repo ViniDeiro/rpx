@@ -5,6 +5,18 @@ import { authOptions } from '@/lib/auth';
 import Tournament from '@/models/Tournament';
 import mongoose from 'mongoose';
 
+// Interface para o tipo do torneio após lean()
+interface TournamentDocument {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  bracketType: string;
+  status: string;
+  participants: any[];
+  minParticipants: number;
+  matches?: any[];
+  [key: string]: any;
+}
+
 // Middleware para verificar autenticação
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
@@ -32,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     await connectToDatabase();
     
     // Buscar o torneio com populate para participantes e matches
-    const tournament = await Tournament.findById(tournamentId)
+    const tournamentData = await Tournament.findById(tournamentId)
       .populate([
         {
           path: 'participants.userId',
@@ -49,15 +61,31 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       ])
       .lean();
     
-    if (!tournament) {
+    if (!tournamentData) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
       }, { status: 404 });
     }
     
+    // Tratando os dados do torneio de forma segura
+    const tournament = tournamentData as any;
+    
     // Organizar matches por rodadas
     const matchesByRound: any = {};
+    
+    // Verificar se o torneio tem a propriedade matches
+    if (!tournament.matches || !Array.isArray(tournament.matches)) {
+      return NextResponse.json({
+        status: 'success',
+        data: {
+          tournamentName: tournament.name || 'Torneio',
+          bracketType: tournament.bracketType || 'single',
+          status: tournament.status || 'unknown',
+          matches: {}
+        }
+      });
+    }
     
     tournament.matches.forEach((match: any) => {
       if (!matchesByRound[match.roundNumber]) {
@@ -90,7 +118,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// Endpoint para gerar o bracket do torneio
+// POST: Gerar o bracket do torneio
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Verificar autenticação de admin (usando a função existente)
@@ -131,14 +159,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
     
     // Buscar o torneio
-    const tournament = await Tournament.findById(tournamentId);
+    const tournamentData = await Tournament.findById(tournamentId);
     
-    if (!tournament) {
+    if (!tournamentData) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
       }, { status: 404 });
     }
+    
+    // Converter para tipo seguro
+    const tournament = tournamentData as any;
     
     // Verificar se o torneio está pronto para gerar o bracket
     if (tournament.status !== 'registration') {
@@ -165,7 +196,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         data: {
           tournamentId: tournament._id,
           status: 'in_progress',
-          matchCount: tournament.matches.length
+          matchCount: tournament.matches?.length || 0
         }
       });
     } catch (genError: any) {
