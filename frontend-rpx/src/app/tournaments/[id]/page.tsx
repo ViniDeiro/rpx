@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Calendar, Award, Clock, Users, ChevronRight, Shield, Hexagon, AlertCircle, ArrowLeft, Check, X, Trophy } from 'react-feather';
+import { Calendar, Award, Clock, Users, ChevronRight, Shield, Hexagon, AlertCircle, ArrowLeft, Check, X } from 'react-feather';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
+import Trophy from '@/components/ui/icons/Trophy';
 
 // Componente para exibir o bracket do torneio
 const TournamentBracket = ({ matches, status }: { matches: any, status: string }) => {

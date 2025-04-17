@@ -14,7 +14,7 @@ interface NotificationProps {
   onDismiss?: (id: string) => void;
 }
 
-export function LobbyInviteNotification({ 
+export default function LobbyInviteNotification({ 
   notification, 
   onAccept, 
   onReject,

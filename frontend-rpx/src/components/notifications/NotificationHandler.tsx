@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 import { Notification } from '@/types/notification';
-import { LobbyInviteNotification } from './LobbyInviteNotification';
+import LobbyInviteNotification from './LobbyInviteNotification';
 
 const NotificationHandler: React.FC = () => {
   const { data: session } = useSession();
