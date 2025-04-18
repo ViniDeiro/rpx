@@ -48,6 +48,15 @@ export async function POST(request: Request) {
     // Conectar ao banco de dados
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.log('API Lobby Invite Reject - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Verificar se o convite existe
     console.log(`API Lobby Invite Reject - Buscando convite com ID: ${inviteId}`);
     const invite = await db.collection('lobbyinvites').findOne({
