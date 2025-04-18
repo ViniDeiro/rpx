@@ -27,6 +27,15 @@ export async function POST(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.log('API Lobby Kick - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Verificar se o lobby existe
     const lobby = await db.collection('lobbies').findOne({
       _id: new ObjectId(lobbyId)
