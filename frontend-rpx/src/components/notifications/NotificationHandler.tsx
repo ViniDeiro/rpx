@@ -5,6 +5,24 @@ import { toast } from 'react-hot-toast';
 import { Notification, DirectLobbyInviteNotification } from '@/types/notification';
 import LobbyInviteNotification from './LobbyInviteNotification';
 
+// Interface que corresponde ao que o componente LobbyInviteNotification espera
+interface ComponentLobbyInvite {
+  _id: string | import('mongodb').ObjectId;
+  type: string;
+  read: boolean;
+  status: string;
+  createdAt: string | Date;
+  inviterId?: string;
+  inviterName?: string;
+  inviterAvatar?: string;
+  lobbyId: string | import('mongodb').ObjectId;
+  lobbyName?: string;
+  gameMode?: string;
+  inviter?: any;
+  recipient?: string | import('mongodb').ObjectId;
+  data?: any;
+}
+
 const NotificationHandler: React.FC = () => {
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -145,6 +163,14 @@ const NotificationHandler: React.FC = () => {
     return notification.type === 'lobby_invite' && 'lobbyId' in notification && 'status' in notification;
   };
 
+  // Função para converter uma DirectLobbyInviteNotification para o formato esperado pelo componente
+  const adaptLobbyInvite = (notification: DirectLobbyInviteNotification): ComponentLobbyInvite => {
+    return {
+      ...notification,
+      // Quaisquer campos adicionais que precisem ser convertidos ou fornecidos explicitamente
+    };
+  };
+
   const renderNotification = (notification: Notification) => {
     console.log('Renderizando notificação:', notification.type, notification._id);
     
@@ -158,10 +184,13 @@ const NotificationHandler: React.FC = () => {
       case 'lobby_invite':
         // Verificar se a notificação tem a estrutura esperada de um LobbyInvite
         if (isLobbyInvite(notification)) {
+          // Adaptar a notificação para o formato esperado pelo componente
+          const adaptedInvite = adaptLobbyInvite(notification);
+          
           return (
             <LobbyInviteNotification
               key={notification._id.toString()}
-              invite={notification}
+              invite={adaptedInvite}
               onAccept={handleAcceptInvite}
               onReject={handleRejectInvite}
               onDismiss={() => handleCloseNotification(notification._id.toString())}

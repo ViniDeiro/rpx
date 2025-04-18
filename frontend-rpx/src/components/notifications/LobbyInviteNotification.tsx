@@ -21,7 +21,7 @@ interface LobbyInvite {
   gameMode?: string;
   // Suporte para formato antigo
   inviter?: any;
-  recipient?: string;
+  recipient?: string | ObjectId;
   data?: {
     invite?: {
       _id?: string;
