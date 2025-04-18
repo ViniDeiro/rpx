@@ -1,8 +1,11 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { PushNotificationService } from '@/services/push/pushNotificationService';
 import { toast } from 'react-toastify';
 import { Bell, BellOff } from 'react-feather';
+import axios from 'axios';
 
 /**
  * Componente para gerenciar as notificações push
@@ -12,6 +15,7 @@ const NotificationManager: React.FC = () => {
   const { data: session } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Verificar se as notificações estão habilitadas
   useEffect(() => {
@@ -37,6 +41,14 @@ const NotificationManager: React.FC = () => {
     }
   }, [session]);
 
+  useEffect(() => {
+    if (session?.user) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000); // Verificar a cada 30 segundos
+      return () => clearInterval(interval);
+    }
+  }, [session]);
+
   // Função para registrar o token do dispositivo
   const registerDeviceToken = async () => {
     if (!session?.user?.id) return;
@@ -59,6 +71,17 @@ const NotificationManager: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro ao registrar token do dispositivo:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await axios.get('/api/notifications/count');
+      if (response.data.status === 'success') {
+        setUnreadCount(response.data.count);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar contagem de notificações:', error);
     }
   };
 
@@ -97,27 +120,23 @@ const NotificationManager: React.FC = () => {
       return null;
     }
 
+    const handleClick = () => {
+      // Abrir o painel de notificações ou redirecionar para a página de notificações
+      console.log('Abrir notificações');
+    };
+
     return (
       <button
-        onClick={enableNotifications}
-        disabled={notificationsEnabled || loading}
-        className={`
-          flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium
-          ${notificationsEnabled 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-            : 'bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200'}
-          transition-colors duration-200
-        `}
-        title={notificationsEnabled ? 'Notificações ativadas' : 'Ativar notificações'}
+        onClick={handleClick}
+        className="relative p-2 rounded-full hover:bg-card-hover transition-colors"
+        aria-label="Notificações"
       >
-        {loading ? (
-          <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-        ) : notificationsEnabled ? (
-          <Bell size={16} />
-        ) : (
-          <BellOff size={16} />
+        <Bell size={20} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
-        <span>{notificationsEnabled ? 'Ativadas' : 'Ativar notificações'}</span>
       </button>
     );
   };
