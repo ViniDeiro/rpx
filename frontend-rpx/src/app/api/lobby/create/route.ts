@@ -28,6 +28,14 @@ export async function POST(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Verificar se o usuário já tem um lobby ativo
     const existingLobby = await db.collection('lobbies').findOne({
       owner: new ObjectId(userId),
