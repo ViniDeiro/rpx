@@ -227,6 +227,24 @@ export default function RankingPage() {
                     <div className="space-y-4">
                       {Object.entries(RANK_CONFIG).map(([tier, config]) => {
                         const rank = RANK_FRAMES[tier as RankTier];
+                        
+                        // Função auxiliar para obter min e max de acordo com a estrutura
+                        const getMinMax = (cfg: any) => {
+                          // Verificar se tem min e max diretamente (challenger, legend, unranked)
+                          if ('min' in cfg && 'max' in cfg) {
+                            return { min: cfg.min, max: cfg.max };
+                          } 
+                          // Caso contrário, é um rank com divisões
+                          else {
+                            // Pegar o min da menor divisão e o max da maior
+                            const min = cfg['3']?.min || 0;
+                            const max = cfg['1']?.max || 0;
+                            return { min, max };
+                          }
+                        };
+                        
+                        const { min, max } = getMinMax(config);
+                        
                         return (
                           <div key={tier} className="flex items-center">
                             <div className={`w-12 h-12 rounded-full bg-gradient-to-b ${rank.color} p-0.5 mr-4`}>
@@ -243,22 +261,22 @@ export default function RankingPage() {
                               <div className="font-bold">{rank.name}</div>
                               {tier !== 'challenger' ? (
                                 <div className="text-sm text-gray-400">
-                                  {config.min} - {config.max} pontos
+                                  {min} - {max} pontos
                                 </div>
                               ) : (
                                 <div className="text-sm text-gray-400">
-                                  {config.min}+ pontos (Top 100 jogadores)
+                                  {min}+ pontos (Top 100 jogadores)
                                 </div>
                               )}
                             </div>
                             
                             {/* Detalhes das divisões para ranks abaixo de Mestre */}
-                            {tier !== 'mestre' && tier !== 'challenger' && (
+                            {tier !== 'mestre' && tier !== 'challenger' && 'min' in config && 'max' in config && (
                               <div className="text-sm text-gray-400 grid grid-cols-4 gap-2">
                                 {['IV', 'III', 'II', 'I'].map((division, i) => {
-                                  const divisionSize = (config.max - config.min) / 4;
-                                  const minPoints = Math.round(config.min + (divisionSize * i));
-                                  const maxPoints = Math.round(config.min + (divisionSize * (i + 1)) - 1);
+                                  const divisionSize = (max - min) / 4;
+                                  const minPoints = Math.round(min + (divisionSize * i));
+                                  const maxPoints = Math.round(min + (divisionSize * (i + 1)) - 1);
                                   return (
                                     <div key={division} className="text-center">
                                       <div className="font-medium">{division}</div>
