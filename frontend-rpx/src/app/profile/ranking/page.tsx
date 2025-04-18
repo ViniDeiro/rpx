@@ -65,11 +65,11 @@ export default function RankingPage() {
                     <span>{userRank.division ? `${userRank.tier.toUpperCase()} ${userRank.division}` : userRank.tier.toUpperCase()}</span>
                     {userRank.tier !== 'challenger' && (
                       <span>
-                        {userRank.division === 'I' 
-                          ? `${Object.keys(RANK_CONFIG)[Object.keys(RANK_CONFIG).indexOf(userRank.tier) + 1]?.toUpperCase() || ''} IV` 
+                        {userRank.division === '1' 
+                          ? `${Object.keys(RANK_CONFIG)[Object.keys(RANK_CONFIG).indexOf(userRank.tier) + 1]?.toUpperCase() || ''} 3` 
                           : `${userRank.tier.toUpperCase()} ${
                             userRank.division ? 
-                              ['IV', 'III', 'II', 'I'][['IV', 'III', 'II', 'I'].indexOf(userRank.division) + 1] : 
+                              (parseInt(userRank.division) - 1).toString() : 
                               ''
                             }`
                         }
