@@ -4,15 +4,27 @@ import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 
+interface AdminUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  isAdmin: boolean;
+}
+
 // Verificar se o usuário é admin
 async function isAdmin() {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user?.isAdmin) {
+  // Verificação básica de sessão e usuário
+  if (!session || !session.user) {
     return false;
   }
   
-  return true;
+  // Verificar se o usuário tem a propriedade isAdmin
+  const user = session.user as AdminUser;
+  return user.isAdmin === true;
 }
 
 // GET - Listar todos os itens da loja
