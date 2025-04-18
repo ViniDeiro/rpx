@@ -194,6 +194,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                           invite={invite} 
                           onAccept={acceptLobbyInvite} 
                           onReject={rejectLobbyInvite} 
+                          onDismiss={async () => { onUpdate(); return Promise.resolve(); }}
                         />
                       ))}
                       {friendRequests.map(request => (
@@ -242,7 +243,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         key={invite._id} 
                         invite={invite} 
                         onAccept={acceptLobbyInvite} 
-                        onReject={rejectLobbyInvite} 
+                        onReject={rejectLobbyInvite}
+                        onDismiss={async () => { onUpdate(); return Promise.resolve(); }}
                       />
                     ))
                   )}
