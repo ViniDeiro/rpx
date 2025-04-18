@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId } from 'mongodb';
+import { ObjectId, Db } from 'mongodb';
 
 // Middleware para autenticação
 async function isAuthenticated() {
@@ -40,9 +40,10 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    const dbConnection = await connectToDatabase();
-    // Asserção de tipo explícita para garantir que o TypeScript reconheça db como não-nulo
-    const db = dbConnection.db!;
+    const connection = await connectToDatabase();
+    // Usamos "as Db" para forçar o TypeScript a tratar db como uma instância de Db 
+    // sem avisos de possível undefined
+    const db = connection.db as Db;
     
     // Verificar se a partida existe
     const match = await db.collection('matches').findOne({

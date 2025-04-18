@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId } from 'mongodb';
+import { ObjectId, Db } from 'mongodb';
 
 // Middleware para autenticação
 async function isAuthenticated() {
@@ -27,12 +27,10 @@ export async function POST(request: Request) {
       }, { status: 401 });
     }
     
-    const { db } = await connectToDatabase();
-    
-    // Verificar se db está definido
-    if (!db) {
-      throw new Error('Falha na conexão com o banco de dados');
-    }
+    const connection = await connectToDatabase();
+    // Usamos "as Db" para forçar o TypeScript a tratar db como uma instância de Db 
+    // sem avisos de possível undefined
+    const db = connection.db as Db;
     
     // Verificar se o usuário é um admin
     const user = await db.collection('users').findOne({
