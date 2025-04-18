@@ -1,5 +1,8 @@
-import firebase from 'firebase/app';
-import 'firebase/messaging';
+'use client';
+
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage, isSupported, Messaging } from 'firebase/messaging';
+import { NotificationData } from '@/types/notification';
 
 /**
  * Interface para dados de notificação push
@@ -19,36 +22,38 @@ interface PushNotificationData {
  * Classe responsável pelo serviço de notificações push
  */
 export class PushNotificationService {
-  private static messaging: firebase.messaging.Messaging | null = null;
+  private static messaging: Messaging | null = null;
   private static isInitialized = false;
   private static vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
 
   /**
    * Inicializa o serviço de notificações push
    */
-  static initialize() {
+  static async initialize() {
     if (this.isInitialized || typeof window === 'undefined') return;
 
     try {
-      // Verificar se o Firebase já foi inicializado
-      if (!firebase.apps.length) {
-        firebase.initializeApp({
-          apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-          authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-          appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-        });
+      // Verificar se o navegador suporta notificações push
+      if (!(await isSupported())) {
+        console.log('Este navegador não suporta notificações push');
+        return;
       }
 
-      if ('Notification' in window && firebase.messaging.isSupported()) {
-        this.messaging = firebase.messaging();
-        this.isInitialized = true;
-        console.log('Serviço de notificações push inicializado com sucesso');
-      } else {
-        console.log('Este navegador não suporta notificações push');
-      }
+      // Verificar se o Firebase já foi inicializado
+      const app = !getApps().length 
+        ? initializeApp({
+            apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+            appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+          })
+        : getApp();
+
+      this.messaging = getMessaging(app);
+      this.isInitialized = true;
+      console.log('Serviço de notificações push inicializado com sucesso');
     } catch (error) {
       console.error('Erro ao inicializar serviço de notificações push:', error);
     }
@@ -60,7 +65,7 @@ export class PushNotificationService {
    */
   static async requestPermission(): Promise<boolean> {
     if (!this.isInitialized) {
-      this.initialize();
+      await this.initialize();
       if (!this.isInitialized) {
         console.error('Serviço de notificações push não inicializado');
         return false;
@@ -95,7 +100,10 @@ export class PushNotificationService {
       }
 
       // Obter token
-      const currentToken = await this.messaging.getToken({ vapidKey: this.vapidKey });
+      const currentToken = await getToken(this.messaging, { 
+        vapidKey: this.vapidKey 
+      });
+      
       if (currentToken) {
         return currentToken;
       } else {
@@ -141,7 +149,7 @@ export class PushNotificationService {
     }
 
     // Handler para mensagens em primeiro plano
-    this.messaging.onMessage((payload) => {
+    onMessage(this.messaging, (payload) => {
       console.log('Mensagem recebida em primeiro plano:', payload);
       
       // Criar notificação manualmente para mostrar em primeiro plano

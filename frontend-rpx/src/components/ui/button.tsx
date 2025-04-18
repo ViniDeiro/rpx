@@ -9,6 +9,23 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+// Definir variantes de botão para uso em outros componentes
+export const buttonVariants = {
+  variant: {
+    default: 'bg-primary hover:bg-primary-dark text-white shadow-sm',
+    outline: 'border border-border hover:bg-card-hover',
+    secondary: 'bg-secondary hover:bg-secondary-dark text-white shadow-sm',
+    destructive: 'bg-red-600 hover:bg-red-700 text-white shadow-sm',
+    link: 'text-primary hover:underline',
+    ghost: 'hover:bg-card-hover'
+  },
+  size: {
+    sm: 'text-xs px-2.5 py-1.5 rounded-md',
+    md: 'text-sm px-4 py-2 rounded-md',
+    lg: 'text-base px-6 py-3 rounded-lg'
+  }
+};
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ 
     className = '',
@@ -21,22 +38,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ...props
   }, ref) => {
     
-    // Classes para variantes
-    const variantClasses = {
-      default: 'bg-primary hover:bg-primary-dark text-white shadow-sm',
-      outline: 'border border-border hover:bg-card-hover',
-      secondary: 'bg-secondary hover:bg-secondary-dark text-white shadow-sm',
-      destructive: 'bg-red-600 hover:bg-red-700 text-white shadow-sm',
-      link: 'text-primary hover:underline',
-      ghost: 'hover:bg-card-hover'
-    };
-    
-    // Classes para tamanhos
-    const sizeClasses = {
-      sm: 'text-xs px-2.5 py-1.5 rounded-md',
-      md: 'text-sm px-4 py-2 rounded-md',
-      lg: 'text-base px-6 py-3 rounded-lg'
-    };
+    // Classes para variantes e tamanhos
+    const variantClasses = buttonVariants.variant;
+    const sizeClasses = buttonVariants.size;
     
     // Classes base e condicionais
     const buttonClasses = `
