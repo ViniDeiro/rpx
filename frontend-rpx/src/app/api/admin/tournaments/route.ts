@@ -2,17 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId } from 'mongodb';
+import { ObjectId, FindCursor, Document, WithId } from 'mongodb';
+
+interface AdminUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  isAdmin: boolean;
+}
 
 // Verificar se o usuário é admin
 async function isAdmin() {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user?.isAdmin) {
+  // Verificação básica de sessão e usuário
+  if (!session || !session.user) {
     return false;
   }
   
-  return true;
+  // Verificar se o usuário tem a propriedade isAdmin
+  const user = session.user as AdminUser;
+  return user.isAdmin === true;
 }
 
 // GET - Listar todos os torneios
@@ -52,13 +64,13 @@ export async function GET(req: NextRequest) {
     }
     
     // Buscar todos os torneios
-    const tournaments = await db.collection('tournaments')
-      .find()
+    const cursor = db.collection('tournaments').find() as FindCursor<WithId<Document>>;
+    const tournaments = await cursor
       .sort({ createdAt: -1 })
       .toArray();
     
     // Transformar _id em id para compatibilidade com o frontend
-    const transformedTournaments = tournaments.map((tournament) => ({
+    const transformedTournaments = tournaments.map((tournament: WithId<Document>) => ({
       ...tournament,
       id: tournament._id.toString(),
       _id: undefined
