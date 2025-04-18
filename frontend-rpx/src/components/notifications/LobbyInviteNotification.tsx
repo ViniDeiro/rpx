@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button';
 
 interface NotificationProps {
   invite: any;
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
+  onAccept: (id: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
+  onDismiss: () => Promise<void>;
 }
 
 export default function LobbyInviteNotification({ 
   invite, 
   onAccept, 
-  onReject
+  onReject,
+  onDismiss
 }: NotificationProps) {
   const [loading, setLoading] = useState<'accept' | 'reject' | null>(null);
 
