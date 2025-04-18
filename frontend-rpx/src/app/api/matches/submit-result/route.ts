@@ -40,12 +40,9 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    const { db } = await connectToDatabase();
-    
-    // Verificar se db está definido
-    if (!db) {
-      throw new Error('Falha na conexão com o banco de dados');
-    }
+    const dbConnection = await connectToDatabase();
+    // Asserção de tipo explícita para garantir que o TypeScript reconheça db como não-nulo
+    const db = dbConnection.db!;
     
     // Verificar se a partida existe
     const match = await db.collection('matches').findOne({
