@@ -24,20 +24,29 @@ interface ComponentLobbyInvite {
 }
 
 const NotificationHandler: React.FC = () => {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const fetchNotifications = async () => {
-    if (!session || !session.user.id) return;
+    if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+      console.log('NotificationHandler: Não autenticado ou sem ID de usuário', {
+        status: sessionStatus,
+        userId: session?.user?.id
+      });
+      setAuthError('Usuário não autenticado');
+      return;
+    }
     
     try {
       setLoading(true);
-      console.log('Buscando notificações para o usuário:', session.user.id);
+      console.log('NotificationHandler: Buscando notificações para o usuário:', session.user.id);
       
       // Obter o token do localStorage para autenticação
       const token = localStorage.getItem('auth_token');
+      console.log('NotificationHandler: Token disponível?', !!token);
       
       const response = await axios.get('/api/notifications', {
         timeout: 10000, // Aumentando o timeout para 10 segundos
@@ -46,39 +55,65 @@ const NotificationHandler: React.FC = () => {
         }
       });
       
-      console.log('Resposta da API de notificações:', response.data);
+      console.log('NotificationHandler: Resposta da API de notificações:', response.data);
       
       if (response.data.status === 'success') {
         const notifs = response.data.notifications || [];
-        console.log(`Recebidas ${notifs.length} notificações`);
+        console.log(`NotificationHandler: Recebidas ${notifs.length} notificações`);
         
         // Log para verificar convites de lobby
         const lobbyInvites = notifs.filter((n: any) => n.type === 'lobby_invite');
-        console.log(`Convites de lobby encontrados: ${lobbyInvites.length}`);
+        console.log(`NotificationHandler: Convites de lobby encontrados: ${lobbyInvites.length}`);
         if (lobbyInvites.length > 0) {
-          console.log('Exemplo de convite:', JSON.stringify(lobbyInvites[0], null, 2));
+          console.log('NotificationHandler: Exemplo de convite:', JSON.stringify(lobbyInvites[0], null, 2));
         }
         
         // Garantir que todas as notificações possuam um ID
         const validNotifications = notifs.filter((n: any) => n && n._id);
         
         if (validNotifications.length < notifs.length) {
-          console.warn(`Filtradas ${notifs.length - validNotifications.length} notificações inválidas`);
+          console.warn(`NotificationHandler: Filtradas ${notifs.length - validNotifications.length} notificações inválidas`);
         }
         
         setNotifications(validNotifications);
+        setAuthError(null);
       } else {
-        console.error('Erro na resposta da API:', response.data);
+        console.error('NotificationHandler: Erro na resposta da API:', response.data);
         // Mostrar toast de erro para o usuário
         toast.error('Erro ao carregar notificações');
+        setAuthError('Erro na resposta da API');
       }
     } catch (error) {
-      console.error('Erro ao buscar notificações:', error);
-      // Verificar se é um erro de timeout
-      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
-        toast.error('Tempo limite excedido ao buscar notificações');
+      console.error('NotificationHandler: Erro ao buscar notificações:', error);
+      
+      // Verificar o tipo de erro para mostrar uma mensagem mais específica
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Erro de resposta do servidor
+          console.error('NotificationHandler: Erro de resposta:', error.response.status, error.response.data);
+          
+          if (error.response.status === 401) {
+            setAuthError('Não autorizado. Verifique seu login.');
+          } else {
+            setAuthError(`Erro ${error.response.status}: ${error.response.data?.error || 'Erro desconhecido'}`);
+          }
+        } else if (error.request) {
+          // Erro de requisição (não recebeu resposta)
+          console.error('NotificationHandler: Erro de requisição:', error.request);
+          setAuthError('Servidor não respondeu. Tente novamente mais tarde.');
+        } else {
+          // Erro na configuração da requisição
+          console.error('NotificationHandler: Erro de configuração:', error.message);
+          setAuthError('Erro ao configurar requisição');
+        }
+        
+        if (error.code === 'ECONNABORTED') {
+          toast.error('Tempo limite excedido ao buscar notificações');
+          setAuthError('Timeout na conexão');
+        }
       } else {
         toast.error('Não foi possível carregar as notificações');
+        setAuthError('Erro desconhecido');
       }
     } finally {
       setLoading(false);
@@ -86,18 +121,25 @@ const NotificationHandler: React.FC = () => {
   };
 
   useEffect(() => {
-    if (session?.user?.id) {
+    console.log('NotificationHandler: Status da sessão mudou:', sessionStatus);
+    
+    if (sessionStatus === 'authenticated' && session?.user?.id) {
+      console.log('NotificationHandler: Usuário autenticado, buscando notificações');
       fetchNotifications();
       
       // Configurar polling para verificar novas notificações a cada 30 segundos
       const intervalId = setInterval(fetchNotifications, 30000);
       
       return () => clearInterval(intervalId);
-    } else {
-      // Se não houver sessão, não mostrar loading
+    } else if (sessionStatus === 'unauthenticated') {
+      console.log('NotificationHandler: Usuário não autenticado');
+      setAuthError('Usuário não autenticado');
       setLoading(false);
+    } else if (sessionStatus === 'loading') {
+      console.log('NotificationHandler: Carregando sessão...');
+      // Manter o estado de loading enquanto a sessão estiver carregando
     }
-  }, [session]);
+  }, [session, sessionStatus]);
 
   // Adicionar timeout para não ficar carregando infinitamente
   useEffect(() => {
@@ -105,7 +147,7 @@ const NotificationHandler: React.FC = () => {
     const timeoutId = setTimeout(() => {
       if (loading) {
         setLoading(false);
-        console.warn('Loading timeout - forçado a parar após 10 segundos');
+        console.warn('NotificationHandler: Loading timeout - forçado a parar após 10 segundos');
       }
     }, 10000);
     
@@ -114,20 +156,20 @@ const NotificationHandler: React.FC = () => {
 
   const handleCloseNotification = async (notificationId: string) => {
     try {
-      console.log('Marcando notificação como lida:', notificationId);
+      console.log('NotificationHandler: Marcando notificação como lida:', notificationId);
       
       await axios.post('/api/notifications/mark-read', {
         notificationId
       });
       
-      console.log('Notificação marcada como lida com sucesso');
+      console.log('NotificationHandler: Notificação marcada como lida com sucesso');
       
       // Atualizar a lista de notificações localmente
       setNotifications(prev => 
         prev.filter(n => n._id.toString() !== notificationId.toString())
       );
     } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error);
+      console.error('NotificationHandler: Erro ao marcar notificação como lida:', error);
       toast.error('Não foi possível marcar a notificação como lida');
     }
   };
@@ -172,11 +214,11 @@ const NotificationHandler: React.FC = () => {
   };
 
   const renderNotification = (notification: Notification) => {
-    console.log('Renderizando notificação:', notification.type, notification._id);
+    console.log('NotificationHandler: Renderizando notificação:', notification.type, notification._id);
     
     // Verificar se a notificação está completa antes de renderizar
     if (!notification._id) {
-      console.error('Notificação com ID ausente:', notification);
+      console.error('NotificationHandler: Notificação com ID ausente:', notification);
       return null;
     }
     
@@ -197,7 +239,7 @@ const NotificationHandler: React.FC = () => {
             />
           );
         } else {
-          console.error('Formato de convite de lobby inválido:', notification);
+          console.error('NotificationHandler: Formato de convite de lobby inválido:', notification);
           return (
             <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
               <p className="text-white">Convite de lobby (formato inválido)</p>
@@ -257,6 +299,12 @@ const NotificationHandler: React.FC = () => {
     }
   };
 
+  // Se o usuário não estiver autenticado, não renderizar o componente
+  if (sessionStatus === 'unauthenticated') {
+    console.log('NotificationHandler: Não renderizando - usuário não autenticado');
+    return null;
+  }
+
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {/* Ícone de notificação com contador */}
@@ -295,6 +343,16 @@ const NotificationHandler: React.FC = () => {
           {loading ? (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : authError ? (
+            <div className="text-center py-4">
+              <p className="text-red-400 text-sm mb-2">{authError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded"
+              >
+                Recarregar
+              </button>
             </div>
           ) : notifications.length > 0 ? (
             notifications.map(renderNotification)

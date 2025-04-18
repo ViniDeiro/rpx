@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, LogOut, Settings, CreditCard, HelpCircle } from 'react-feather';
@@ -29,6 +29,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, status }) => {
   const { theme, setTheme } = useTheme();
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Certificar-se de que o componente está montado antes de renderizar
+  // para evitar problemas com renderização no servidor vs cliente
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -42,6 +49,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, status }) => {
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/auth/login' });
   };
+
+  // Se não estiver montado ainda, não renderize nada para evitar inconsistências
+  if (!mounted) {
+    return null;
+  }
 
   if (status === 'loading') {
     return (
