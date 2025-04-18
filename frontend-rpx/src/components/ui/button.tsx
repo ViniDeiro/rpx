@@ -4,7 +4,7 @@ import React, { forwardRef, ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'link' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   asChild?: boolean;
   loading?: boolean;
 }
@@ -22,7 +22,8 @@ export const buttonVariants = {
   size: {
     sm: 'text-xs px-2.5 py-1.5 rounded-md',
     md: 'text-sm px-4 py-2 rounded-md',
-    lg: 'text-base px-6 py-3 rounded-lg'
+    lg: 'text-base px-6 py-3 rounded-lg',
+    icon: 'h-9 w-9 p-1.5 rounded-md'
   }
 };
 
