@@ -3,6 +3,27 @@ import admin from 'firebase-admin';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+// Interface para as opções de mensagem do Firebase
+interface FirebaseMessageOptions {
+  notification?: {
+    title?: string;
+    body?: string;
+  };
+  data?: {
+    [key: string]: string;
+  };
+  webpush?: {
+    notification: {
+      icon?: string;
+      badge?: string;
+      vibrate?: number[];
+      actions?: any[];
+      data?: any;
+      requireInteraction?: boolean;
+    };
+  };
+}
+
 // Inicializar Firebase Admin se ainda não estiver inicializado
 if (!admin.apps.length) {
   try {
@@ -69,7 +90,7 @@ export async function POST(req: NextRequest) {
           },
         },
         data: notification.data || {},
-      });
+      } as any);
     } 
     // Enviar para um usuário específico (buscar tokens no banco)
     else if (userId) {
@@ -105,7 +126,7 @@ export async function POST(req: NextRequest) {
           },
         },
         data: notification.data || {},
-      });
+      } as any);
     }
     // Enviar para um tópico
     else if (topic) {
@@ -125,7 +146,7 @@ export async function POST(req: NextRequest) {
           },
         },
         data: notification.data || {},
-      });
+      } as any);
     }
 
     return NextResponse.json({
