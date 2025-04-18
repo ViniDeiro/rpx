@@ -29,6 +29,14 @@ export async function GET() {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Obter solicitações pendentes para o usuário
     const requests = await db.collection('friendrequests').find({
       recipient: new ObjectId(userId),
@@ -96,6 +104,14 @@ export async function POST(request: Request) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     // Verificar se o usuário existe
     const recipient = await db.collection('users').findOne({ 
@@ -202,6 +218,14 @@ export async function PUT(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Buscar a solicitação
     const friendRequest = await db.collection('friendrequests').findOne({
       _id: new ObjectId(requestId),
@@ -267,6 +291,14 @@ export async function DELETE(request: Request) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     // Atualizar a solicitação para rejeitada
     const result = await db.collection('friendrequests').updateOne(
