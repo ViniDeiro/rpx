@@ -7,6 +7,8 @@ import LobbyInviteNotification from './LobbyInviteNotification';
 interface NotificationCenterProps {
   isOpen: boolean;
   onClose: () => void;
+  notifications: any[];
+  onUpdate: () => void;
 }
 
 interface NotificationsState {
@@ -16,47 +18,30 @@ interface NotificationsState {
   unreadCount: number;
 }
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose }) => {
+const NotificationCenter: React.FC<NotificationCenterProps> = ({ 
+  isOpen, 
+  onClose,
+  notifications = [],
+  onUpdate
+}) => {
   const [activeTab, setActiveTab] = useState<'todos' | 'amigos' | 'lobby'>('todos');
-  const [notifications, setNotifications] = useState<NotificationsState>({
-    friendRequests: [],
-    lobbyInvites: [],
-    loading: true,
-    unreadCount: 0
-  });
+  const [loading, setLoading] = useState<boolean>(false);
   
-  const fetchNotifications = useCallback(async () => {
-    setNotifications(prev => ({ ...prev, loading: true }));
-    try {
-      const friendReqRes = await fetch('/api/friends/requests');
-      const friendReqData = await friendReqRes.json();
-      
-      const lobbyInvitesRes = await fetch('/api/lobby/invite');
-      const lobbyInvitesData = await lobbyInvitesRes.json();
-      
-      if (friendReqData.status === 'success' && lobbyInvitesData.status === 'success') {
-        setNotifications({
-          friendRequests: friendReqData.requests || [],
-          lobbyInvites: lobbyInvitesData.invites || [],
-          loading: false,
-          unreadCount: (friendReqData.requests?.length || 0) + (lobbyInvitesData.invites?.length || 0)
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao carregar notificações:', error);
-      setNotifications(prev => ({ ...prev, loading: false }));
-      toast.error('Erro ao carregar notificações');
-    }
-  }, []);
+  // Preparar dados para exibição
+  const friendRequests = notifications.filter(n => n.type === 'friend_request');
+  const lobbyInvites = notifications.filter(n => n.type === 'lobby_invite');
+  const unreadCount = notifications.filter(n => !n.read).length;
   
+  // Efeito para recarregar notificações quando abrir o painel
   React.useEffect(() => {
     if (isOpen) {
-      fetchNotifications();
+      onUpdate();
     }
-  }, [isOpen, fetchNotifications]);
+  }, [isOpen, onUpdate]);
   
   const acceptFriendRequest = async (requestId: string) => {
     try {
+      setLoading(true);
       const response = await fetch(`/api/friends/requests?requestId=${requestId}`, {
         method: 'PUT'
       });
@@ -64,23 +49,22 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
       const data = await response.json();
       
       if (data.status === 'success') {
-        setNotifications(prev => ({
-          ...prev,
-          friendRequests: prev.friendRequests.filter(req => req._id !== requestId),
-          unreadCount: prev.unreadCount - 1
-        }));
         toast.success('Solicitação de amizade aceita');
+        onUpdate(); // Atualizar todas as notificações
       } else {
         toast.error(data.error || 'Erro ao aceitar solicitação');
       }
     } catch (error) {
       console.error('Erro ao aceitar solicitação de amizade:', error);
       toast.error('Erro ao aceitar solicitação');
+    } finally {
+      setLoading(false);
     }
   };
   
   const rejectFriendRequest = async (requestId: string) => {
     try {
+      setLoading(true);
       const response = await fetch(`/api/friends/requests?requestId=${requestId}`, {
         method: 'DELETE'
       });
@@ -88,38 +72,50 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
       const data = await response.json();
       
       if (data.status === 'success') {
-        setNotifications(prev => ({
-          ...prev,
-          friendRequests: prev.friendRequests.filter(req => req._id !== requestId),
-          unreadCount: prev.unreadCount - 1
-        }));
         toast.success('Solicitação de amizade rejeitada');
+        onUpdate(); // Atualizar todas as notificações
       } else {
         toast.error(data.error || 'Erro ao rejeitar solicitação');
       }
     } catch (error) {
       console.error('Erro ao rejeitar solicitação de amizade:', error);
       toast.error('Erro ao rejeitar solicitação');
+    } finally {
+      setLoading(false);
     }
   };
   
-  const acceptLobbyInvite = async (lobbyId: string) => {
+  const acceptLobbyInvite = async (inviteId: string) => {
     try {
-      setNotifications(prev => ({
-        ...prev,
-        lobbyInvites: prev.lobbyInvites.filter(invite => invite.lobbyId !== lobbyId),
-        unreadCount: prev.unreadCount - 1
-      }));
-      toast.success('Convite aceito com sucesso');
-      onClose();
+      setLoading(true);
+      const response = await fetch('/api/lobby/invite/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inviteId }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast.success('Convite aceito com sucesso');
+        onUpdate(); // Atualizar todas as notificações
+        onClose(); // Fechar o painel para que o usuário possa ver o lobby
+      } else {
+        toast.error(data.error || 'Erro ao aceitar convite');
+      }
     } catch (error) {
       console.error('Erro ao aceitar convite para lobby:', error);
       toast.error('Erro ao aceitar convite');
+    } finally {
+      setLoading(false);
     }
   };
   
   const rejectLobbyInvite = async (inviteId: string) => {
     try {
+      setLoading(true);
       const response = await fetch(`/api/lobby/invite?inviteId=${inviteId}`, {
         method: 'DELETE'
       });
@@ -127,18 +123,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
       const data = await response.json();
       
       if (data.status === 'success') {
-        setNotifications(prev => ({
-          ...prev,
-          lobbyInvites: prev.lobbyInvites.filter(invite => invite._id !== inviteId),
-          unreadCount: prev.unreadCount - 1
-        }));
         toast.success('Convite rejeitado');
+        onUpdate(); // Atualizar todas as notificações
       } else {
         toast.error(data.error || 'Erro ao rejeitar convite');
       }
     } catch (error) {
       console.error('Erro ao rejeitar convite para lobby:', error);
       toast.error('Erro ao rejeitar convite');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -162,24 +156,24 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
             className={`flex-1 py-3 font-medium ${activeTab === 'todos' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}
             onClick={() => setActiveTab('todos')}
           >
-            Todos ({notifications.unreadCount})
+            Todos ({unreadCount})
           </button>
           <button
             className={`flex-1 py-3 font-medium ${activeTab === 'amigos' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}
             onClick={() => setActiveTab('amigos')}
           >
-            Amigos ({notifications.friendRequests.length})
+            Amigos ({friendRequests.length})
           </button>
           <button
             className={`flex-1 py-3 font-medium ${activeTab === 'lobby' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}
             onClick={() => setActiveTab('lobby')}
           >
-            Lobby ({notifications.lobbyInvites.length})
+            Lobby ({lobbyInvites.length})
           </button>
         </div>
 
         <div className="p-4">
-          {notifications.loading ? (
+          {loading ? (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
@@ -187,14 +181,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
             <>
               {activeTab === 'todos' && (
                 <>
-                  {notifications.unreadCount === 0 ? (
+                  {notifications.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <Bell size={32} className="mx-auto mb-2" />
                       <p>Nenhuma notificação disponível</p>
                     </div>
                   ) : (
                     <>
-                      {notifications.lobbyInvites.map(invite => (
+                      {lobbyInvites.map(invite => (
                         <LobbyInviteNotification 
                           key={invite._id} 
                           invite={invite} 
@@ -202,7 +196,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
                           onReject={rejectLobbyInvite} 
                         />
                       ))}
-                      {notifications.friendRequests.map(request => (
+                      {friendRequests.map(request => (
                         <FriendRequestNotification 
                           key={request._id} 
                           request={request} 
@@ -217,13 +211,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
 
               {activeTab === 'amigos' && (
                 <>
-                  {notifications.friendRequests.length === 0 ? (
+                  {friendRequests.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <Users size={32} className="mx-auto mb-2" />
                       <p>Nenhuma solicitação de amizade</p>
                     </div>
                   ) : (
-                    notifications.friendRequests.map(request => (
+                    friendRequests.map(request => (
                       <FriendRequestNotification 
                         key={request._id} 
                         request={request} 
@@ -237,13 +231,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
 
               {activeTab === 'lobby' && (
                 <>
-                  {notifications.lobbyInvites.length === 0 ? (
+                  {lobbyInvites.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <Users size={32} className="mx-auto mb-2" />
                       <p>Nenhum convite para lobby</p>
                     </div>
                   ) : (
-                    notifications.lobbyInvites.map(invite => (
+                    lobbyInvites.map(invite => (
                       <LobbyInviteNotification 
                         key={invite._id} 
                         invite={invite} 

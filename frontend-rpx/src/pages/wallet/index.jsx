@@ -5,15 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { DollarSign, TrendingUp, TrendingDown, Clock, ArrowRight, ArrowLeft } from 'react-feather';
 
-// Dados fictícios de exemplo para transações
-const MOCK_TRANSACTIONS = [
-  { id: 1, type: 'deposit', amount: 100, status: 'completed', date: '2023-11-15T14:22:00', method: 'pix' },
-  { id: 2, type: 'withdrawal', amount: 50, status: 'completed', date: '2023-11-12T10:15:00', method: 'pix' },
-  { id: 3, type: 'deposit', amount: 200, status: 'completed', date: '2023-11-10T18:35:00', method: 'card' },
-  { id: 4, type: 'match_win', amount: 120, status: 'completed', date: '2023-11-08T15:40:00' },
-  { id: 5, type: 'match_bet', amount: 50, status: 'completed', date: '2023-11-08T14:20:00' },
-];
-
 export default function WalletPage() {
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -21,15 +12,23 @@ export default function WalletPage() {
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
-  // Simular carregamento de transações
+  // Carregar transações da API
   useEffect(() => {
     if (isAuthenticated) {
       const loadTransactions = async () => {
         setIsTransactionsLoading(true);
-        // Em produção, seria uma chamada real à API
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setTransactions(MOCK_TRANSACTIONS);
-        setIsTransactionsLoading(false);
+        try {
+          const response = await fetch('/api/user/transactions');
+          if (!response.ok) {
+            throw new Error('Falha ao carregar transações');
+          }
+          const data = await response.json();
+          setTransactions(data);
+        } catch (error) {
+          console.error('Erro ao carregar transações:', error);
+        } finally {
+          setIsTransactionsLoading(false);
+        }
       };
       
       loadTransactions();
@@ -244,7 +243,7 @@ export default function WalletPage() {
             {/* Rodapé do card */}
             <div className="p-4 border-t border-gray-700 text-center">
               <Link 
-                href="#" 
+                href="/wallet/transactions" 
                 className="text-primary hover:text-primary-hover text-sm flex items-center justify-center"
               >
                 Ver todas as transações

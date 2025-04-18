@@ -18,6 +18,9 @@ export default function ProfilePage() {
     xp: 0,
     nextLevelXp: 100,
   });
+  const [matchHistory, setMatchHistory] = useState([]);
+  const [achievements, setAchievements] = useState([]);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   
   // Redirecionar para login se não estiver autenticado
   useEffect(() => {
@@ -26,35 +29,68 @@ export default function ProfilePage() {
     }
   }, [isLoading, isAuthenticated, router]);
   
-  // Carregar estatísticas do usuário (simulado)
+  // Carregar dados do usuário da API
   useEffect(() => {
-    if (isAuthenticated) {
-      // Dados simulados - Em produção, isso viria da API
-      const mockStats = {
-        matches: 127,
-        wins: 48,
-        totalEarnings: 1875.50,
-        winRate: 37.8,
-        level: 23,
-        xp: 7800,
-        nextLevelXp: 8500,
+    if (isAuthenticated && user?.id) {
+      setIsDataLoading(true);
+      
+      // Função para carregar estatísticas
+      const loadUserStats = async () => {
+        try {
+          const response = await fetch(`/api/users/${user.id}/stats`);
+          if (!response.ok) {
+            throw new Error('Falha ao carregar estatísticas');
+          }
+          const data = await response.json();
+          setStats(data);
+        } catch (error) {
+          console.error('Erro ao carregar estatísticas:', error);
+        }
       };
       
-      setStats(mockStats);
+      // Função para carregar histórico de partidas
+      const loadMatchHistory = async () => {
+        try {
+          const response = await fetch(`/api/users/${user.id}/matches?limit=3`);
+          if (!response.ok) {
+            throw new Error('Falha ao carregar histórico de partidas');
+          }
+          const data = await response.json();
+          setMatchHistory(data);
+        } catch (error) {
+          console.error('Erro ao carregar histórico de partidas:', error);
+        }
+      };
+      
+      // Função para carregar conquistas
+      const loadAchievements = async () => {
+        try {
+          const response = await fetch(`/api/users/${user.id}/achievements?limit=3`);
+          if (!response.ok) {
+            throw new Error('Falha ao carregar conquistas');
+          }
+          const data = await response.json();
+          setAchievements(data);
+        } catch (error) {
+          console.error('Erro ao carregar conquistas:', error);
+        }
+      };
+      
+      // Executar todas as requisições
+      Promise.all([
+        loadUserStats(),
+        loadMatchHistory(),
+        loadAchievements()
+      ]).finally(() => {
+        setIsDataLoading(false);
+      });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id]);
   
   // Calcular progresso de XP para o próximo nível
   const xpProgress = (stats.xp / stats.nextLevelXp) * 100;
   
-  // Dados simulados de conquistas recentes
-  const recentAchievements = [
-    { name: 'Primeiras 10 vitórias', icon: Trophy, date: '2 dias atrás', xp: 500 },
-    { name: 'Registrar 3 dias seguidos', icon: Calendar, date: '3 dias atrás', xp: 150 },
-    { name: 'Completar 50 partidas', icon: Target, date: '5 dias atrás', xp: 300 },
-  ];
-  
-  // Componentes de ícones simulados para as conquistas
+  // Componentes de ícones para as conquistas
   function Trophy() {
     return <Star className="text-yellow-500" size={18} />;
   }
@@ -66,6 +102,36 @@ export default function ProfilePage() {
   function Target() {
     return <Award className="text-purple-500" size={18} />;
   }
+  
+  // Obter ícone com base no tipo de conquista
+  const getAchievementIcon = (type) => {
+    switch (type) {
+      case 'win_streak':
+      case 'total_wins':
+        return Trophy;
+      case 'login_streak':
+      case 'time_played':
+        return Calendar;
+      case 'matches_played':
+      case 'target_score':
+        return Target;
+      default:
+        return Trophy;
+    }
+  };
+  
+  // Formatar data relativa
+  const formatRelativeDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Ontem';
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
+    return `${Math.floor(diffDays / 30)} meses atrás`;
+  };
   
   // Verificar carregamento
   if (isLoading) {
@@ -146,7 +212,7 @@ export default function ProfilePage() {
                 <div className="mt-6 border-t border-gray-700 pt-4">
                   <h3 className="text-lg font-bold mb-3">Carteira</h3>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <Link href="/profile/wallet" className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-md font-medium text-center flex items-center justify-center gap-2">
+                    <Link href="/wallet" className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-md font-medium text-center flex items-center justify-center gap-2">
                       <DollarSign size={16} />
                       Acessar Carteira
                     </Link>
@@ -211,20 +277,36 @@ export default function ProfilePage() {
               </div>
               
               <div className="divide-y divide-border">
-                {recentAchievements.map((achievement, index) => (
-                  <div key={index} className="p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 bg-card-hover rounded-full flex items-center justify-center">
-                      <achievement.icon />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{achievement.name}</div>
-                      <div className="text-xs text-muted">{achievement.date}</div>
-                    </div>
-                    <div className="text-primary font-bold text-sm">
-                      +{achievement.xp} XP
-                    </div>
+                {isDataLoading ? (
+                  <div className="p-8 flex justify-center items-center">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                ))}
+                ) : achievements.length > 0 ? (
+                  achievements.map((achievement) => {
+                    const AchievementIcon = getAchievementIcon(achievement.type);
+                    return (
+                      <div key={achievement.id} className="p-4 flex items-center gap-4">
+                        <div className="w-10 h-10 bg-card-hover rounded-full flex items-center justify-center">
+                          <AchievementIcon />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">{achievement.name}</div>
+                          <div className="text-xs text-muted">{formatRelativeDate(achievement.unlockedAt)}</div>
+                        </div>
+                        <div className="text-primary font-bold text-sm">
+                          +{achievement.xpReward} XP
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-muted">
+                    <div className="mb-2">
+                      <Award size={24} className="mx-auto opacity-50" />
+                    </div>
+                    <p>Nenhuma conquista desbloqueada ainda.</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -240,32 +322,44 @@ export default function ProfilePage() {
               </div>
               
               <div className="divide-y divide-border">
-                {/* Partidas simuladas */}
-                {Array(3).fill(0).map((_, index) => {
-                  const isWin = index % 2 === 0;
-                  return (
-                    <div key={index} className="p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${isWin ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                          <span className="font-medium">{isWin ? 'Vitória' : 'Derrota'}</span>
+                {isDataLoading ? (
+                  <div className="p-8 flex justify-center items-center">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : matchHistory.length > 0 ? (
+                  matchHistory.map((match) => {
+                    const isWin = match.result === 'win';
+                    return (
+                      <div key={match.id} className="p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${isWin ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className="font-medium">{isWin ? 'Vitória' : 'Derrota'}</span>
+                          </div>
+                          <div className="text-xs text-muted">
+                            {new Date(match.date).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted">
-                          {new Date(Date.now() - (index + 1) * 86400000).toLocaleDateString()}
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm">
+                            Partida #{match.id} • {isWin ? '+' : '-'}R$ {match.amount.toFixed(2)}
+                          </div>
+                          <Link href={`/matches/${match.id}`} className="text-primary text-xs">
+                            Detalhes
+                          </Link>
                         </div>
                       </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm">
-                          Partida #{123 - index} • {isWin ? '+' : '-'}R$ {(Math.random() * 100).toFixed(2)}
-                        </div>
-                        <Link href={`/matches/${100 + index}`} className="text-primary text-xs">
-                          Detalhes
-                        </Link>
-                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-muted">
+                    <div className="mb-2">
+                      <Clock size={24} className="mx-auto opacity-50" />
                     </div>
-                  );
-                })}
+                    <p>Nenhuma partida jogada ainda.</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -276,22 +370,23 @@ export default function ProfilePage() {
               </div>
               
               <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* Estatísticas simuladas */}
                 <div className="bg-card-hover rounded-lg p-3">
                   <div className="text-xs text-muted mb-1">Melhor Resultado</div>
-                  <div className="text-xl font-bold">1º Lugar</div>
+                  <div className="text-xl font-bold">{stats.bestResult || '-'}</div>
                 </div>
                 <div className="bg-card-hover rounded-lg p-3">
                   <div className="text-xs text-muted mb-1">Pontuação Média</div>
-                  <div className="text-xl font-bold">2.8</div>
+                  <div className="text-xl font-bold">{stats.averageScore?.toFixed(1) || '-'}</div>
                 </div>
                 <div className="bg-card-hover rounded-lg p-3">
                   <div className="text-xs text-muted mb-1">Maior Ganho</div>
-                  <div className="text-xl font-bold text-primary">R$ 250,00</div>
+                  <div className="text-xl font-bold text-primary">
+                    {stats.highestEarning ? `R$ ${stats.highestEarning.toFixed(2)}` : '-'}
+                  </div>
                 </div>
                 <div className="bg-card-hover rounded-lg p-3">
                   <div className="text-xs text-muted mb-1">Sequência de Vitórias</div>
-                  <div className="text-xl font-bold">3</div>
+                  <div className="text-xl font-bold">{stats.winStreak || '0'}</div>
                 </div>
               </div>
             </div>

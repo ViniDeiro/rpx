@@ -1,6 +1,6 @@
 // Tipos para o sistema de ranking
-export type RankTier = 'bronze' | 'prata' | 'ouro' | 'platina' | 'diamante' | 'mestre' | 'challenger';
-export type RankDivision = 'IV' | 'III' | 'II' | 'I' | null; // null para Mestre e Challenger que não têm divisões
+export type RankTier = 'unranked' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'legend' | 'challenger';
+export type RankDivision = '1' | '2' | '3' | null; // null para Legend e Challenger que não têm divisões
 
 export interface Rank {
   tier: RankTier;
@@ -13,6 +13,7 @@ export interface Rank {
   image: string;
   requiredPointsForPromotion: number;
   nextRank?: string; // Nome do próximo rank
+  position?: number; // Posição no ranking (para Legend e Challenger)
 }
 
 export interface RankProgress {
@@ -28,17 +29,45 @@ export interface RankProgress {
 
 // Configuração de pontos para cada rank
 export const RANK_CONFIG = {
-  bronze: { min: 0, max: 299 },
-  prata: { min: 300, max: 699 },
-  ouro: { min: 700, max: 1199 },
-  platina: { min: 1200, max: 1799 },
-  diamante: { min: 1800, max: 2499 },
-  mestre: { min: 2500, max: 3499 },
-  challenger: { min: 3500, max: Infinity },
+  unranked: { min: 0, max: 0 },
+  bronze: { 
+    '1': { min: 1, max: 99 },
+    '2': { min: 100, max: 199 },
+    '3': { min: 200, max: 299 },
+  },
+  silver: { 
+    '1': { min: 300, max: 399 },
+    '2': { min: 400, max: 499 },
+    '3': { min: 500, max: 599 },
+  },
+  gold: { 
+    '1': { min: 600, max: 699 },
+    '2': { min: 700, max: 799 },
+    '3': { min: 800, max: 899 },
+  },
+  platinum: { 
+    '1': { min: 900, max: 999 },
+    '2': { min: 1000, max: 1099 },
+    '3': { min: 1100, max: 1199 },
+  },
+  diamond: { 
+    '1': { min: 1200, max: 1299 },
+    '2': { min: 1300, max: 1399 },
+    '3': { min: 1400, max: 1499 },
+  },
+  legend: { min: 1500, max: 2000 }, // Valor simbólico, na verdade é baseado em posição (TOP 25-100)
+  challenger: { min: 2001, max: Infinity }, // Valor simbólico, na verdade é baseado em posição (TOP 25)
 };
 
 // Informações estéticas para cada rank
-export const RANK_FRAMES: Record<RankTier, Omit<Rank, 'division' | 'points' | 'nextRankPoints' | 'requiredPointsForPromotion'>> = {
+export const RANK_FRAMES: Record<RankTier, Omit<Partial<Rank>, 'division' | 'points' | 'nextRankPoints' | 'requiredPointsForPromotion'>> = {
+  unranked: {
+    tier: 'unranked',
+    name: 'Unranked',
+    color: 'from-gray-300 to-gray-400',
+    borderColor: 'border-gray-300',
+    image: '/images/ranks/unranked.png'
+  },
   bronze: {
     tier: 'bronze',
     name: 'Bronze',
@@ -46,40 +75,40 @@ export const RANK_FRAMES: Record<RankTier, Omit<Rank, 'division' | 'points' | 'n
     borderColor: 'border-amber-700',
     image: '/images/ranks/bronze.png'
   },
-  prata: {
-    tier: 'prata',
-    name: 'Prata',
+  silver: {
+    tier: 'silver',
+    name: 'Silver',
     color: 'from-gray-400 to-gray-500',
     borderColor: 'border-gray-400',
-    image: '/images/ranks/prata.png'
+    image: '/images/ranks/silver.png'
   },
-  ouro: {
-    tier: 'ouro',
-    name: 'Ouro',
+  gold: {
+    tier: 'gold',
+    name: 'Gold',
     color: 'from-yellow-500 to-yellow-600',
     borderColor: 'border-yellow-500',
-    image: '/images/ranks/ouro.png'
+    image: '/images/ranks/gold.png'
   },
-  platina: {
-    tier: 'platina',
-    name: 'Platina',
+  platinum: {
+    tier: 'platinum',
+    name: 'Platinum',
     color: 'from-teal-400 to-teal-500',
     borderColor: 'border-teal-400',
-    image: '/images/ranks/platina.png'
+    image: '/images/ranks/platinum.png'
   },
-  diamante: {
-    tier: 'diamante',
-    name: 'Diamante',
+  diamond: {
+    tier: 'diamond',
+    name: 'Diamond',
     color: 'from-blue-400 to-blue-500',
     borderColor: 'border-blue-400',
     image: '/images/ranks/diamond.png'
   },
-  mestre: {
-    tier: 'mestre',
-    name: 'Mestre',
+  legend: {
+    tier: 'legend',
+    name: 'Legend',
     color: 'from-purple-500 to-purple-600',
     borderColor: 'border-purple-500',
-    image: '/images/ranks/mestre.png'
+    image: '/images/ranks/legend.png'
   },
   challenger: {
     tier: 'challenger',
@@ -90,61 +119,153 @@ export const RANK_FRAMES: Record<RankTier, Omit<Rank, 'division' | 'points' | 'n
   }
 };
 
-// Função para calcular o rank baseado nos pontos
-export const calculateRank = (points: number): Rank => {
-  // Determinar o tier (bronze, prata, etc.)
-  let tier: RankTier = 'bronze';
-  for (const [t, range] of Object.entries(RANK_CONFIG)) {
-    if (points >= range.min && points <= range.max) {
-      tier = t as RankTier;
-      break;
+// Função para calcular o rank baseado nos pontos e posição no ranking
+export const calculateRank = (points: number, position?: number): Rank => {
+  // Verificar primeiro se está nos rankings de topo
+  if (position !== undefined) {
+    if (position <= 25) {
+      return {
+        tier: 'challenger',
+        division: null,
+        name: 'Challenger',
+        points,
+        nextRankPoints: Infinity,
+        color: RANK_FRAMES.challenger.color || '',
+        borderColor: RANK_FRAMES.challenger.borderColor || '',
+        image: RANK_FRAMES.challenger.image || '',
+        requiredPointsForPromotion: Infinity,
+        position
+      };
+    } else if (position <= 100) {
+      return {
+        tier: 'legend',
+        division: null,
+        name: 'Legend',
+        points,
+        nextRankPoints: Infinity,
+        color: RANK_FRAMES.legend.color || '',
+        borderColor: RANK_FRAMES.legend.borderColor || '',
+        image: RANK_FRAMES.legend.image || '',
+        requiredPointsForPromotion: Infinity,
+        position
+      };
     }
   }
 
-  // Calcular divisão (IV, III, II, I) para tiers que têm divisões
-  let division: RankDivision = null;
-  if (tier !== 'mestre' && tier !== 'challenger') {
-    const tierRange = RANK_CONFIG[tier].max - RANK_CONFIG[tier].min;
-    const divisionSize = tierRange / 4;
-    const tierProgress = points - RANK_CONFIG[tier].min;
-    
-    if (tierProgress < divisionSize) division = 'IV';
-    else if (tierProgress < divisionSize * 2) division = 'III';
-    else if (tierProgress < divisionSize * 3) division = 'II';
-    else division = 'I';
+  // Se não tem pontos, é unranked
+  if (points === 0) {
+    return {
+      tier: 'unranked',
+      division: null,
+      name: 'Unranked',
+      points: 0,
+      nextRankPoints: 1,
+      color: RANK_FRAMES.unranked.color || '',
+      borderColor: RANK_FRAMES.unranked.borderColor || '',
+      image: RANK_FRAMES.unranked.image || '',
+      requiredPointsForPromotion: 1,
+      nextRank: 'Bronze 1'
+    };
   }
 
-  // Calcular pontos necessários para o próximo tier
-  const tierIndex = Object.keys(RANK_CONFIG).indexOf(tier);
-  const nextTier = Object.keys(RANK_CONFIG)[tierIndex + 1] as RankTier | undefined;
-  const nextRankPoints = nextTier ? RANK_CONFIG[nextTier].min : Infinity;
-  
-  // Pontos necessários para promoção (próxima divisão ou próximo tier)
-  let requiredPointsForPromotion;
-  let nextRank: string | undefined;
-  
-  if (tier !== 'mestre' && tier !== 'challenger' && division !== 'I') {
-    // Promoção para próxima divisão no mesmo tier
-    const tierRange = RANK_CONFIG[tier].max - RANK_CONFIG[tier].min;
-    const divisionSize = tierRange / 4;
-    const currentDivIndex = ['IV', 'III', 'II', 'I'].indexOf(division as string);
-    requiredPointsForPromotion = RANK_CONFIG[tier].min + (currentDivIndex + 1) * divisionSize;
-    
-    // Nome do próximo rank (próxima divisão)
-    const nextDivision = ['IV', 'III', 'II', 'I'][currentDivIndex + 1];
-    nextRank = `${RANK_FRAMES[tier].name} ${nextDivision}`;
-  } else if (nextTier) {
-    // Promoção para o próximo tier
-    requiredPointsForPromotion = RANK_CONFIG[nextTier].min;
-    
-    // Nome do próximo rank (próximo tier, divisão IV se aplicável)
-    nextRank = nextTier !== 'mestre' && nextTier !== 'challenger' 
-      ? `${RANK_FRAMES[nextTier].name} IV` 
-      : RANK_FRAMES[nextTier].name;
-  } else {
-    // Já está no rank mais alto
+  // Determinar o tier e divisão baseado nos pontos
+  let tier: RankTier = 'bronze';
+  let division: RankDivision = '1';
+  let nextRankPoints = 100; // Default para próximo rank
+  let requiredPointsForPromotion = 100;
+  let nextRank = 'Bronze 2';
+
+  // Verificar cada tier e divisão
+  if (points >= 1400) {
+    tier = 'diamond';
+    division = '3';
+    nextRankPoints = Infinity;
     requiredPointsForPromotion = Infinity;
-    nextRank = undefined;
+    nextRank = '';
+  } else if (points >= 1300) {
+    tier = 'diamond';
+    division = '2';
+    nextRankPoints = 1400;
+    requiredPointsForPromotion = 1400;
+    nextRank = 'Diamond 3';
+  } else if (points >= 1200) {
+    tier = 'diamond';
+    division = '1';
+    nextRankPoints = 1300;
+    requiredPointsForPromotion = 1300;
+    nextRank = 'Diamond 2';
+  } else if (points >= 1100) {
+    tier = 'platinum';
+    division = '3';
+    nextRankPoints = 1200;
+    requiredPointsForPromotion = 1200;
+    nextRank = 'Diamond 1';
+  } else if (points >= 1000) {
+    tier = 'platinum';
+    division = '2';
+    nextRankPoints = 1100;
+    requiredPointsForPromotion = 1100;
+    nextRank = 'Platinum 3';
+  } else if (points >= 900) {
+    tier = 'platinum';
+    division = '1';
+    nextRankPoints = 1000;
+    requiredPointsForPromotion = 1000;
+    nextRank = 'Platinum 2';
+  } else if (points >= 800) {
+    tier = 'gold';
+    division = '3';
+    nextRankPoints = 900;
+    requiredPointsForPromotion = 900;
+    nextRank = 'Platinum 1';
+  } else if (points >= 700) {
+    tier = 'gold';
+    division = '2';
+    nextRankPoints = 800;
+    requiredPointsForPromotion = 800;
+    nextRank = 'Gold 3';
+  } else if (points >= 600) {
+    tier = 'gold';
+    division = '1';
+    nextRankPoints = 700;
+    requiredPointsForPromotion = 700;
+    nextRank = 'Gold 2';
+  } else if (points >= 500) {
+    tier = 'silver';
+    division = '3';
+    nextRankPoints = 600;
+    requiredPointsForPromotion = 600;
+    nextRank = 'Gold 1';
+  } else if (points >= 400) {
+    tier = 'silver';
+    division = '2';
+    nextRankPoints = 500;
+    requiredPointsForPromotion = 500;
+    nextRank = 'Silver 3';
+  } else if (points >= 300) {
+    tier = 'silver';
+    division = '1';
+    nextRankPoints = 400;
+    requiredPointsForPromotion = 400;
+    nextRank = 'Silver 2';
+  } else if (points >= 200) {
+    tier = 'bronze';
+    division = '3';
+    nextRankPoints = 300;
+    requiredPointsForPromotion = 300;
+    nextRank = 'Silver 1';
+  } else if (points >= 100) {
+    tier = 'bronze';
+    division = '2';
+    nextRankPoints = 200;
+    requiredPointsForPromotion = 200;
+    nextRank = 'Bronze 3';
+  } else {
+    tier = 'bronze';
+    division = '1';
+    nextRankPoints = 100;
+    requiredPointsForPromotion = 100;
+    nextRank = 'Bronze 2';
   }
 
   return {
@@ -153,9 +274,9 @@ export const calculateRank = (points: number): Rank => {
     name: `${RANK_FRAMES[tier].name}${division ? ' ' + division : ''}`,
     points,
     nextRankPoints,
-    color: RANK_FRAMES[tier].color,
-    borderColor: RANK_FRAMES[tier].borderColor,
-    image: RANK_FRAMES[tier].image,
+    color: RANK_FRAMES[tier].color || '',
+    borderColor: RANK_FRAMES[tier].borderColor || '',
+    image: RANK_FRAMES[tier].image || '',
     requiredPointsForPromotion,
     nextRank
   };
@@ -163,53 +284,54 @@ export const calculateRank = (points: number): Rank => {
 
 // Calcular progresso do rank
 export const calculateRankProgress = (rank: Rank): RankProgress => {
-  const tierConfig = RANK_CONFIG[rank.tier];
-  const currentTierMin = tierConfig.min;
-  const currentTierMax = tierConfig.max;
-  
-  let pointsForNextTier = Infinity;
-  let pointsForNextDivision = Infinity;
-  let progressPercentage = 0;
-  
-  if (rank.tier !== 'challenger') {
-    const nextTierKey = Object.keys(RANK_CONFIG)[Object.keys(RANK_CONFIG).indexOf(rank.tier) + 1] as RankTier;
-    if (nextTierKey) {
-      pointsForNextTier = RANK_CONFIG[nextTierKey].min - rank.points;
-    }
+  if (rank.tier === 'legend' || rank.tier === 'challenger') {
+    // Para Legend e Challenger, o progresso é baseado em posição, não em pontos
+    return {
+      currentPoints: rank.points,
+      pointsForNextTier: Infinity,
+      pointsForNextDivision: Infinity,
+      progressPercentage: 100, // Já está no topo
+      isInPromotionSeries: false,
+      winsRequired: 0,
+      promotionWins: 0,
+      promotionLosses: 0
+    };
   }
   
-  if (rank.tier !== 'mestre' && rank.tier !== 'challenger' && rank.division) {
-    const divisionSize = (currentTierMax - currentTierMin) / 4;
-    const divisionIndex = ['IV', 'III', 'II', 'I'].indexOf(rank.division);
-    const currentDivisionMin = currentTierMin + divisionSize * divisionIndex;
-    const currentDivisionMax = currentTierMin + divisionSize * (divisionIndex + 1);
-    
-    pointsForNextDivision = divisionIndex < 3 
-      ? currentDivisionMax - rank.points 
-      : pointsForNextTier;
-    
-    // Progresso percentual dentro da divisão atual
-    progressPercentage = ((rank.points - currentDivisionMin) / (currentDivisionMax - currentDivisionMin)) * 100;
-  } else {
-    // Progresso percentual dentro do tier (para Mestre e Challenger)
-    const totalPointsInTier = currentTierMax - currentTierMin;
-    const pointsInCurrentTier = rank.points - currentTierMin;
-    progressPercentage = Math.min((pointsInCurrentTier / totalPointsInTier) * 100, 100);
+  if (rank.tier === 'unranked') {
+    return {
+      currentPoints: 0,
+      pointsForNextTier: 1,
+      pointsForNextDivision: 1,
+      progressPercentage: 0,
+      isInPromotionSeries: false,
+      winsRequired: 0,
+      promotionWins: 0,
+      promotionLosses: 0
+    };
   }
   
-  // Série de promoção - ativa quando estiver perto de promover para outra divisão ou tier
-  const isInPromotionSeries = rank.tier !== 'challenger' && (
-    (rank.division === 'I' && rank.points >= currentTierMax - 50) || 
-    (rank.division !== null && rank.division !== 'I' && progressPercentage >= 90)
-  );
+  // Para outros ranks, calcular o progresso para o próximo tier/divisão
+  const tierConfig = RANK_CONFIG[rank.tier] as { [key: string]: { min: number; max: number } };
+  const minPoints = rank.tier === 'bronze' && rank.division === '1' ? 1 : 
+                    tierConfig[rank.division as string].min;
+  const maxPoints = tierConfig[rank.division as string].max;
+  const currentProgress = rank.points - minPoints;
+  const totalRange = maxPoints - minPoints;
+  const progressPercentage = Math.min((currentProgress / totalRange) * 100, 100);
+  
+  const pointsForNextDivision = rank.requiredPointsForPromotion - rank.points;
+  
+  // Série de promoção - ativa quando estiver perto de promover para outra divisão
+  const isInPromotionSeries = progressPercentage >= 90;
   
   return {
     currentPoints: rank.points,
-    pointsForNextTier,
+    pointsForNextTier: pointsForNextDivision,
     pointsForNextDivision,
     progressPercentage,
     isInPromotionSeries,
-    winsRequired: rank.division === 'I' ? 5 : 3, // Mais jogos para promoção de tier
+    winsRequired: 3, // Simplificado para 3 vitórias para promoção
     promotionWins: 0, // Seria atualizado com dados do backend
     promotionLosses: 0 // Seria atualizado com dados do backend
   };
@@ -218,109 +340,33 @@ export const calculateRankProgress = (rank: Rank): RankProgress => {
 // Calcular pontos ganhos/perdidos por uma partida
 export const calculateMatchPoints = (
   isVictory: boolean,
-  matchType: 'normal' | 'ranked' | 'tournament',
-  streak: number = 0,
-  isMvp: boolean = false,
-  tournamentCompleted: boolean = false
+  betAmount: number = 0
 ): number => {
-  let points = 0;
-  
-  // Pontos base por tipo de partida
+  // No novo sistema, independente do valor da aposta, os pontos são fixos
   if (isVictory) {
-    switch (matchType) {
-      case 'normal':
-        points += 20;
-        break;
-      case 'ranked':
-        points += 25;
-        break;
-      case 'tournament':
-        points += 30;
-        break;
-    }
-    
-    // Bônus por sequência de vitórias
-    const streakBonus = Math.min(streak * 2, 10);
-    points += streakBonus;
-    
-    // Bônus por ser MVP
-    if (isMvp) points += 5;
-    
+    return 50; // Vitória sempre dá 50 pontos
   } else {
-    // Pontos perdidos por derrota
-    switch (matchType) {
-      case 'normal':
-        points -= 10;
-        break;
-      case 'ranked':
-        points -= 15;
-        break;
-      case 'tournament':
-        points -= 10; // Penalidade reduzida em torneios
-        break;
-    }
+    return -10; // Derrota sempre perde 10 pontos
   }
-  
-  // Bônus por completar torneio, independente do resultado
-  if (tournamentCompleted && matchType === 'tournament') {
-    points += 15;
-  }
-  
-  return points;
-};
-
-// Calcular decaimento de pontos por inatividade
-export const calculateDecay = (lastPlayedDays: number, currentRank: Rank): number => {
-  if (lastPlayedDays < 15) return 0;
-  
-  const daysInactive = lastPlayedDays - 14; // Começa a decair após 14 dias
-  const decayPoints = daysInactive * 5; // 5 pontos por dia
-  
-  // Limite de decaimento: uma divisão principal (não pode cair mais que isso)
-  const maxDecay = currentRank.tier === 'bronze' 
-    ? 0 // Não decai no Bronze
-    : RANK_CONFIG[currentRank.tier].min - currentRank.points + 1; // +1 para garantir que não caia de tier
-  
-  return Math.min(decayPoints, Math.max(0, maxDecay));
-};
-
-// Calcular pontos mantidos após reset de temporada
-export const calculateSeasonReset = (currentRank: Rank): number => {
-  const resetPercentages: Record<RankTier, number> = {
-    bronze: 1.0, // 100%
-    prata: 0.8,  // 80%
-    ouro: 0.7,   // 70%
-    platina: 0.6, // 60%
-    diamante: 0.5, // 50%
-    mestre: 0.4,  // 40%
-    challenger: 0.3 // 30%
-  };
-  
-  return Math.floor(currentRank.points * resetPercentages[currentRank.tier]);
 };
 
 // Determinar rank inicial após partidas de colocação
 export const calculateInitialRank = (placementWins: number): Rank => {
   let initialPoints = 0;
   
-  if (placementWins <= 2) {
-    // Bronze IV
-    initialPoints = RANK_CONFIG.bronze.min;
-  } else if (placementWins <= 4) {
-    // Bronze II
-    const divisionSize = (RANK_CONFIG.bronze.max - RANK_CONFIG.bronze.min) / 4;
-    initialPoints = RANK_CONFIG.bronze.min + divisionSize * 2;
-  } else if (placementWins <= 6) {
-    // Prata IV
-    initialPoints = RANK_CONFIG.prata.min;
-  } else if (placementWins <= 8) {
-    // Prata II
-    const divisionSize = (RANK_CONFIG.prata.max - RANK_CONFIG.prata.min) / 4;
-    initialPoints = RANK_CONFIG.prata.min + divisionSize * 2;
-  } else {
-    // Ouro IV
-    initialPoints = RANK_CONFIG.ouro.min;
-  }
+  // Simplificado para o novo sistema
+  initialPoints = placementWins * 50; // Cada vitória dá 50 pontos
   
   return calculateRank(initialPoints);
+};
+
+// Exportando funções auxiliares que podem ser removidas ou adaptadas conforme necessário
+export const calculateDecay = (lastPlayedDays: number, currentRank: Rank): number => {
+  // Função mantida para compatibilidade
+  return 0;
+};
+
+export const calculateSeasonReset = (currentRank: Rank): number => {
+  // Função mantida para compatibilidade
+  return currentRank.points;
 }; 

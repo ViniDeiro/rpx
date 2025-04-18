@@ -8,10 +8,10 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/layout';
-import NotificationHandler from '@/components/notifications/NotificationHandler';
 import ThemeProvider from '@/components/providers/ThemeProvider';
 import SessionProvider from '@/components/providers/SessionProvider';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import NotificationManager from '@/components/notifications/NotificationManager';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -27,6 +27,10 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         <link rel="icon" href="/images/favicon.svg" type="image/svg+xml" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#6930c3" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={`${inter.className} min-h-screen overflow-x-hidden bg-background`}>
         <SessionProvider>
@@ -37,8 +41,8 @@ export default function RootLayout({
               ) : (
                 <>
                   <Layout>{children}</Layout>
-                  <NotificationHandler />
                   <NotificationBell />
+                  <NotificationManager />
                 </>
               )}
               <Toaster />

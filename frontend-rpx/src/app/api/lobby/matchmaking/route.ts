@@ -57,6 +57,30 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
+    // Obter informações do usuário
+    const userInfo = await db.collection('users').findOne({
+      _id: new ObjectId(userId)
+    });
+    
+    // Obter membros do lobby com detalhes
+    const memberDetails = [];
+    
+    if (lobby.members && lobby.members.length > 0) {
+      for (const memberId of lobby.members) {
+        const memberInfo = await db.collection('users').findOne({
+          _id: new ObjectId(memberId)
+        });
+        
+        if (memberInfo) {
+          memberDetails.push({
+            userId: memberId.toString(),
+            username: memberInfo.username || 'Jogador',
+            avatar: memberInfo.avatar || '/images/avatars/default.png'
+          });
+        }
+      }
+    }
+    
     // Atualizar status do lobby para matchmaking
     await db.collection('lobbies').updateOne(
       { _id: new ObjectId(lobbyId) },
@@ -76,22 +100,29 @@ export async function POST(request: Request) {
       }
     );
     
-    // Adicionar lobby à fila de matchmaking
-    await db.collection('matchmakingQueue').insertOne({
-      lobbyId: new ObjectId(lobbyId),
+    // Adicionar lobby à fila de matchmaking com estrutura compatível
+    await db.collection('matchmaking_queue').insertOne({
+      userId: userId.toString(),  // Usuário que iniciou o matchmaking (importante para compatibilidade)
+      lobbyId: lobbyId,           // ID do lobby no formato string
       teamSize: memberCount,
       skill: lobby.config?.skill || 'any',
       region: lobby.config?.region || 'brasil',
       platformMode: platformMode,
       gameplayMode: gameplayMode,
-      createdAt: new Date()
+      // Campos adicionais para compatibilidade
+      mode: lobby.gameType || 'default',    // Tipo de jogo
+      type: lobby.type || 'solo',          // Tipo de partida (solo, duo, etc)
+      platform: platformMode,              // Plataforma
+      players: memberDetails,              // Detalhes dos jogadores no lobby
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
     
     // Notificar todos os membros do lobby
     const members = lobby.members || [];
     for (const memberId of members) {
       await db.collection('notifications').insertOne({
-        userId: new ObjectId(memberId.toString()),
+        userId: memberId.toString(),  // Armazenar como string em vez de ObjectId
         type: 'system',
         read: false,
         data: {

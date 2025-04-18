@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     );
     
     await db.collection('notifications').insertOne({
-      userId: new ObjectId(friendId),
+      userId: friendId.toString(),
       type: 'lobby_invite',
       read: false,
       data: {

@@ -9,54 +9,6 @@ import CharacterDisplay, { PLAYER_TYPES } from './CharacterDisplay';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
-// Dados mockados para exemplo
-const MOCK_PLAYERS = [
-  {
-    id: 'p1',
-    username: 'Capitão',
-    level: 27,
-    skin: 'soldier',
-    isCaptain: true,
-    isReady: true,
-    rank: 'Gold',
-  },
-  {
-    id: 'p2',
-    username: 'Usuario123',
-    level: 14,
-    skin: 'default',
-    isCaptain: false,
-    isReady: true,
-  },
-  {
-    id: 'p3',
-    username: 'ProPlayer',
-    level: 42,
-    skin: 'ninja',
-    isCaptain: false,
-    isReady: false,
-  },
-  {
-    id: 'o1',
-    username: 'Adversário1',
-    level: 31,
-    skin: 'cyber',
-    isCaptain: true,
-    isReady: true,
-    team: 'opponent',
-    rank: 'Diamond',
-  },
-  {
-    id: 'o2',
-    username: 'Inimigo2',
-    level: 22,
-    skin: 'neon',
-    isCaptain: false,
-    isReady: true,
-    team: 'opponent',
-  },
-];
-
 export default function LobbyRoom({
   matchId = '123456',
   matchDetails = {
@@ -76,22 +28,52 @@ export default function LobbyRoom({
   const { user } = useAuth();
   const [players, setPlayers] = useState([]);
   const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, username: 'Sistema', message: 'Bem-vindo ao lobby de partida!', type: 'system' },
-    { id: 2, username: 'Capitão', message: 'Vamos jogar pessoal!', type: 'player' },
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   
-  // Carregar jogadores (mockado)
+  // Carregar jogadores da API
   useEffect(() => {
-    // Simulando chamada de API
-    setTimeout(() => {
-      setPlayers(MOCK_PLAYERS);
-    }, 500);
-  }, []);
+    const fetchLobbyData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/lobbies/${matchId}/players`);
+        if (!response.ok) {
+          throw new Error('Falha ao carregar dados do lobby');
+        }
+        const data = await response.json();
+        setPlayers(data.players);
+        
+        // Carregar mensagens do chat
+        const chatResponse = await fetch(`/api/lobbies/${matchId}/chat`);
+        if (chatResponse.ok) {
+          const chatData = await chatResponse.json();
+          setChatMessages(chatData.messages || []);
+        }
+        
+        // Verificar se o usuário atual está pronto
+        const currentPlayer = data.players.find(p => p.id === user?.id);
+        if (currentPlayer) {
+          setIsReady(currentPlayer.isReady || false);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do lobby:', error);
+        toast.error('Erro ao carregar dados. Tente novamente.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLobbyData();
+    
+    // Configurar polling para manter dados atualizados
+    const interval = setInterval(fetchLobbyData, 10000); // atualizar a cada 10 segundos
+    
+    return () => clearInterval(interval);
+  }, [matchId, user?.id]);
   
   // Atualizar contagem regressiva
   useEffect(() => {
@@ -102,7 +84,6 @@ export default function LobbyRoom({
       if (diff <= 0) {
         setTimeLeft('Iniciando...');
         clearInterval(interval);
-        // Em uma implementação real, aqui iniciaria a partida
         return;
       }
       
@@ -133,15 +114,35 @@ export default function LobbyRoom({
   };
   
   // Marcar como pronto
-  const handleReady = () => {
-    setIsReady(!isReady);
-    
-    // Em uma implementação real, enviaria status para API
-    // Atualização simulada
-    const updatedPlayers = players.map(p => 
-      p.id === user?.id ? { ...p, isReady: !isReady } : p
-    );
-    setPlayers(updatedPlayers);
+  const handleReady = async () => {
+    try {
+      const newReadyStatus = !isReady;
+      setIsReady(newReadyStatus); // Atualização otimista
+      
+      const response = await fetch(`/api/lobbies/${matchId}/ready`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          playerId: user?.id,
+          isReady: newReadyStatus 
+        }),
+      });
+      
+      if (!response.ok) {
+        // Reverter se falhar
+        setIsReady(!newReadyStatus);
+        throw new Error('Falha ao atualizar status');
+      }
+      
+      // Atualizar lista de jogadores com o novo status
+      const data = await response.json();
+      setPlayers(data.players);
+    } catch (error) {
+      console.error('Erro ao atualizar status pronto:', error);
+      toast.error('Erro ao atualizar status. Tente novamente.');
+    }
   };
   
   // Iniciar partida (apenas para capitão)
@@ -178,7 +179,6 @@ export default function LobbyRoom({
         toast.dismiss();
         toast.success('Partida criada! Aguardando sala...');
         
-        // Em uma implementação real, redirecionaria para a página de aguardo da partida
         setTimeout(() => {
           router.push(`/matches/${data.match._id}`);
         }, 1500);
@@ -194,20 +194,38 @@ export default function LobbyRoom({
   };
   
   // Enviar mensagem no chat
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     
     if (!messageInput.trim()) return;
     
     const newMessage = {
-      id: chatMessages.length + 1,
+      id: Date.now(),
       username: user?.username || 'Você',
       message: messageInput,
       type: 'player',
     };
     
+    // Atualização otimista
     setChatMessages([...chatMessages, newMessage]);
     setMessageInput('');
+    
+    try {
+      await fetch(`/api/lobbies/${matchId}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: messageInput,
+          playerId: user?.id,
+          username: user?.username
+        }),
+      });
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      toast.error('Erro ao enviar mensagem');
+    }
   };
   
   // Nova função para expulsar um jogador do lobby
@@ -239,6 +257,17 @@ export default function LobbyRoom({
       toast.error('Falha ao expulsar jogador');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-card rounded-lg shadow-md overflow-hidden p-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="ml-3 text-muted">Carregando lobby...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="bg-card rounded-lg shadow-md overflow-hidden">

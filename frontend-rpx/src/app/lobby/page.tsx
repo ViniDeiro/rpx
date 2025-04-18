@@ -14,6 +14,7 @@ import SubmitResultModal from '@/components/modals/SubmitResultModal';
 import FriendSearch from '@/components/lobby/FriendSearch';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import MatchmakingStatus from '@/components/matchmaking/MatchmakingStatus';
 
 // Adicionar os tipos
 
@@ -589,94 +590,73 @@ export default function LobbyPage() {
       // Obter a partida do resultado
       const matchResponse = await response.json();
       
-      // Se a partida tiver informações de sala oficial, atualizar estados
-      if (matchResponse.isOfficialRoom) {
-        setIsConnectingToOfficialRoom(true);
-        setSelectedOfficialRoom({
-          id: matchResponse.id,
-          roomId: matchResponse.roomId,
-          roomPassword: matchResponse.roomPassword,
-          gameType: matchResponse.gameType || lobbyType,
-          format: matchResponse.title?.replace('Partida Oficial ', '').split(' #')[0] || lobbyType,
-          entryFee: matchResponse.entryFee,
-          gameDetails: matchResponse.gameDetails
-        });
-      }
-      
-      // Parar a animação de busca e mostrar a partida encontrada
-      setIsSearchingMatch(false);
-      setFoundMatch(matchResponse);
-      
-      // Exibir o modal da sala após um pequeno delay
-      setTimeout(() => {
-        setShowMatchRoomModal(true);
-      }, 1500);
-      
-      // Se o usuário estiver na fila de espera, fazer polling para verificar quando uma partida for encontrada
-      if (matchResponse.waitingForMatch) {
-        pollForMatch(matchResponse.id);
+      // Se a partida já foi encontrada
+      if (matchResponse.matchFound) {
+        // Se a partida tiver informações de sala oficial, atualizar estados
+        if (matchResponse.match.isOfficialRoom) {
+          setIsConnectingToOfficialRoom(true);
+          setSelectedOfficialRoom({
+            id: matchResponse.match.id,
+            roomId: matchResponse.match.roomId,
+            roomPassword: matchResponse.match.roomPassword,
+            gameType: matchResponse.match.gameType || lobbyType,
+            format: matchResponse.match.title?.replace('Partida Oficial ', '').split(' #')[0] || lobbyType,
+            entryFee: matchResponse.match.entryFee,
+            gameDetails: matchResponse.match.gameDetails
+          });
+        }
+        
+        // Parar a animação de busca e mostrar a partida encontrada
+        setIsSearchingMatch(false);
+        setFoundMatch(matchResponse.match);
+        
+        // Exibir o modal da sala após um pequeno delay
+        setTimeout(() => {
+          setShowMatchRoomModal(true);
+        }, 1500);
+      } else {
+        // Estamos em modo de espera, exibir o componente de status
+        setWaitingId(matchResponse.waitingId);
       }
     } catch (error) {
-      console.error('Erro ao buscar partida:', error);
-      
-      // Em caso de erro, parar a animação e mostrar mensagem
+      console.error('Erro ao iniciar matchmaking:', error);
+      toast.error('Não foi possível iniciar a busca por partida');
       setIsSearchingMatch(false);
-      alert('Houve um erro ao buscar partida. Tente novamente.');
     }
   };
-  
-  // Função para verificar periodicamente se uma partida foi encontrada enquanto na fila
-  const pollForMatch = async (waitingId: string) => {
-    // ID para o intervalo de polling
-    const pollInterval = setInterval(async () => {
-      try {
-        // Verificar se o usuário ainda está na tela de lobby
-        if (!isSearchingMatch && !foundMatch) {
-          clearInterval(pollInterval);
-          return;
-        }
-        
-        // Chamar API para verificar status da fila
-        const response = await fetch(`/api/matchmaking/status?userId=${user?.id}&waitingId=${waitingId}`);
-        
-        if (!response.ok) {
-          throw new Error('Falha ao verificar status da fila');
-        }
-        
-        const status = await response.json();
-        
-        // Se uma partida foi encontrada
-        if (status.matchFound) {
-          clearInterval(pollInterval);
-          
-          // Atualizar estados com a partida encontrada
-          if (status.match.isOfficialRoom) {
-            setIsConnectingToOfficialRoom(true);
-            setSelectedOfficialRoom({
-              id: status.match.id,
-              roomId: status.match.roomId,
-              roomPassword: status.match.roomPassword,
-              gameType: status.match.gameType || lobbyType,
-              format: status.match.title?.replace('Partida Oficial ', '').split(' #')[0] || lobbyType,
-              entryFee: status.match.entryFee,
-              gameDetails: status.match.gameDetails
-            });
-          }
-          
-          // Parar a animação de busca e mostrar a partida encontrada
-          setIsSearchingMatch(false);
-          setFoundMatch(status.match);
-          
-          // Exibir o modal da sala
-          setShowMatchRoomModal(true);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status da fila:', error);
-      }
-    }, 5000); // Verificar a cada 5 segundos
+
+  // Adicionar um novo estado para o ID de espera
+  const [waitingId, setWaitingId] = useState<string | null>(null);
+
+  // Adicionar função para lidar com partida encontrada
+  const handleMatchFound = (match: any) => {
+    if (match.isOfficialRoom) {
+      setIsConnectingToOfficialRoom(true);
+      setSelectedOfficialRoom({
+        id: match.id,
+        roomId: match.roomId,
+        roomPassword: match.roomPassword,
+        gameType: match.gameType || lobbyType,
+        format: match.title?.replace('Partida Oficial ', '').split(' #')[0] || lobbyType,
+        entryFee: match.entryFee,
+        gameDetails: match.gameDetails
+      });
+    }
     
-    // Limpar o intervalo quando o componente for desmontado
-    return () => clearInterval(pollInterval);
+    // Parar a animação de busca e mostrar a partida encontrada
+    setIsSearchingMatch(false);
+    setFoundMatch(match);
+    
+    // Exibir o modal da sala após um pequeno delay
+    setTimeout(() => {
+      setShowMatchRoomModal(true);
+    }, 1500);
+  };
+
+  // Adicionar função para cancelar a busca
+  const handleCancelMatchmaking = () => {
+    setIsSearchingMatch(false);
+    setWaitingId(null);
   };
   
   // Fechar o modal da sala
@@ -1598,32 +1578,30 @@ export default function LobbyPage() {
         />
       )}
       
-      {/* Animação de busca de partida */}
-      <AnimatePresence>
-        {isSearchingMatch && (
-          <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="text-center">
-              <div className="mb-6">
-                <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="mt-4 text-xl font-bold">Buscando partida...</div>
-                <div className="text-gray-400 mt-2">
-                  {isConnectingToOfficialRoom 
-                    ? "Conectando a uma sala oficial..."
-                    : "Procurando por outros jogadores..."}
+      {/* Busca de partida */}
+      {isSearchingMatch && !foundMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="max-w-md w-full mx-auto">
+            {waitingId ? (
+              <MatchmakingStatus
+                waitingId={waitingId}
+                userId={user?.id || ''}
+                mode={lobbyType}
+                onMatchFound={handleMatchFound}
+                onCancel={handleCancelMatchmaking}
+              />
+            ) : (
+              <div className="bg-gray-900 p-8 rounded-lg text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-900/30 flex items-center justify-center">
+                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
                 </div>
+                <h3 className="text-xl font-semibold mb-2">Iniciando busca...</h3>
+                <p className="text-gray-400">Preparando para encontrar uma partida</p>
               </div>
-              <div className="text-primary animate-pulse">
-                Carregando perfis de jogadores
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Animação de partida completa */}
       <AnimatePresence>

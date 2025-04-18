@@ -1,0 +1,50 @@
+{
+  "name": "RPX Gaming Platform",
+  "short_name": "RPX.GG",
+  "description": "Plataforma de apostas e torneios de jogos online",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#6930c3",
+  "icons": [
+    {
+      "src": "/icons/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "gcm_sender_id": "103953800507",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "orientation": "portrait",
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Lobby",
+      "url": "/lobby",
+      "icons": [
+        {
+          "src": "/icons/lobby.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Minhas Apostas",
+      "url": "/apostas/minhas-apostas",
+      "icons": [
+        {
+          "src": "/icons/bets.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+} 

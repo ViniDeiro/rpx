@@ -379,17 +379,20 @@ const RankProgressBar = ({ player }: { player: Player }) => {
 };
 
 export default function RankingPage() {
+  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('rankPoints');
-  const [timeFrame, setTimeFrame] = useState('all');
-  const [selectedGameType, setSelectedGameType] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('rankPoints');
+  const [selectedGameType, setSelectedGameType] = useState<'all' | 'solo' | 'duo' | 'squad'>('all');
+  const [timeFrame, setTimeFrame] = useState<'all' | 'month' | 'week'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const router = useRouter();
+  // Adicionando estado para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [playersPerPage] = useState(25);
 
   // Buscar o usuário atual
   useEffect(() => {
@@ -510,8 +513,8 @@ export default function RankingPage() {
           }
         }
         
-        // Tentar buscar o ranking normal
-        const response = await fetch(`/api/rankings?period=${timeFrame}&type=${selectedCategory === 'earnings' ? 'totalWon' : selectedCategory === 'victories' ? 'wins' : 'winrate'}`);
+        // Tentar buscar o ranking normal, solicitando 100 jogadores para ter dados suficientes para paginação
+        const response = await fetch(`/api/rankings?period=${timeFrame}&type=${selectedCategory === 'earnings' ? 'totalWon' : selectedCategory === 'victories' ? 'wins' : 'winrate'}&limit=100`);
         
         if (!response.ok) {
           throw new Error('Falha ao buscar os rankings');
@@ -681,6 +684,27 @@ export default function RankingPage() {
     sortPlayers(filtered, selectedCategory);
   }, [players, searchQuery, selectedCategory]);
 
+  // Calcular paginação
+  const indexOfLastPlayer = currentPage * playersPerPage;
+  const indexOfFirstPlayer = indexOfLastPlayer - playersPerPage;
+  const currentPlayers = filteredPlayers.slice(indexOfFirstPlayer, indexOfLastPlayer);
+  const totalPages = Math.ceil(filteredPlayers.length / playersPerPage);
+
+  // Mudar para próxima página
+  const goToNextPage = () => {
+    setCurrentPage(page => Math.min(page + 1, totalPages));
+  };
+
+  // Mudar para página anterior
+  const goToPrevPage = () => {
+    setCurrentPage(page => Math.max(page - 1, 1));
+  };
+
+  // Mudar para uma página específica
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(Math.min(Math.max(1, pageNumber), totalPages));
+  };
+
   const formatCurrency = (value: number = 0) => {
     return new Intl.NumberFormat('pt-BR', { 
       style: 'currency', 
@@ -728,6 +752,85 @@ export default function RankingPage() {
       case 'squad': return 'Esquadrão';
       default: return 'Todos os modos';
     }
+  };
+
+  // Renderizar controles de paginação
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center items-center mt-6 bg-card-bg border border-border rounded-lg p-3 shadow-rpx">
+        <button 
+          onClick={goToPrevPage} 
+          disabled={currentPage === 1}
+          className={`px-3 py-1.5 rounded-lg flex items-center mr-2 ${
+            currentPage === 1 
+              ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+              : 'bg-card-hover text-white hover:bg-gray-700 transition'
+          }`}
+        >
+          Anterior
+        </button>
+        
+        <div className="flex space-x-1">
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNumber;
+            
+            if (totalPages <= 5) {
+              // Se temos 5 ou menos páginas, mostrar todas
+              pageNumber = i + 1;
+            } else if (currentPage <= 3) {
+              // No início, mostrar as 5 primeiras páginas
+              pageNumber = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              // No final, mostrar as 5 últimas páginas
+              pageNumber = totalPages - 4 + i;
+            } else {
+              // No meio, mostrar 2 páginas antes e 2 páginas depois
+              pageNumber = currentPage - 2 + i;
+            }
+            
+            return (
+              <button
+                key={pageNumber}
+                onClick={() => goToPage(pageNumber)}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition ${
+                  currentPage === pageNumber
+                    ? 'bg-primary text-white' 
+                    : 'bg-card-hover text-white hover:bg-gray-700'
+                }`}
+              >
+                {pageNumber}
+              </button>
+            );
+          })}
+          
+          {totalPages > 5 && currentPage < totalPages - 2 && (
+            <>
+              <span className="flex items-center justify-center px-1">...</span>
+              <button
+                onClick={() => goToPage(totalPages)}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-card-hover text-white hover:bg-gray-700 transition"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+        </div>
+        
+        <button 
+          onClick={goToNextPage} 
+          disabled={currentPage === totalPages}
+          className={`px-3 py-1.5 rounded-lg flex items-center ml-2 ${
+            currentPage === totalPages 
+              ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+              : 'bg-card-hover text-white hover:bg-gray-700 transition'
+          }`}
+        >
+          Próxima
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -1013,11 +1116,11 @@ export default function RankingPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {filteredPlayers.map((player, index) => (
+                    {currentPlayers.map((player, index) => (
                       <tr key={player.id} className={`${expandedPlayer === player.id ? 'bg-card-hover' : 'hover:bg-card-hover/70'}`}>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {getPositionIcon(index + 1)}
+                            {getPositionIcon(indexOfFirstPlayer + index + 1)}
                             {player.rankingChange !== undefined && player.rankingChange !== 0 && (
                               <span className={`ml-2 flex items-center text-xs ${
                                 player.rankingChange > 0 
@@ -1100,7 +1203,7 @@ export default function RankingPage() {
                         </td>
                       </tr>
                     ))}
-                    {filteredPlayers.length === 0 && (
+                    {currentPlayers.length === 0 && (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-gray-300">
                           Nenhum jogador encontrado com os filtros selecionados.
@@ -1111,6 +1214,9 @@ export default function RankingPage() {
                 </table>
               </div>
             </div>
+            
+            {/* Controles de paginação */}
+            {renderPagination()}
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Award as TrophyIcon
 } from 'react-feather';
+import ProfileComments from '@/components/profile/ProfileComments';
 
 export default function FriendProfile({ params }: { params: { username: string } }) {
   const router = useRouter();
@@ -595,6 +596,12 @@ export default function FriendProfile({ params }: { params: { username: string }
             </div>
           )}
         </div>
+        
+        {/* Comentários do perfil */}
+        <ProfileComments 
+          userId={profile.id} 
+          isOwnProfile={friendStatus === 'self'} 
+        />
       </div>
     </div>
   );

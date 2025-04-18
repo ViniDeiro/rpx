@@ -18,7 +18,7 @@ interface AuthenticatedRequest extends NextRequest {
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { userId: string } }
 ) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
@@ -31,7 +31,7 @@ export async function GET(
   // Usar a requisição autenticada
   const authenticatedReq = authResult as AuthenticatedRequest;
   const currentUserId = authenticatedReq.user.id;
-  const friendId = params.id;
+  const friendId = params.userId;
   
   try {
     // Obter os modelos do MongoDB
@@ -102,7 +102,7 @@ export async function GET(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { userId: string } }
 ) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
@@ -115,7 +115,7 @@ export async function PATCH(
   // Usar a requisição autenticada
   const authenticatedReq = authResult as AuthenticatedRequest;
   const currentUserId = authenticatedReq.user.id;
-  const friendId = params.id;
+  const friendId = params.userId;
   
   try {
     // Obter os dados da requisição

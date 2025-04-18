@@ -11,6 +11,13 @@ import Image from 'next/image';
 import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserAvatar } from '../ui/user-avatar';
+import { useTheme } from 'next-themes';
+import { useSession } from 'next-auth/react';
+import { NavLink } from './nav-link';
+import { MobileMenu } from './mobile-menu';
+import { UserMenu } from './user-menu';
+import { Button } from '../ui/button';
+import { NotificationButton } from '../notifications/NotificationManager';
 
 export const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +26,8 @@ export const Header = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
+  const session = useSession();
+  const status = session?.status;
 
   // Função para fazer logout
   const handleLogout = () => {
@@ -105,79 +114,9 @@ export const Header = () => {
           </nav>
 
           {/* Autenticação e perfil - Desktop */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated && user ? (
-              <>
-                {/* Carteira */}
-                <div className="flex items-center bg-purple-900/30 border border-gray-700 rounded-full px-3 py-1.5">
-                  <span className="text-sm font-medium text-white">{formatCurrency((user?.wallet as any)?.balance || (user as any).balance || 0)}</span>
-                </div>
-                
-                {/* Menu de perfil */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className={`
-                      flex items-center space-x-2 rounded-full px-2 py-1 
-                      transition-all focus:outline-none
-                      ${isProfileOpen 
-                        ? 'ring-2 ring-primary/30 shadow-rpx bg-card-bg/80' 
-                        : 'bg-card-bg border border-border hover:border-primary/30'}
-                    `}
-                  >
-                    <UserAvatar 
-                      src={(user as any).avatarUrl || (user as any).profile?.avatar}
-                      username={user?.username}
-                      name={user?.name}
-                      size="sm"
-                      transform={(user as any).avatarUrl ? true : false}
-                    />
-                    <ChevronDown className={`transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} size={16} />
-                  </button>
-                  
-                  {isProfileOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-48 rounded-xl bg-card-bg border border-border shadow-rpx py-1 z-10"
-                    >
-                      <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-card-hover">
-                        Meu Perfil
-                      </Link>
-                      <Link href="/apostas/minhas-apostas" className="block px-4 py-2 text-sm hover:bg-card-hover">
-                        Minhas Apostas
-                      </Link>
-                      <Link href="/profile/wallet" className="block px-4 py-2 text-sm hover:bg-card-hover">
-                        Carteira
-                      </Link>
-                      <hr className="my-1 border-border" />
-                      <button 
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-error hover:bg-card-hover"
-                      >
-                        Sair
-                      </button>
-                    </motion.div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <Link 
-                  href="/auth/login" 
-                  className="btn-outline"
-                >
-                  Entrar
-                </Link>
-                <Link 
-                  href="/auth/register" 
-                  className="btn-gradient"
-                >
-                  Registrar
-                </Link>
-              </>
-            )}
+          <div className="hidden md:flex items-center space-x-3">
+            <NotificationButton />
+            <UserMenu user={session?.user} status={status} />
           </div>
 
           {/* Botão de menu mobile */}
@@ -191,106 +130,14 @@ export const Header = () => {
       </div>
 
       {/* Menu mobile */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="md:hidden glass-effect"
-        >
-          <div className="container mx-auto px-4 py-4">
-            <nav className="flex flex-col space-y-2">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`
-                      px-4 py-3 rounded-md text-base font-medium transition-all relative
-                      ${isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-card-hover'
-                      }
-                    `}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute left-0 top-0 h-full w-1 bg-primary rounded-l-md"></span>
-                    )}
-                  </Link>
-                );
-              })}
-              
-              <hr className="border-border my-2" />
-              
-              {isAuthenticated && user ? (
-                <>
-                  <div className="flex items-center px-4 py-2">
-                    <UserAvatar 
-                      src={(user as any).avatarUrl || (user as any).profile?.avatar}
-                      username={user?.username}
-                      name={user?.name}
-                      size="md"
-                      transform={(user as any).avatarUrl ? true : false}
-                      className="mr-3"
-                    />
-                    <div>
-                      <div className="font-medium">{(user as any).username || (user as any).profile?.name || 'Usuário'}</div>
-                      <div className="text-sm text-gray-300">
-                        {formatCurrency((user?.wallet as any)?.balance || (user as any).balance || 0)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Link
-                    href="/profile"
-                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover flex items-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <User size={18} className="mr-3" />
-                    <span>Perfil</span>
-                  </Link>
-                  
-                  <Link
-                    href="/apostas/minhas-apostas"
-                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover flex items-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <DollarSign size={18} className="mr-3" />
-                    <span>Minhas Apostas</span>
-                  </Link>
-                  
-                  <button 
-                    onClick={handleLogout}
-                    className="px-4 py-3 w-full text-left rounded-md text-base font-medium text-error hover:bg-card-hover"
-                  >
-                    Sair
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link 
-                    href="/auth/login"
-                    className="px-4 py-3 rounded-md text-base font-medium hover:bg-card-hover"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Entrar
-                  </Link>
-                  <Link 
-                    href="/auth/register"
-                    className="px-4 py-3 bg-primary hover:bg-primary-dark rounded-md text-base font-medium"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Registrar
-                  </Link>
-                </>
-              )}
-            </nav>
-          </div>
-        </motion.div>
-      )}
+      <div className="md:hidden">
+        <MobileMenu 
+          links={navLinks} 
+          user={session?.user} 
+          status={status}
+          showThemeToggle={true}
+        />
+      </div>
 
       {/* Mobile Menu */}
       <div

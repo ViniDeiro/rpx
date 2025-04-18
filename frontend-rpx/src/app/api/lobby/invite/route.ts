@@ -19,7 +19,10 @@ export async function GET(request: Request) {
     
     // Obter convites pendentes para o usuário
     const invites = await db.collection('lobbyinvites').find({
-      recipient: new ObjectId(userId),
+      $or: [
+        { recipient: new ObjectId(userId) },
+        { recipient: userId.toString() }
+      ],
       status: 'pending'
     }).toArray();
     
@@ -120,8 +123,20 @@ export async function POST(request: Request) {
     
     // Verificar se já existe um convite pendente
     const existingInvite = await db.collection('lobbyinvites').findOne({
-      inviter: new ObjectId(userId),
-      recipient: new ObjectId(recipientId),
+      $and: [
+        {
+          $or: [
+            { inviter: new ObjectId(userId) },
+            { inviter: userId.toString() }
+          ]
+        },
+        {
+          $or: [
+            { recipient: new ObjectId(recipientId) },
+            { recipient: recipientId.toString() }
+          ]
+        }
+      ],
       lobbyId: lobbyObjectId.toString(),
       status: 'pending'
     });
@@ -164,7 +179,7 @@ export async function POST(request: Request) {
       );
       
       await db.collection('notifications').insertOne({
-        userId: new ObjectId(recipientId),
+        userId: recipientId.toString(),
         type: 'lobby_invite',
         read: false,
         data: {
@@ -231,7 +246,10 @@ export async function DELETE(request: Request) {
     const result = await db.collection('lobbyinvites').updateOne(
       { 
         _id: new ObjectId(inviteId), 
-        recipient: new ObjectId(userId) 
+        $or: [
+          { recipient: new ObjectId(userId) },
+          { recipient: userId.toString() }
+        ]
       },
       { $set: { status: 'rejected' } }
     );

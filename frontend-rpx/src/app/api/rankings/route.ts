@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const type = url.searchParams.get('type') || 'winrate'; // winrate, totalWon, biggestWin
     const period = url.searchParams.get('period') || 'week'; // all, week, month
-    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const limit = parseInt(url.searchParams.get('limit') || '100');
     
     // Conectar ao MongoDB
     await connectToDatabase();

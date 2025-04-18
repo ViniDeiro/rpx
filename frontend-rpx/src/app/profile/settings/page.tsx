@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User, Lock, ArrowLeft, Check, X, Save, AlertTriangle, Edit, Eye, EyeOff } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
+import { Instagram, Twitter, Youtube, Twitch, MessageSquare, Globe } from 'lucide-react';
 
 export default function ProfileSettings() {
   const router = useRouter();
@@ -22,6 +23,15 @@ export default function ProfileSettings() {
     password: '',
     newPassword: '',
     confirmPassword: '',
+    bio: '',
+    socialLinks: {
+      instagram: '',
+      twitter: '',
+      youtube: '',
+      twitch: '',
+      discord: '',
+      tiktok: ''
+    }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -55,6 +65,15 @@ export default function ProfileSettings() {
         password: '',
         newPassword: '',
         confirmPassword: '',
+        bio: user.profile?.bio || '',
+        socialLinks: {
+          instagram: user.profile?.socialLinks?.instagram || '',
+          twitter: user.profile?.socialLinks?.twitter || '',
+          youtube: user.profile?.socialLinks?.youtube || '',
+          twitch: user.profile?.socialLinks?.twitch || '',
+          discord: user.profile?.socialLinks?.discord || '',
+          tiktok: user.profile?.socialLinks?.tiktok || ''
+        }
       });
       
       console.log('Dados do usuário carregados para o formulário:', {
@@ -63,14 +82,31 @@ export default function ProfileSettings() {
         name: user.profile?.name || user.name,
         phone: user.phone,
         birthdate: user.birthdate,
-        cpf: user.cpf
+        cpf: user.cpf,
+        bio: user.profile?.bio,
       });
     }
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Verificar se é uma rede social
+    if (name.startsWith('social-')) {
+      const socialNetwork = name.replace('social-', '');
+      setFormData({
+        ...formData,
+        socialLinks: {
+          ...formData.socialLinks,
+          [socialNetwork]: value
+        }
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,6 +200,8 @@ export default function ProfileSettings() {
           email: formData.email,
           profile: {
             name: formData.name,
+            bio: formData.bio,
+            socialLinks: formData.socialLinks
           },
           phone: formData.phone,
           cpf: formData.cpf,
@@ -369,6 +407,132 @@ export default function ProfileSettings() {
                     className="w-full bg-[#232048] border border-[#3D2A85]/50 rounded-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
                   />
                 </div>
+
+                {/* Biografia */}
+                <div className="md:col-span-2">
+                  <label htmlFor="bio" className="block text-sm font-medium mb-2">
+                    Biografia
+                  </label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    className="w-full bg-[#232048] border border-[#3D2A85]/50 rounded-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70 min-h-[100px] resize-y"
+                    placeholder="Conte um pouco sobre você..."
+                  />
+                </div>
+
+                {/* Links de Redes Sociais */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-md font-medium mb-4 border-b border-[#3D2A85]/20 pb-2">
+                    Redes Sociais
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Instagram */}
+                    <div className="flex items-center">
+                      <div className="bg-[#E1306C] rounded-l-lg p-2.5">
+                        <Instagram size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-instagram"
+                        name="social-instagram"
+                        value={formData.socialLinks.instagram}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Nome de usuário do Instagram"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+
+                    {/* Twitter/X */}
+                    <div className="flex items-center">
+                      <div className="bg-[#1DA1F2] rounded-l-lg p-2.5">
+                        <Twitter size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-twitter"
+                        name="social-twitter"
+                        value={formData.socialLinks.twitter}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Nome de usuário do X/Twitter"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+
+                    {/* YouTube */}
+                    <div className="flex items-center">
+                      <div className="bg-[#FF0000] rounded-l-lg p-2.5">
+                        <Youtube size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-youtube"
+                        name="social-youtube"
+                        value={formData.socialLinks.youtube}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Canal do YouTube"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+
+                    {/* Twitch */}
+                    <div className="flex items-center">
+                      <div className="bg-[#6441A4] rounded-l-lg p-2.5">
+                        <Twitch size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-twitch"
+                        name="social-twitch"
+                        value={formData.socialLinks.twitch}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Canal da Twitch"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+
+                    {/* Discord */}
+                    <div className="flex items-center">
+                      <div className="bg-[#5865F2] rounded-l-lg p-2.5">
+                        <MessageSquare size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-discord"
+                        name="social-discord"
+                        value={formData.socialLinks.discord}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Nome de usuário do Discord"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+
+                    {/* TikTok */}
+                    <div className="flex items-center">
+                      <div className="bg-[#000000] rounded-l-lg p-2.5">
+                        <Globe size={20} className="text-white" />
+                      </div>
+                      <input
+                        type="text"
+                        id="social-tiktok"
+                        name="social-tiktok"
+                        value={formData.socialLinks.tiktok}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        placeholder="Nome de usuário do TikTok"
+                        className="flex-1 bg-[#232048] border border-[#3D2A85]/50 rounded-r-lg px-4 py-2.5 text-white placeholder-[#A89ECC]/50 disabled:opacity-70"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Opção de alterar senha */}
@@ -466,6 +630,15 @@ export default function ProfileSettings() {
                           password: '',
                           newPassword: '',
                           confirmPassword: '',
+                          bio: user.profile?.bio || '',
+                          socialLinks: {
+                            instagram: user.profile?.socialLinks?.instagram || '',
+                            twitter: user.profile?.socialLinks?.twitter || '',
+                            youtube: user.profile?.socialLinks?.youtube || '',
+                            twitch: user.profile?.socialLinks?.twitch || '',
+                            discord: user.profile?.socialLinks?.discord || '',
+                            tiktok: user.profile?.socialLinks?.tiktok || ''
+                          }
                         });
                       }
                     }}

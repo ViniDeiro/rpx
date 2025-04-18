@@ -50,13 +50,7 @@ export class VerificationService {
     comment?: string;
   }): Promise<VerificationRequest> {
     try {
-      // Em produção, esta seria uma chamada real à API
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta durante desenvolvimento
-        return this.simulateSubmitResult(matchId, result);
-      }
-
-      // Código real para produção - usando FormData para upload de arquivo
+      // Código para produção - usando FormData para upload de arquivo
       const formData = new FormData();
       formData.append('matchId', matchId);
       formData.append('winner', result.winner);
@@ -91,13 +85,7 @@ export class VerificationService {
    */
   static async disputeResult(params: DisputeRequest): Promise<VerificationRequest> {
     try {
-      // Em produção, esta seria uma chamada real à API
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta durante desenvolvimento
-        return this.simulateDisputeResult(params);
-      }
-
-      // Código real para produção - usando FormData para upload de arquivo
+      // Código para produção - usando FormData para upload de arquivo
       const formData = new FormData();
       formData.append('matchId', params.matchId);
       formData.append('userId', params.userId);
@@ -130,13 +118,7 @@ export class VerificationService {
    */
   static async getVerificationStatus(matchId: string): Promise<VerificationRequest> {
     try {
-      // Em produção, esta seria uma chamada real à API
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta durante desenvolvimento
-        return this.simulateGetVerificationStatus(matchId);
-      }
-
-      // Código real para produção
+      // Código para produção
       const response = await fetch(`${this.API_URL}/status/${matchId}`, {
         method: 'GET',
         headers: {
@@ -171,13 +153,7 @@ export class VerificationService {
     };
   }> {
     try {
-      // Em produção, esta seria uma chamada real à API
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta durante desenvolvimento
-        return this.simulateValidateScreenshot();
-      }
-
-      // Código real para produção - usando FormData para upload de arquivo
+      // Código para produção - usando FormData para upload de arquivo
       const formData = new FormData();
       formData.append('screenshot', screenshot);
 
@@ -206,13 +182,7 @@ export class VerificationService {
    */
   static async listPendingVerifications(): Promise<VerificationRequest[]> {
     try {
-      // Em produção, esta seria uma chamada real à API
-      if (process.env.NODE_ENV === 'development') {
-        // Simular resposta durante desenvolvimento
-        return this.simulateListPendingVerifications();
-      }
-
-      // Código real para produção
+      // Código para produção
       const response = await fetch(`${this.API_URL}/pending`, {
         method: 'GET',
         headers: {
@@ -230,146 +200,6 @@ export class VerificationService {
       console.error('Erro ao listar verificações pendentes:', error);
       throw error;
     }
-  }
-
-  // Métodos privados para simulação durante desenvolvimento
-
-  private static simulateSubmitResult(matchId: string, result: {
-    winner: 'team1' | 'team2' | 'draw';
-    team1Score?: number;
-    team2Score?: number;
-    screenshot?: File;
-    userId: string;
-    comment?: string;
-  }): VerificationRequest {
-    return {
-      id: `verif-${Date.now()}`,
-      matchId,
-      submittedBy: result.userId,
-      submittedAt: new Date(),
-      result: {
-        winner: result.winner,
-        team1Score: result.team1Score || 0,
-        team2Score: result.team2Score || 0,
-        screenshots: result.screenshot ? ['https://example.com/screenshot.jpg'] : [],
-        disputeStatus: 'none'
-      },
-      screenshot: result.screenshot ? 'https://example.com/screenshot.jpg' : undefined,
-      status: 'pending',
-      comment: result.comment
-    };
-  }
-
-  private static simulateDisputeResult(params: DisputeRequest): VerificationRequest {
-    return {
-      id: `dispute-${Date.now()}`,
-      matchId: params.matchId,
-      submittedBy: params.userId,
-      submittedAt: new Date(),
-      result: {
-        winner: 'draw', // Estado temporário durante disputa
-        screenshots: [],
-        disputeStatus: 'pending'
-      },
-      status: 'disputed',
-      comment: params.comment,
-      disputeReason: params.reason
-    };
-  }
-
-  private static simulateGetVerificationStatus(matchId: string): VerificationRequest {
-    // Simular diferentes estados aleatoriamente
-    const statuses: VerificationStatus[] = ['pending', 'approved', 'rejected', 'disputed'];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    
-    const submittedAt = new Date(Date.now() - 3600000); // 1 hora atrás
-    
-    return {
-      id: `verif-${matchId}`,
-      matchId,
-      submittedBy: 'user-123',
-      submittedAt,
-      result: {
-        winner: Math.random() > 0.5 ? 'team1' : 'team2',
-        team1Score: Math.floor(Math.random() * 10) + 1,
-        team2Score: Math.floor(Math.random() * 10) + 1,
-        screenshots: ['https://example.com/screenshot.jpg'],
-        disputeStatus: status === 'disputed' ? 'pending' : 'none',
-        verifiedBy: status !== 'pending' ? 'admin-user' : undefined,
-        verifiedAt: status !== 'pending' ? new Date() : undefined
-      },
-      screenshot: 'https://example.com/screenshot.jpg',
-      status,
-      reviewedBy: status !== 'pending' ? 'admin-user' : undefined,
-      reviewedAt: status !== 'pending' ? new Date() : undefined,
-      comment: status === 'rejected' ? 'Screenshot não mostra claramente o resultado' : undefined,
-      disputeReason: status === 'disputed' ? 'O resultado submetido não corresponde ao verdadeiro resultado da partida' : undefined
-    };
-  }
-
-  private static simulateValidateScreenshot(): {
-    isValid: boolean;
-    confidence: number;
-    game?: string;
-    detectedResult?: {
-      team1Score?: number;
-      team2Score?: number;
-      winner?: 'team1' | 'team2' | 'draw';
-    };
-  } {
-    // Simular validação bem-sucedida na maioria das vezes
-    const isValid = Math.random() > 0.2;
-    
-    if (isValid) {
-      const team1Score = Math.floor(Math.random() * 10) + 1;
-      const team2Score = Math.floor(Math.random() * 10) + 1;
-      
-      return {
-        isValid: true,
-        confidence: 0.85 + Math.random() * 0.15, // 85-100% confiança
-        game: 'Free Fire',
-        detectedResult: {
-          team1Score,
-          team2Score,
-          winner: team1Score > team2Score ? 'team1' : team1Score < team2Score ? 'team2' : 'draw'
-        }
-      };
-    } else {
-      return {
-        isValid: false,
-        confidence: 0.3 + Math.random() * 0.4, // 30-70% confiança
-        game: Math.random() > 0.5 ? 'Desconhecido' : 'Free Fire'
-      };
-    }
-  }
-
-  private static simulateListPendingVerifications(): VerificationRequest[] {
-    const pendingVerifications: VerificationRequest[] = [];
-    
-    // Gerar entre 3 e 8 verificações pendentes
-    const count = Math.floor(Math.random() * 5) + 3;
-    
-    for (let i = 0; i < count; i++) {
-      const submittedAt = new Date(Date.now() - (i * 3600000)); // Espaçadas por 1 hora
-      
-      pendingVerifications.push({
-        id: `verif-${Date.now()}-${i}`,
-        matchId: `match-${1000 + i}`,
-        submittedBy: `user-${100 + i}`,
-        submittedAt,
-        result: {
-          winner: Math.random() > 0.5 ? 'team1' : 'team2',
-          team1Score: Math.floor(Math.random() * 10) + 1,
-          team2Score: Math.floor(Math.random() * 10) + 1,
-          screenshots: ['https://example.com/screenshot.jpg'],
-          disputeStatus: 'none'
-        },
-        screenshot: 'https://example.com/screenshot.jpg',
-        status: 'pending'
-      });
-    }
-    
-    return pendingVerifications;
   }
 }
 

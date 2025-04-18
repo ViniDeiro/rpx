@@ -22,7 +22,10 @@ const userSchema = new mongoose.Schema({
     socialLinks: {
       twitter: String,
       instagram: String,
-      twitch: String
+      twitch: String,
+      youtube: String,
+      discord: String,
+      tiktok: String
     }
   },
   stats: {
