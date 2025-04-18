@@ -5,9 +5,10 @@ import { toast } from 'react-toastify';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { ObjectId } from 'mongodb';
 
 interface LobbyInvite {
-  _id: string;
+  _id: string | ObjectId;
   type: string;
   read: boolean;
   status: string;
@@ -15,7 +16,7 @@ interface LobbyInvite {
   inviterId?: string;
   inviterName?: string;
   inviterAvatar?: string;
-  lobbyId: string;
+  lobbyId: string | ObjectId;
   lobbyName?: string;
   gameMode?: string;
   // Suporte para formato antigo

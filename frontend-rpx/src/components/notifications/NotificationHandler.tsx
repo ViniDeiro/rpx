@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
-import { Notification } from '@/types/notification';
+import { Notification, DirectLobbyInviteNotification } from '@/types/notification';
 import LobbyInviteNotification from './LobbyInviteNotification';
 
 const NotificationHandler: React.FC = () => {
@@ -140,6 +140,11 @@ const NotificationHandler: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // Função para verificar se uma notificação é do tipo LobbyInvite
+  const isLobbyInvite = (notification: Notification): notification is DirectLobbyInviteNotification => {
+    return notification.type === 'lobby_invite' && 'lobbyId' in notification && 'status' in notification;
+  };
+
   const renderNotification = (notification: Notification) => {
     console.log('Renderizando notificação:', notification.type, notification._id);
     
@@ -151,16 +156,31 @@ const NotificationHandler: React.FC = () => {
     
     switch (notification.type) {
       case 'lobby_invite':
-        // Usar o componente LobbyInviteNotification para convites de lobby
-        return (
-          <LobbyInviteNotification
-            key={notification._id.toString()}
-            invite={notification}
-            onAccept={handleAcceptInvite}
-            onReject={handleRejectInvite}
-            onDismiss={() => handleCloseNotification(notification._id.toString())}
-          />
-        );
+        // Verificar se a notificação tem a estrutura esperada de um LobbyInvite
+        if (isLobbyInvite(notification)) {
+          return (
+            <LobbyInviteNotification
+              key={notification._id.toString()}
+              invite={notification}
+              onAccept={handleAcceptInvite}
+              onReject={handleRejectInvite}
+              onDismiss={() => handleCloseNotification(notification._id.toString())}
+            />
+          );
+        } else {
+          console.error('Formato de convite de lobby inválido:', notification);
+          return (
+            <div key={notification._id.toString()} className="bg-slate-800 rounded-lg p-4 shadow-lg mb-2">
+              <p className="text-white">Convite de lobby (formato inválido)</p>
+              <button 
+                onClick={() => handleCloseNotification(notification._id.toString())} 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded mt-2"
+              >
+                Fechar
+              </button>
+            </div>
+          );
+        }
       
       case 'friend_request':
         // Verificação de tipo para friend_request
