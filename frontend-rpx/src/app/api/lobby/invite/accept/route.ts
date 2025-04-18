@@ -1,182 +1,268 @@
 import { NextResponse } from 'next/server';
-import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { authMiddleware, getUserId } from '@/lib/auth/middleware';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
+import { isAuthenticated } from '@/lib/auth/verify';
 
-// Middleware para autenticação
-async function isAuthenticated() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || !session.user.id) {
-    return { isAuth: false, error: 'Não autorizado', userId: null };
-  }
-  
-  return { isAuth: true, error: null, userId: session.user.id };
-}
-
-// POST: Aceitar um convite
 export async function POST(request: Request) {
   console.log('API Lobby Invite Accept - Iniciando processamento da solicitação');
-  
+
   try {
-    // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
     
     if (!isAuth || !userId) {
-      console.log('API Lobby Invite Accept - Usuário não autenticado');
+      console.log(`API Lobby Invite Accept - Erro de autenticação: ${error}`);
       return NextResponse.json({
         status: 'error',
-        error
+        error: error || 'Não autorizado'
       }, { status: 401 });
     }
     
-    // Processar dados da requisição
-    const body = await request.json();
-    const { inviteId } = body;
-    
+    // Obter o ID do convite do corpo da requisição
+    const { inviteId } = await request.json();
     if (!inviteId) {
-      console.log('API Lobby Invite Accept - ID do convite não fornecido');
+      console.log('API Lobby Invite Accept - Erro: ID do convite não fornecido');
       return NextResponse.json({
         status: 'error',
-        error: 'ID do convite é obrigatório'
+        error: 'ID do convite não fornecido'
       }, { status: 400 });
     }
     
-    console.log(`API Lobby Invite Accept - Processando convite ID: ${inviteId} para usuário: ${userId}`);
+    console.log(`API Lobby Invite Accept - Processando convite ${inviteId} para usuário ${userId}`);
     
-    // Conectar ao banco de dados
+    // Converter para ObjectId para garantir compatibilidade
+    let inviteObjectId;
+    try {
+      inviteObjectId = new ObjectId(inviteId);
+    } catch (e) {
+      console.log(`API Lobby Invite Accept - Erro: ID de convite inválido: ${inviteId}`);
+      return NextResponse.json({
+        status: 'error',
+        error: 'ID de convite inválido'
+      }, { status: 400 });
+    }
+    
     const { db } = await connectToDatabase();
     
-    // Verificar se o convite existe
-    console.log(`API Lobby Invite Accept - Buscando convite com ID: ${inviteId}`);
+    // Buscar o convite
     const invite = await db.collection('lobbyinvites').findOne({
-      _id: new ObjectId(inviteId)
+      _id: inviteObjectId
     });
     
     if (!invite) {
-      console.log(`API Lobby Invite Accept - Convite não encontrado: ${inviteId}`);
+      console.log(`API Lobby Invite Accept - Erro: Convite ${inviteId} não encontrado`);
       return NextResponse.json({
         status: 'error',
         error: 'Convite não encontrado'
       }, { status: 404 });
     }
     
-    console.log(`API Lobby Invite Accept - Convite encontrado: ${JSON.stringify({
+    console.log(`API Lobby Invite Accept - Convite encontrado:`, JSON.stringify({
       _id: invite._id.toString(),
-      inviter: invite.inviter.toString(),
-      recipient: invite.recipient.toString(),
-      lobbyId: invite.lobbyId.toString(),
+      inviter: typeof invite.inviter === 'object' ? invite.inviter.toString() : invite.inviter,
+      recipient: typeof invite.recipient === 'object' ? invite.recipient.toString() : invite.recipient,
+      lobbyId: typeof invite.lobbyId === 'object' ? invite.lobbyId.toString() : invite.lobbyId,
       status: invite.status
-    })}`);
+    }, null, 2));
+    
+    // Garantir que os IDs estejam em formato string para comparação
+    const inviterIdString = typeof invite.inviter === 'object' ? invite.inviter.toString() : invite.inviter;
+    const recipientIdString = typeof invite.recipient === 'object' ? invite.recipient.toString() : invite.recipient;
+    const userIdString = userId.toString();
     
     // Verificar se o usuário é o destinatário do convite
-    const recipientId = invite.recipient.toString();
-    if (recipientId !== userId) {
-      console.log(`API Lobby Invite Accept - Usuário incorreto. Esperado: ${recipientId}, Atual: ${userId}`);
+    if (recipientIdString !== userIdString) {
+      console.log(`API Lobby Invite Accept - Erro: Usuário ${userId} não é o destinatário do convite ${inviteId}`);
+      console.log(`Destinatário esperado: ${recipientIdString}, Usuário atual: ${userIdString}`);
       return NextResponse.json({
         status: 'error',
-        error: 'Você não tem permissão para aceitar este convite'
+        error: 'Não autorizado a aceitar este convite'
       }, { status: 403 });
     }
     
     // Verificar se o convite está pendente
     if (invite.status !== 'pending') {
-      console.log(`API Lobby Invite Accept - Status do convite inválido: ${invite.status}`);
+      console.log(`API Lobby Invite Accept - Erro: Convite ${inviteId} não está pendente (status: ${invite.status})`);
       return NextResponse.json({
         status: 'error',
-        error: 'Este convite já foi processado anteriormente'
+        error: `Convite já ${invite.status === 'accepted' ? 'aceito' : 'rejeitado ou expirado'}`
       }, { status: 400 });
     }
     
-    // Verificar se o lobby existe
-    console.log(`API Lobby Invite Accept - Buscando lobby com ID: ${invite.lobbyId}`);
+    // Garantir que o lobbyId seja um ObjectId para a consulta
+    let lobbyObjectId;
+    try {
+      lobbyObjectId = typeof invite.lobbyId === 'object' ? invite.lobbyId : new ObjectId(invite.lobbyId);
+    } catch (e) {
+      console.log(`API Lobby Invite Accept - Erro: ID de lobby inválido: ${invite.lobbyId}`);
+      return NextResponse.json({
+        status: 'error',
+        error: 'ID de lobby inválido'
+      }, { status: 400 });
+    }
+    
+    // Verificar se o lobby ainda existe
     const lobby = await db.collection('lobbies').findOne({
-      _id: new ObjectId(invite.lobbyId)
+      _id: lobbyObjectId
     });
     
     if (!lobby) {
-      console.log(`API Lobby Invite Accept - Lobby não encontrado: ${invite.lobbyId}`);
+      console.log(`API Lobby Invite Accept - Erro: Lobby ${invite.lobbyId} não encontrado`);
       
-      // Atualizar o convite para cancelado
+      // Marcar convite como expirado
       await db.collection('lobbyinvites').updateOne(
-        { _id: new ObjectId(inviteId) },
-        { $set: { status: 'canceled' } }
+        { _id: inviteObjectId },
+        { $set: { status: 'expired' } }
       );
       
       return NextResponse.json({
         status: 'error',
-        error: 'O lobby não existe mais'
+        error: 'Lobby não existe mais'
       }, { status: 404 });
     }
     
-    // Verificar se o lobby não está cheio
-    console.log(`API Lobby Invite Accept - Verificando capacidade do lobby. Membros: ${lobby.members ? lobby.members.length : 0}, Capacidade: ${lobby.capacity || 5}`);
-    if (lobby.members && lobby.capacity && lobby.members.length >= lobby.capacity) {
-      // Atualizar o convite para rejected
+    console.log(`API Lobby Invite Accept - Lobby encontrado:`, JSON.stringify({
+      _id: lobby._id.toString(),
+      name: lobby.name,
+      maxPlayers: lobby.maxPlayers,
+      type: lobby.type
+    }, null, 2));
+    
+    // Obter o lobbyId como string para consultas subsequentes
+    const lobbyIdString = lobbyObjectId.toString();
+    
+    // Verificar se o lobby tem espaço para mais jogadores
+    const currentPlayers = await db.collection('lobbymembers').find({
+      lobbyId: lobbyIdString
+    }).toArray();
+    
+    const maxPlayers = lobby.maxPlayers || (lobby.type === 'solo' ? 1 : lobby.type === 'duo' ? 2 : 4);
+    
+    if (currentPlayers.length >= maxPlayers) {
+      console.log(`API Lobby Invite Accept - Erro: Lobby ${lobbyIdString} está cheio (${currentPlayers.length}/${maxPlayers})`);
+      
+      // Marcar convite como expirado
       await db.collection('lobbyinvites').updateOne(
-        { _id: new ObjectId(inviteId) },
-        { $set: { status: 'rejected' } }
+        { _id: inviteObjectId },
+        { $set: { status: 'expired' } }
       );
       
-      console.log(`API Lobby Invite Accept - Lobby cheio. Atualizando convite para rejected`);
       return NextResponse.json({
         status: 'error',
-        error: 'O lobby está cheio'
+        error: 'Lobby está cheio'
       }, { status: 400 });
     }
     
     // Verificar se o usuário já está no lobby
-    let isAlreadyMember = false;
-    if (lobby.members) {
-      for (const member of lobby.members) {
-        if (member.toString() === userId) {
-          isAlreadyMember = true;
-          break;
-        }
-      }
-    }
+    const userMember = currentPlayers.find(p => {
+      const memberIdString = typeof p.userId === 'object' ? p.userId.toString() : p.userId;
+      return memberIdString === userIdString;
+    });
     
-    if (isAlreadyMember) {
-      console.log(`API Lobby Invite Accept - Usuário já é membro do lobby`);
+    if (userMember) {
+      console.log(`API Lobby Invite Accept - Usuário ${userIdString} já está no lobby ${lobbyIdString}`);
       
-      // Atualizar o convite para aceito mesmo assim
+      // Marcar convite como aceito
       await db.collection('lobbyinvites').updateOne(
-        { _id: new ObjectId(inviteId) },
+        { _id: inviteObjectId },
         { $set: { status: 'accepted' } }
       );
       
       return NextResponse.json({
         status: 'success',
-        message: 'Você já é membro deste lobby',
-        lobbyId: invite.lobbyId.toString()
+        message: 'Você já está neste lobby',
+        lobbyId: lobbyIdString
       });
     }
     
-    // Atualizar o status do convite para aceito
-    console.log(`API Lobby Invite Accept - Atualizando convite para accepted`);
+    // Criar ObjectId do usuário para inserção
+    const userObjectId = new ObjectId(userId);
+    
+    // Adicionar usuário ao lobby
+    try {
+      // Buscar dados do usuário
+      const user = await db.collection('users').findOne(
+        { _id: userObjectId },
+        { projection: { username: 1, avatar: 1, level: 1 } }
+      );
+      
+      if (!user) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      // Criar documento de membro do lobby
+      const lobbyMember = {
+        lobbyId: lobbyIdString,
+        userId: userObjectId,
+        username: user.username,
+        avatar: user.avatar,
+        level: user.level || 1,
+        isLeader: false,
+        isReady: false,
+        joinedAt: new Date()
+      };
+      
+      // Inserir na coleção de membros
+      await db.collection('lobbymembers').insertOne(lobbyMember);
+      console.log(`API Lobby Invite Accept - Usuário ${userIdString} adicionado ao lobby ${lobbyIdString}`);
+    } catch (memberError) {
+      console.error('API Lobby Invite Accept - Erro ao adicionar membro ao lobby:', memberError);
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro ao adicionar usuário ao lobby'
+      }, { status: 500 });
+    }
+    
+    // Marcar convite como aceito
     await db.collection('lobbyinvites').updateOne(
-      { _id: new ObjectId(inviteId) },
+      { _id: inviteObjectId },
       { $set: { status: 'accepted' } }
     );
     
-    // Adicionar o usuário ao lobby
-    console.log(`API Lobby Invite Accept - Adicionando usuário ao lobby`);
-    await db.collection('lobbies').updateOne(
-      { _id: new ObjectId(invite.lobbyId) },
-      { $addToSet: { members: new ObjectId(userId) } }
-    );
+    console.log(`API Lobby Invite Accept - Convite ${inviteId} aceito com sucesso`);
     
-    // Marcar a notificação relacionada como lida, se existir
-    console.log(`API Lobby Invite Accept - Marcando notificação como lida`);
-    await db.collection('notifications').updateOne(
-      {
-        'data.invite._id': new ObjectId(inviteId),
-        userId: new ObjectId(userId)
-      },
-      { $set: { read: true } }
-    );
+    // Adicionar mensagem ao chat do lobby
+    try {
+      const user = await db.collection('users').findOne(
+        { _id: userObjectId },
+        { projection: { username: 1 } }
+      );
+      
+      await db.collection('lobbychat').insertOne({
+        lobbyId: lobbyIdString,
+        userId: null, // Mensagem de sistema
+        username: 'Sistema',
+        message: `${user?.username || 'Novo jogador'} entrou no lobby.`,
+        type: 'system',
+        timestamp: new Date()
+      });
+    } catch (chatError) {
+      console.error('API Lobby Invite Accept - Erro ao adicionar mensagem ao chat:', chatError);
+      // Continuar mesmo se falhar a adição da mensagem
+    }
+    
+    // Marcar notificação como lida
+    try {
+      // Marcar na coleção de notificações
+      await db.collection('notifications').updateOne(
+        {
+          'data.invite._id': inviteObjectId,
+          userId: userIdString
+        },
+        { $set: { read: true } }
+      );
+      
+      // Também atualizar qualquer notificação que use o ID do convite diretamente
+      await db.collection('notifications').updateOne(
+        {
+          _id: inviteObjectId,
+          userId: userIdString
+        },
+        { $set: { read: true } }
+      );
+    } catch (notificationError) {
+      console.error('API Lobby Invite Accept - Erro ao marcar notificação como lida:', notificationError);
+      // Continuar mesmo se falhar a atualização da notificação
+    }
     
     console.log(`API Lobby Invite Accept - Processamento concluído com sucesso`);
     
@@ -184,13 +270,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: 'success',
       message: 'Convite aceito com sucesso',
-      lobbyId: invite.lobbyId.toString()
+      lobbyId: lobbyIdString
     });
   } catch (error: any) {
     console.error('API Lobby Invite Accept - Erro:', error);
     return NextResponse.json({
       status: 'error',
-      error: 'Erro ao aceitar convite'
+      error: 'Erro ao aceitar convite: ' + (error.message || 'Erro desconhecido')
     }, { status: 500 });
   }
 } 

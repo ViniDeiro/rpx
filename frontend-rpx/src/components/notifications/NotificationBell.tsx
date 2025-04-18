@@ -21,13 +21,15 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { data: session } = useSession();
   
+  // Efeito para buscar notificações quando o usuário estiver autenticado
   useEffect(() => {
     if (session?.user) {
       fetchNotifications();
-      // Configurar polling para atualizar as notificações a cada 30 segundos
-      const interval = setInterval(fetchNotifications, 30000);
+      // Configurar polling para atualizar as notificações a cada 10 segundos
+      const interval = setInterval(fetchNotifications, 10000);
       return () => clearInterval(interval);
     }
   }, [session]);
@@ -39,28 +41,39 @@ export default function NotificationBell() {
     }
   }, []);
   
+  // Função principal para buscar notificações
   const fetchNotifications = async () => {
+    if (!session?.user || isLoading) return;
+    
     try {
+      setIsLoading(true);
       console.log('Buscando notificações...');
+      
+      // Buscar as notificações da API unificada
       const response = await axios.get('/api/notifications');
-      console.log('Resposta API notificações:', response.data);
       
       if (response.data.status === 'success') {
-        // Atualizar o contador de notificações não lidas
-        const notificationsData = response.data.notifications || [];
-        const notReadCount = notificationsData.filter((n: Notification) => !n.read).length;
+        const { notifications, unreadCount } = response.data;
         
-        setNotifications(notificationsData);
-        setUnreadCount(notReadCount);
-        console.log(`Notificações carregadas: ${notificationsData.length}, não lidas: ${notReadCount}`);
+        console.log(`API retornou ${notifications.length} notificações, ${unreadCount} não lidas`);
+        
+        // Garantir que todas as notificações tenham os campos necessários
+        const validNotifications = notifications.filter((n: any) => n && n._id);
+        
+        // Atualizar o estado
+        setNotifications(validNotifications);
+        setUnreadCount(unreadCount);
       } else {
         console.error('Erro na resposta da API:', response.data);
       }
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
   
+  // Abrir/fechar o painel de notificações
   const toggleNotificationCenter = () => {
     setIsOpen(!isOpen);
     // Se estiver abrindo, buscar as notificações mais recentes

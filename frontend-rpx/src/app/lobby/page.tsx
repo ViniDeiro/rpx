@@ -181,52 +181,97 @@ export default function LobbyPage() {
   
   // Definir lista mockada de amigos online
   useEffect(() => {
-    // Mockup de amigos online quando o componente é montado
+    // Se não tiver token ou não estiver autenticado, não fazer nada
+    if (!token || !isAuthenticated) return;
+    
+    // Estado para controlar os mocks durante carregamento
+    let isMounted = true;
+    // Inicializar a variável loadingTimeout como undefined para evitar erros
+    let loadingTimeout: NodeJS.Timeout | undefined = undefined;
+    
+    // Buscar amigos reais da API
+    const loadFriends = async () => {
+      try {
+        const response = await fetch('/api/users/friends', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao buscar amigos');
+        }
+        
+        const data = await response.json();
+        
+        // Só atualizar se o componente ainda estiver montado
+        if (isMounted) {
+          // Formatar os amigos para o formato esperado pelo componente
+          const formattedFriends = data.friends.map((friend: any) => ({
+            id: friend.id,
+            name: friend.username,
+            avatar: friend.avatarUrl,
+            level: friend.level || 1,
+            status: 'online', // Por padrão, todos são mostrados como online
+            username: friend.username // Adicionando username para navegação
+          }));
+          
+          // Limpar o timeout dos mocks
+          if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+          }
+          
+          setOnlineFriends(formattedFriends);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar amigos:', error);
+        // Se falhar, manter os mocks (que já estão carregados)
+      }
+    };
+    
+    // Carregar mocks temporários enquanto busca da API
     const mockFriends = [
       {
         id: '1',
-        name: 'Lucas Silva',
+        name: 'Carregando...',
         avatar: '/images/avatars/user1.jpg',
-        level: 42,
+        level: 0,
         status: 'online',
-        username: 'lucas.silva'  // Adicionando username para navegação
+        username: 'loading'
       },
       {
         id: '2',
-        name: 'Amanda Reis',
+        name: 'Carregando...',
         avatar: '/images/avatars/user2.jpg',
-        level: 38,
-        status: 'in_game',
-        username: 'amanda.reis'  // Adicionando username para navegação
+        level: 0,
+        status: 'online',
+        username: 'loading'
       },
       {
         id: '3',
-        name: 'Carlos Mendes',
+        name: 'Carregando...',
         avatar: '/images/avatars/user3.jpg',
-        level: 25,
+        level: 0,
         status: 'online',
-        username: 'carlos.mendes'  // Adicionando username para navegação
-      },
-      {
-        id: '4',
-        name: 'Juliana Costa',
-        avatar: '/images/avatars/user4.jpg',
-        level: 56,
-        status: 'online',
-        username: 'juliana.costa'  // Adicionando username para navegação
-      },
-      {
-        id: '5',
-        name: 'Pedro Alves',
-        avatar: '/images/avatars/user5.jpg',
-        level: 31,
-        status: 'in_game',
-        username: 'pedro.alves'  // Adicionando username para navegação
+        username: 'loading'
       }
     ];
     
+    // Mostrar os mocks só durante o carregamento
     setOnlineFriends(mockFriends);
-  }, []);
+    
+    // Definir um timeout para carregar os amigos reais (simulação de requisição à API)
+    loadingTimeout = setTimeout(() => {
+      loadFriends();
+    }, 500);
+    
+    return () => {
+      isMounted = false;
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+    };
+  }, [token, isAuthenticated]);
   
   // Verificar autenticação
   useEffect(() => {
@@ -234,6 +279,43 @@ export default function LobbyPage() {
       router.push('/auth/login');
     }
   }, [isLoading, isAuthenticated, router]);
+  
+  // Novo useEffect específico para buscar os dados do perfil do usuário (avatar)
+  useEffect(() => {
+    if (token && user && user.id) {
+      const loadUserProfileData = async () => {
+        try {
+          const response = await fetch('/api/user/profile', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const profileData = await response.json();
+            
+            // Atualizar o jogador líder com os dados do perfil atualizados
+            setPlayers(currentPlayers => {
+              const updatedPlayers = [...currentPlayers];
+              if (updatedPlayers.length > 0 && updatedPlayers[0].isLeader) {
+                updatedPlayers[0] = {
+                  ...updatedPlayers[0],
+                  avatar: profileData.avatarUrl || profileData.avatar || user.avatarUrl || user.avatarId || '/images/avatars/default.svg',
+                  name: profileData.username || profileData.name || user.username || 'Usuário',
+                  level: profileData.level || user.level || 1,
+                };
+              }
+              return updatedPlayers;
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao carregar dados do perfil:', error);
+        }
+      };
+      
+      loadUserProfileData();
+    }
+  }, [token, user?.id]);
   
   // Inicializar o lobby quando o usuário for carregado
   useEffect(() => {
@@ -363,6 +445,8 @@ export default function LobbyPage() {
         console.log('Iniciando processo de convite para:', friend.name);
         console.log('Informações do amigo:', friend);
         
+        toast.loading('Enviando convite...');
+        
         // Criar o lobby primeiro
         console.log('Criando lobby...');
         const createLobbyResponse = await axios.post('/api/lobby/create', {
@@ -373,6 +457,7 @@ export default function LobbyPage() {
         console.log('Resposta da criação do lobby:', createLobbyResponse.data);
         
         if (createLobbyResponse.data.status !== 'success') {
+          toast.dismiss();
           toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
           return;
         }
@@ -383,6 +468,7 @@ export default function LobbyPage() {
         // Verificar se o ID do lobby é válido
         if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
           console.error('ID do lobby inválido:', currentLobbyId);
+          toast.dismiss();
           toast.error('Erro: ID do lobby inválido');
           return;
         }
@@ -391,10 +477,12 @@ export default function LobbyPage() {
         console.log('Enviando convite para o usuário:', friendId, 'lobby:', currentLobbyId);
         const response = await axios.post('/api/lobby/invite', {
           recipientId: friendId,
-          lobbyId: currentLobbyId
+          lobbyId: currentLobbyId,
+          gameMode: lobbyType
         });
         
         console.log('Resposta do envio de convite:', response.data);
+        toast.dismiss();
         
         if (response.data.status === 'success') {
           toast.success(`Convite enviado para ${friend.name}`);
@@ -406,6 +494,27 @@ export default function LobbyPage() {
             message: `Convite enviado para ${friend.name}.`,
             isSystem: true
           }]);
+          
+          // Vamos verificar se o convite foi criado corretamente
+          setTimeout(async () => {
+            try {
+              const checkInvite = await axios.get('/api/lobby/invite');
+              console.log('Verificação de convites:', checkInvite.data);
+              
+              // Verificar se o convite está na lista
+              const inviteExists = checkInvite.data.invites?.some(
+                (invite: any) => invite.lobbyId === currentLobbyId
+              );
+              
+              if (!inviteExists) {
+                console.warn('Convite não encontrado na verificação:', currentLobbyId);
+              } else {
+                console.log('Convite confirmado no sistema');
+              }
+            } catch (e) {
+              console.error('Erro ao verificar convite:', e);
+            }
+          }, 1000);
         } else {
           toast.error(response.data.error || 'Erro ao enviar convite');
         }
@@ -414,6 +523,7 @@ export default function LobbyPage() {
         setShowInviteModal(false);
       } catch (error) {
         console.error('Erro detalhado ao enviar convite:', error);
+        toast.dismiss();
         if (axios.isAxiosError(error)) {
           console.error('Detalhes da resposta:', error.response?.data);
           toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
@@ -566,6 +676,23 @@ export default function LobbyPage() {
     setIsSearchingMatch(true);
     
     try {
+      // Verificar se o usuário está logado
+      if (!user?.id) {
+        toast.error('Você precisa estar logado para jogar');
+        setIsSearchingMatch(false);
+        return;
+      }
+      
+      console.log('Iniciando busca por partida com parâmetros:', {
+        userId: user.id,
+        mode: lobbyType,
+        type: lobbyType,
+        platform: 'mixed',
+        platformMode,
+        gameplayMode,
+        teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
+      });
+      
       // Chamar a API de matchmaking real
       const response = await fetch('/api/matchmaking/find', {
         method: 'POST',
@@ -573,7 +700,7 @@ export default function LobbyPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user?.id,
+          userId: user.id,
           mode: lobbyType,
           type: lobbyType,
           platform: 'mixed',
@@ -583,15 +710,26 @@ export default function LobbyPage() {
         }),
       });
       
+      // Verificar se houve erro na resposta HTTP
       if (!response.ok) {
-        throw new Error('Falha ao encontrar partida');
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('Erro na resposta da API:', response.status, errorData);
+        throw new Error(errorData.error || `Erro ${response.status}: Falha na busca por partida`);
       }
       
       // Obter a partida do resultado
       const matchResponse = await response.json();
+      console.log('Resposta da API de matchmaking:', matchResponse);
+      
+      // Se houve algum erro na API
+      if (matchResponse.error) {
+        throw new Error(matchResponse.error);
+      }
       
       // Se a partida já foi encontrada
       if (matchResponse.matchFound) {
+        console.log('Partida encontrada imediatamente:', matchResponse.match);
+        
         // Se a partida tiver informações de sala oficial, atualizar estados
         if (matchResponse.match.isOfficialRoom) {
           setIsConnectingToOfficialRoom(true);
@@ -614,14 +752,25 @@ export default function LobbyPage() {
         setTimeout(() => {
           setShowMatchRoomModal(true);
         }, 1500);
-      } else {
+      } else if (matchResponse.waitingId) {
         // Estamos em modo de espera, exibir o componente de status
+        console.log('Adicionado à fila de espera com ID:', matchResponse.waitingId);
         setWaitingId(matchResponse.waitingId);
+        toast.success('Busca por partida iniciada com sucesso!');
+      } else {
+        // Caso não reconheça a resposta
+        console.error('Formato de resposta desconhecido:', matchResponse);
+        throw new Error('Erro inesperado na resposta do servidor');
       }
     } catch (error) {
-      console.error('Erro ao iniciar matchmaking:', error);
-      toast.error('Não foi possível iniciar a busca por partida');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Ocorreu um erro desconhecido ao buscar partida';
+      
+      console.error('Erro detalhado ao iniciar matchmaking:', error);
+      toast.error(`Não foi possível iniciar a busca por partida: ${errorMessage}`);
       setIsSearchingMatch(false);
+      setWaitingId(null);
     }
   };
 

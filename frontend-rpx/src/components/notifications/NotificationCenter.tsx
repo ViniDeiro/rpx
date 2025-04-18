@@ -88,6 +88,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const acceptLobbyInvite = async (inviteId: string) => {
     try {
       setLoading(true);
+      console.log('Aceitando convite de lobby:', inviteId);
+      
       const response = await fetch('/api/lobby/invite/accept', {
         method: 'POST',
         headers: {
@@ -97,11 +99,19 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       });
       
       const data = await response.json();
+      console.log('Resposta ao aceitar convite:', data);
       
       if (data.status === 'success') {
         toast.success('Convite aceito com sucesso');
         onUpdate(); // Atualizar todas as notificações
         onClose(); // Fechar o painel para que o usuário possa ver o lobby
+        
+        // Redirecionar para o lobby após um pequeno delay
+        if (data.lobbyId) {
+          setTimeout(() => {
+            window.location.href = `/lobby/${data.lobbyId}`;
+          }, 500);
+        }
       } else {
         toast.error(data.error || 'Erro ao aceitar convite');
       }

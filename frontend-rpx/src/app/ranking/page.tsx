@@ -960,23 +960,32 @@ export default function RankingPage() {
             {/* Pódio melhorado para os 3 primeiros */}
             {filteredPlayers.length > 0 && (
               <div className="relative pt-24 pb-10 px-4 mb-10 bg-gradient-to-br from-card-bg to-background rounded-2xl border border-border shadow-xl overflow-hidden">
-                {/* Fundo mais sutil */}
+                {/* Fundo mais sutil com efeito de partículas e iluminação */}
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary via-primary-light to-transparent"></div>
+                <div className="absolute inset-0 bg-[url('/images/particles.svg')] bg-repeat opacity-5 animate-pulse-slow"></div>
+                <div className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-primary/10 blur-3xl transform -translate-y-1/2"></div>
+                <div className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full bg-blue-500/10 blur-3xl transform -translate-y-1/2"></div>
                 
-                {/* Plataformas do pódio */}
-                <div className="flex flex-wrap justify-center items-end h-auto min-h-[300px] relative z-10 gap-4 md:gap-12">
+                {/* Plataformas do pódio em layout 3D */}
+                <div className="flex flex-wrap justify-center items-end h-auto min-h-[300px] relative z-10 gap-4 md:gap-6">
+                
                 {/* Segundo lugar */}
                 {filteredPlayers.length > 1 && (
-                    <div className="flex flex-col items-center pb-8 w-[120px] md:w-[150px]">
-                      <div className="relative mb-2 group">
+                    <div className="flex flex-col items-center transform translate-y-4">
+                      <div className="relative mb-2 group animate-float-slow">
+                        {/* Avatar com efeito de brilho */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full opacity-75 blur group-hover:opacity-100 transition duration-700 group-hover:duration-200 animate-tilt"></div>
                         <PlayerAvatar player={filteredPlayers[1]} size="lg" />
-                        <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-blue-900 shadow-lg border border-blue-200">
-                          <span className="font-bold text-sm">2</span>
+                        
+                        {/* Medalha com efeito metálico */}
+                        <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-gradient-to-br from-blue-300 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-blue-300 transform rotate-12 group-hover:rotate-0 transition-transform">
+                          <span className="font-bold text-sm drop-shadow-md">2</span>
                         </div>
                       </div>
-                      <div className="mt-4 text-center w-full">
+                      
+                      <div className="mt-4 text-center w-full z-10">
                         <div 
-                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors group-hover:text-blue-300"
                           onClick={() => router.push(`/profile/${filteredPlayers[1].username}`)}
                         >
                           {filteredPlayers[1].username}
@@ -988,55 +997,107 @@ export default function RankingPage() {
                           <RankProgressBar player={filteredPlayers[1]} />
                         </div>
                       </div>
-                      <div className="mt-3 w-full h-32 bg-gradient-to-b from-blue-700 to-blue-900 rounded-t-lg flex items-center justify-center border-t-2 border-x-2 border-blue-500/70 shadow-inner relative overflow-hidden">
-                        <div className="text-center">
-                          <div className="text-xs text-blue-300">Vitórias</div>
-                          <div className="text-xl font-bold">{filteredPlayers[1].victories || filteredPlayers[1].wins || 0}</div>
-                          {(filteredPlayers[1].totalWon || 0) > 0 && (
-                            <div className="mt-1 text-green-400 text-xs">
-                              {formatCurrency(filteredPlayers[1].earnings || filteredPlayers[1].totalWon || 0)}
-                            </div>
-                          )}
+                      
+                      {/* Pódio em 3D com reflexo e sombra */}
+                      <div className="mt-3 w-full h-36 relative">
+                        {/* Reflexo frontal */}
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-blue-900/30 backdrop-blur-sm rounded-full mx-4 transform perspective-800"></div>
+                        
+                        {/* Bloco do pódio com bordas iluminadas */}
+                        <div className="absolute bottom-2 left-0 right-0 h-32 bg-gradient-to-b from-blue-700 to-blue-900 rounded-md flex items-center justify-center border-t-2 border-x-2 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] overflow-hidden transform perspective-800 rotateX-10">
+                          {/* Luz de destaque no topo */}
+                          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-blue-400 to-transparent opacity-30"></div>
+                          
+                          {/* Textura hexagonal */}
+                          <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-5"></div>
+                          
+                          <div className="text-center z-10 p-2">
+                            <div className="text-xs text-blue-300 uppercase tracking-wider font-semibold">Vitórias</div>
+                            <div className="text-2xl font-bold text-white">{filteredPlayers[1].victories || filteredPlayers[1].wins || 0}</div>
+                            {(filteredPlayers[1].totalWon || 0) > 0 && (
+                              <div className="mt-1 text-green-400 text-sm font-medium">
+                                {formatCurrency(filteredPlayers[1].earnings || filteredPlayers[1].totalWon || 0)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                 )}
                 
-                {/* Primeiro lugar */}
+                {/* Primeiro lugar - Campeão */}
                 {filteredPlayers.length > 0 && (
-                    <div className="flex flex-col items-center z-20 w-[140px] md:w-[180px] relative">
-                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                        <Crown size={36} className="text-yellow-400 drop-shadow-lg" />
-                      </div>
-                      <div className="relative mb-2 group">
-                        <PlayerAvatar player={filteredPlayers[0]} size="xl" />
-                        <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-yellow-900 shadow-lg border-2 border-yellow-200">
-                          <span className="font-bold">1</span>
+                    <div className="flex flex-col items-center z-20 transform -translate-y-4 scale-110">
+                      {/* Efeitos de raios de luz */}
+                      <div className="absolute -top-8 left-1/2 w-32 h-32 bg-yellow-400/20 rounded-full blur-2xl transform -translate-x-1/2"></div>
+                      
+                      {/* Coroa com animação flutuante */}
+                      <div className="relative">
+                        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 animate-float-slow">
+                          <div className="relative">
+                            {/* Brilho ao redor da coroa */}
+                            <div className="absolute -inset-2 bg-yellow-400/30 rounded-full blur-md animate-pulse-slow"></div>
+                            <Crown size={48} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]" />
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-4 text-center w-full">
+                      
+                      <div className="relative mb-2 group animate-float-slow">
+                        {/* Borda iluminada pulsante */}
+                        <div className="absolute -inset-2 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-500 rounded-full opacity-75 blur-md animate-pulse-slow"></div>
+                        <PlayerAvatar player={filteredPlayers[0]} size="xl" />
+                        
+                        {/* Medalha de primeiro lugar */}
+                        <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full flex items-center justify-center text-yellow-900 shadow-[0_0_15px_rgba(250,204,21,0.5)] border-2 border-yellow-300 transform rotate-6 group-hover:rotate-0 transition-transform">
+                          <span className="font-bold text-lg">1</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 text-center w-full z-10">
                         <div 
-                          className="font-bold text-xl truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          className="font-bold text-xl truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors drop-shadow-md"
                           onClick={() => router.push(`/profile/${filteredPlayers[0].username}`)}
                         >
                           {filteredPlayers[0].username}
                         </div>
-                        <div className={`text-sm truncate ${getRankColor(filteredPlayers[0].rank)}`}>
+                        <div className={`text-sm truncate ${getRankColor(filteredPlayers[0].rank)} font-semibold`}>
                           {typeof filteredPlayers[0].rank === 'string' ? filteredPlayers[0].rank : `Rank #${filteredPlayers[0].rank}`}
                         </div>
                         <div className="px-2">
                           <RankProgressBar player={filteredPlayers[0]} />
                         </div>
                       </div>
-                      <div className="mt-3 w-full h-40 bg-gradient-to-b from-yellow-600 to-yellow-900 rounded-t-lg flex items-center justify-center border-t-2 border-x-2 border-yellow-500 shadow-lg relative overflow-hidden">
-                        <div className="text-center z-10">
-                          <div className="text-xs text-yellow-300">Vitórias</div>
-                          <div className="text-2xl font-bold">{filteredPlayers[0].victories || filteredPlayers[0].wins || 0}</div>
-                          {(filteredPlayers[0].totalWon || 0) > 0 && (
-                            <div className="mt-1 text-green-400 text-sm font-bold">
-                              {formatCurrency(filteredPlayers[0].earnings || filteredPlayers[0].totalWon || 0)}
+                      
+                      {/* Pódio campeão com efeitos dourados */}
+                      <div className="mt-3 w-full h-44 relative">
+                        {/* Reflexo frontal */}
+                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-yellow-900/30 backdrop-blur-sm rounded-full mx-4 transform perspective-800"></div>
+                        
+                        {/* Bloco do pódio */}
+                        <div className="absolute bottom-2 left-0 right-0 h-44 bg-gradient-to-b from-yellow-600 to-amber-900 rounded-md flex items-center justify-center border-t-2 border-x-2 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.5)] overflow-hidden transform perspective-800 rotateX-10">
+                          {/* Luz de destaque no topo */}
+                          <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-yellow-400 to-transparent opacity-30"></div>
+                          
+                          {/* Textura com padrão */}
+                          <div className="absolute inset-0 bg-[url('/images/crown-pattern.svg')] bg-center bg-contain opacity-5 animate-pulse-slow"></div>
+                          
+                          {/* Efeito de brilho aleatório */}
+                          <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-yellow-300 rounded-full animate-ping-slow opacity-70"></div>
+                          <div className="absolute top-3/4 right-1/4 w-2 h-2 bg-yellow-300 rounded-full animate-ping-slow opacity-70" style={{ animationDelay: '1s' }}></div>
+                          
+                          <div className="text-center z-10 p-3">
+                            <div className="text-xs text-yellow-300 uppercase tracking-wider font-semibold">Vitórias</div>
+                            <div className="text-3xl font-bold text-white drop-shadow-md">{filteredPlayers[0].victories || filteredPlayers[0].wins || 0}</div>
+                            {(filteredPlayers[0].totalWon || 0) > 0 && (
+                              <div className="mt-2 text-green-400 text-lg font-bold">
+                                {formatCurrency(filteredPlayers[0].earnings || filteredPlayers[0].totalWon || 0)}
+                              </div>
+                            )}
+                            <div className="mt-2">
+                              <Trophy size={20} className="text-yellow-300 inline-block mr-1" />
+                              <span className="text-yellow-300 text-xs">Campeão</span>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1044,16 +1105,21 @@ export default function RankingPage() {
                 
                 {/* Terceiro lugar */}
                 {filteredPlayers.length > 2 && (
-                    <div className="flex flex-col items-center pb-16 w-[120px] md:w-[150px]">
-                      <div className="relative mb-2 group">
+                    <div className="flex flex-col items-center transform translate-y-8">
+                      <div className="relative mb-2 group animate-float-slow">
+                        {/* Avatar com efeito de brilho */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-amber-700 rounded-full opacity-75 blur group-hover:opacity-100 transition duration-700 group-hover:duration-200 animate-tilt"></div>
                         <PlayerAvatar player={filteredPlayers[2]} size="md" />
-                        <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center text-amber-100 shadow-lg border border-amber-400">
-                          <span className="font-bold text-sm">3</span>
+                        
+                        {/* Medalha de bronze */}
+                        <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-700 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-amber-400/70 transform rotate-12 group-hover:rotate-0 transition-transform">
+                          <span className="font-bold text-sm drop-shadow-md">3</span>
                         </div>
                       </div>
-                      <div className="mt-4 text-center w-full">
+                      
+                      <div className="mt-4 text-center w-full z-10">
                         <div 
-                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors"
+                          className="font-bold text-md truncate max-w-full text-white cursor-pointer hover:text-primary transition-colors group-hover:text-amber-300"
                           onClick={() => router.push(`/profile/${filteredPlayers[2].username}`)}
                         >
                           {filteredPlayers[2].username}
@@ -1065,24 +1131,38 @@ export default function RankingPage() {
                           <RankProgressBar player={filteredPlayers[2]} />
                         </div>
                       </div>
-                      <div className="mt-3 w-full h-24 bg-gradient-to-b from-amber-700 to-amber-900 rounded-t-lg flex items-center justify-center border-t-2 border-x-2 border-amber-600/70 shadow-inner relative overflow-hidden">
-                        <div className="text-center">
-                          <div className="text-xs text-amber-300">Vitórias</div>
-                          <div className="text-lg font-bold">{filteredPlayers[2].victories || filteredPlayers[2].wins || 0}</div>
-                          {(filteredPlayers[2].totalWon || 0) > 0 && (
-                            <div className="mt-1 text-green-400 text-xs">
-                              {formatCurrency(filteredPlayers[2].earnings || filteredPlayers[2].totalWon || 0)}
-                            </div>
-                          )}
+                      
+                      {/* Pódio em 3D com reflexo e sombra */}
+                      <div className="mt-3 w-full h-30 relative">
+                        {/* Reflexo frontal */}
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-amber-900/30 backdrop-blur-sm rounded-full mx-4 transform perspective-800"></div>
+                        
+                        {/* Bloco do pódio com bordas iluminadas */}
+                        <div className="absolute bottom-2 left-0 right-0 h-28 bg-gradient-to-b from-amber-700 to-amber-900 rounded-md flex items-center justify-center border-t-2 border-x-2 border-amber-500/70 shadow-[0_0_10px_rgba(217,119,6,0.5)] overflow-hidden transform perspective-800 rotateX-10">
+                          {/* Luz de destaque no topo */}
+                          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-amber-500 to-transparent opacity-30"></div>
+                          
+                          {/* Textura hexagonal */}
+                          <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-5"></div>
+                          
+                          <div className="text-center z-10 p-2">
+                            <div className="text-xs text-amber-300 uppercase tracking-wider font-semibold">Vitórias</div>
+                            <div className="text-xl font-bold text-white">{filteredPlayers[2].victories || filteredPlayers[2].wins || 0}</div>
+                            {(filteredPlayers[2].totalWon || 0) > 0 && (
+                              <div className="mt-1 text-green-400 text-xs font-medium">
+                                {formatCurrency(filteredPlayers[2].earnings || filteredPlayers[2].totalWon || 0)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                 )}
                 </div>
                 
-                {/* Linha decorativa mais simples */}
-                <div className="absolute bottom-0 left-0 right-0 h-4 bg-card-bg"></div>
-                <div className="absolute bottom-4 left-0 right-0 h-px bg-border"></div>
+                {/* Base do pódio */}
+                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card-bg to-transparent"></div>
+                <div className="absolute bottom-6 left-10 right-10 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
               </div>
             )}
             
