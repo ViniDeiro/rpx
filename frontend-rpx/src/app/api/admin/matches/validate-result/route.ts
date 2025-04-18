@@ -29,6 +29,15 @@ export async function POST(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida com o banco
+    if (!db) {
+      console.error('Validate Result - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Verificar se o usuário é um admin
     const user = await db.collection('users').findOne({
       _id: new ObjectId(userId)
