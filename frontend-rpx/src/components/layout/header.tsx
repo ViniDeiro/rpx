@@ -116,7 +116,7 @@ export const Header = () => {
           {/* Autenticação e perfil - Desktop */}
           <div className="hidden md:flex items-center space-x-3">
             <NotificationButton />
-            <UserMenu user={session?.user} status={status} />
+            <UserMenu user={session.data?.user} status={status} />
           </div>
 
           {/* Botão de menu mobile */}
@@ -133,7 +133,7 @@ export const Header = () => {
       <div className="md:hidden">
         <MobileMenu 
           links={navLinks} 
-          user={session?.user} 
+          user={session.data?.user} 
           status={status}
           showThemeToggle={true}
         />
