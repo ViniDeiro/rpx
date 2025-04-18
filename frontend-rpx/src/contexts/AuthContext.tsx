@@ -143,6 +143,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('Dados do perfil:', JSON.stringify(userData, null, 2));
             setUser(userData);
             setIsAuthenticated(true);
+            
+            // Sincronizar com NextAuth - fazer login na sessão NextAuth também
+            try {
+              const response = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                  userId: userData.id,
+                  email: userData.email,
+                  name: userData.name || userData.username,
+                  image: userData.avatarUrl
+                }),
+              });
+              
+              if (!response.ok) {
+                console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
+              }
+            } catch (error) {
+              console.warn('Erro ao sincronizar com NextAuth:', error);
+            }
           } else {
             console.error('Resposta não contém dados do usuário:', data);
             throw new Error('Dados do usuário não encontrados na resposta');
@@ -198,35 +220,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
       
       // Salvar o token no localStorage e no estado
-      if (typeof window !== 'undefined') {
+      if (data.token) {
         localStorage.setItem('auth_token', data.token);
-      }
-      
-      // Pré-carregar a imagem do avatar para garantir que estará disponível
-      if (data.user) {
-        // Determinar a URL da imagem: pode ser a avatarUrl ou a do perfil
-        const avatarUrl = data.user.avatarUrl || (data.user.profile?.avatar) || '/images/avatar-placeholder.svg';
+        setToken(data.token);
         
-        console.log('Pré-carregando avatar:', avatarUrl);
-        
-        // Pré-carregar a imagem
-        if (avatarUrl && typeof window !== 'undefined') {
-          // Usar a função utilitária para pré-carregar a imagem
-          await preloadImage(avatarUrl, 3000);
+        // Definir o usuário e estado de autenticação
+        if (data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+          
+          // Sincronizar com NextAuth
+          try {
+            const syncResponse = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                userId: data.user.id,
+                email: data.user.email,
+                name: data.user.name || data.user.username,
+                image: data.user.avatarUrl
+              }),
+            });
+            
+            if (!syncResponse.ok) {
+              console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
+            }
+          } catch (error) {
+            console.warn('Erro ao sincronizar com NextAuth:', error);
+            // Continuar mesmo se a sincronização falhar
+          }
+          
+          return { success: true };
         }
       }
       
-      setToken(data.token);
-      setUser(data.user);
-      setIsAuthenticated(true);
-      
-      // Redirecionar para a página principal
-      router.push('/profile');
-      
-      return data;
-    } catch (error: any) {
+      throw new Error('Resposta de login inválida');
+    } catch (error) {
       console.error('Erro no login:', error);
-      throw error;
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido no login' 
+      };
     } finally {
       setIsLoading(false);
     }
@@ -451,17 +487,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para realizar logout
   const logout = () => {
-    // Remover o token do localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+    try {
+      // Limpar token do localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+      }
+      
+      // Limpar estado
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Chamar signOut do NextAuth
+      fetch('/api/auth/signout', { method: 'POST' })
+        .catch(err => console.warn('Erro ao fazer logout do NextAuth:', err));
+      
+      // Se estiver em ambiente de navegador, redirecionar para a página de login
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
+      }
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
     }
-    
-    // Limpar o estado
-    setToken(null);
-    setUser(null);
-    
-    // Redirecionar para a página de login
-    router.push('/login');
   };
 
   return (
