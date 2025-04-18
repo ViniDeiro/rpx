@@ -29,6 +29,11 @@ export async function POST(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se db está definido
+    if (!db) {
+      throw new Error('Falha na conexão com o banco de dados');
+    }
+    
     // Verificar se o usuário é um admin
     const user = await db.collection('users').findOne({
       _id: new ObjectId(userId)
