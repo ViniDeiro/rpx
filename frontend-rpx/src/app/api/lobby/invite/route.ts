@@ -17,6 +17,15 @@ export async function GET(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.log('API Lobby Invite GET - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Obter convites pendentes para o usuário
     const invites = await db.collection('lobbyinvites').find({
       $or: [
@@ -82,6 +91,15 @@ export async function POST(request: Request) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.log('API Lobby Invite POST - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     // Verificar se o usuário existe
     const recipient = await db.collection('users').findOne({ 
@@ -242,6 +260,15 @@ export async function DELETE(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.log('API Lobby Invite DELETE - Erro: Conexão com banco de dados falhou');
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
+    
     // Atualizar o convite para rejeitado
     const result = await db.collection('lobbyinvites').updateOne(
       { 
@@ -257,7 +284,7 @@ export async function DELETE(request: Request) {
     if (result.matchedCount === 0) {
       return NextResponse.json({
         status: 'error',
-        error: 'Convite não encontrado'
+        error: 'Convite não encontrado ou você não tem permissão para rejeitá-lo'
       }, { status: 404 });
     }
     
