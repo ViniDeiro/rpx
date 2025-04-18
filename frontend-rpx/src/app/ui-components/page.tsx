@@ -60,7 +60,7 @@ export default function UIComponentsPage() {
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Button size="sm">Small</Button>
-              <Button size="default">Default</Button>
+              <Button size="md">Default</Button>
               <Button size="lg">Large</Button>
             </div>
           </CardContent>
