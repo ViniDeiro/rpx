@@ -30,6 +30,9 @@ type User = {
       twitter?: string;
       instagram?: string;
       twitch?: string;
+      youtube?: string;
+      discord?: string;
+      tiktok?: string;
     }
   };
   role?: string;
