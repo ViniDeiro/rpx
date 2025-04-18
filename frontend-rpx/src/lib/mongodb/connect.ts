@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { Db } from 'mongodb';
 
 // Interface para simular uma Collection do MongoDB
 interface MongoDBCollectionCompat {
@@ -15,17 +16,22 @@ interface MongoDBCompat {
   collection: (name: string) => MongoDBCollectionCompat;
 }
 
+// Interface para o retorno da função de conexão com o banco
+interface DatabaseConnection {
+  db: Db;
+}
+
 // Cache da conexão
 let cachedConnection: mongoose.Connection | null = null;
 let isConnected = false;
 
-export async function connectToDatabase() {
+export async function connectToDatabase(): Promise<DatabaseConnection> {
   try {
     // Se já estamos conectados, retornar a conexão existente
     if (isConnected && mongoose.connection && mongoose.connection.readyState === 1) {
       console.log('Usando conexão MongoDB existente');
       return { 
-        db: mongoose.connection.db
+        db: mongoose.connection.db as unknown as Db
       };
     }
 
@@ -72,7 +78,7 @@ export async function connectToDatabase() {
     
     // Retornar a conexão real
     return {
-      db: mongoose.connection.db
+      db: mongoose.connection.db as unknown as Db
     };
   } catch (error) {
     console.error('Erro ao conectar ao MongoDB:', error);

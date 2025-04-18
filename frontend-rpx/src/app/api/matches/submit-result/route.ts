@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId, Db } from 'mongodb';
+import { ObjectId } from 'mongodb';
 
 // Middleware para autenticação
 async function isAuthenticated() {
@@ -40,10 +40,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    const connection = await connectToDatabase();
-    // Usamos "as Db" para forçar o TypeScript a tratar db como uma instância de Db 
-    // sem avisos de possível undefined
-    const db = connection.db as Db;
+    // Agora que o tipo está corretamente definido, podemos usar a desestruturação direta
+    const { db } = await connectToDatabase();
     
     // Verificar se a partida existe
     const match = await db.collection('matches').findOne({
