@@ -42,6 +42,11 @@ export async function POST(request: Request) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se db está definido
+    if (!db) {
+      throw new Error('Falha na conexão com o banco de dados');
+    }
+    
     // Verificar se a partida existe
     const match = await db.collection('matches').findOne({
       _id: new ObjectId(matchId)
