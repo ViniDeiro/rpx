@@ -22,9 +22,27 @@ async function isAdmin() {
     return false;
   }
   
-  // Verificar se o usuário tem a propriedade isAdmin
-  const user = session.user as AdminUser;
-  return user.isAdmin === true;
+  try {
+    // Conectar ao banco para verificar o status de admin
+    const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      console.error('Admin check - Erro: Conexão com banco de dados falhou');
+      return false;
+    }
+    
+    // Verificar no banco se o usuário é admin
+    const user = await db.collection('users').findOne({ 
+      _id: new ObjectId(session.user.id) 
+    });
+    
+    // Verificar se o usuário tem a propriedade isAdmin
+    return user?.isAdmin === true;
+  } catch (error) {
+    console.error('Erro ao verificar permissão de admin:', error);
+    return false;
+  }
 }
 
 // GET - Listar todos os itens da loja
@@ -39,6 +57,14 @@ export async function GET(req: NextRequest) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json(
+        { message: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
     
     // Obter ID do item (opcional)
     const url = new URL(req.url);
@@ -111,6 +137,14 @@ export async function POST(req: NextRequest) {
     
     const { db } = await connectToDatabase();
     
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json(
+        { message: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
+    
     // Criar novo item
     const novoItem = {
       ...body,
@@ -166,6 +200,14 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json(
+        { message: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
     
     // Verificar se existe o item com o ID fornecido
     const existingItem = await db.collection('store_items').findOne({
@@ -227,6 +269,14 @@ export async function DELETE(req: NextRequest) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos uma conexão válida
+    if (!db) {
+      return NextResponse.json(
+        { message: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
     
     // Verificar se o item existe
     const item = await db.collection('store_items').findOne({

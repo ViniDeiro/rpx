@@ -13,15 +13,27 @@ async function isAdminAuthenticated() {
     return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  // Obter o usuário para verificar se é administrador
-  const { db } = await connectToDatabase();
-  const user = await db.collection('users').findOne({ _id: new ObjectId(session.user.id) });
-  
-  if (!user || user.role !== 'admin') {
-    return { isAuth: false, error: 'Acesso restrito a administradores', userId: null };
+  try {
+    // Obter o usuário para verificar se é administrador
+    const { db } = await connectToDatabase();
+    
+    // Verificar se temos conexão com o banco
+    if (!db) {
+      console.error('Erro: Conexão com banco de dados falhou');
+      return { isAuth: false, error: 'Erro de conexão com o banco de dados', userId: null };
+    }
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(session.user.id) });
+    
+    if (!user || user.role !== 'admin') {
+      return { isAuth: false, error: 'Acesso restrito a administradores', userId: null };
+    }
+    
+    return { isAuth: true, error: null, userId: session.user.id };
+  } catch (error) {
+    console.error('Erro ao verificar autenticação de admin:', error);
+    return { isAuth: false, error: 'Erro ao verificar permissões de administrador', userId: null };
   }
-  
-  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // GET: Listar partidas pendentes para configuração
@@ -37,6 +49,14 @@ export async function GET(req: NextRequest) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos conexão com o banco
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     // Buscar partidas que estão aguardando configuração de sala
     const matches = await db.collection('matches')
@@ -110,6 +130,14 @@ export async function PUT(req: NextRequest) {
     }
     
     const { db } = await connectToDatabase();
+    
+    // Verificar se temos conexão com o banco
+    if (!db) {
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro de conexão com o banco de dados'
+      }, { status: 500 });
+    }
     
     // Buscar a partida
     const match = await db.collection('matches').findOne({ 
