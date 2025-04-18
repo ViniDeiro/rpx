@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
-import { ObjectId } from 'mongodb';
+import { ObjectId, FindCursor, Document, WithId } from 'mongodb';
 
 interface AdminUser {
   id?: string;
@@ -64,8 +64,8 @@ export async function GET(req: NextRequest) {
     }
     
     // Buscar todos os itens
-    const items = await db.collection('store_items')
-      .find()
+    const cursor = db.collection('store_items').find() as FindCursor<WithId<Document>>;
+    const items = await cursor
       .sort({ createdAt: -1 })
       .toArray();
     
