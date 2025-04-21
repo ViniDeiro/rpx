@@ -68,9 +68,12 @@ export async function GET(request: Request) {
 // POST: Criar convite para lobby
 export async function POST(request: Request) {
   try {
+    console.log('🔔 [DEBUG] API Lobby Invite POST - Iniciando requisição');
+    
     const { isAuth, error, userId } = await isAuthenticated();
     
     if (!isAuth || !userId) {
+      console.error('🔒 [DEBUG] API Lobby Invite POST - Erro de autenticação:', error);
       return NextResponse.json({
         status: 'error',
         error
@@ -80,13 +83,26 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { recipientId, lobbyId, gameMode } = body;
     
-    console.log('API - Recebido pedido de convite:', { recipientId, lobbyId, gameMode });
+    console.log('📝 [DEBUG] API Lobby Invite POST - Dados recebidos:', { 
+      userId,
+      recipientId, 
+      lobbyId, 
+      gameMode 
+    });
     
-    if (!recipientId || !lobbyId) {
-      console.log('API - Erro: dados inválidos ou faltando');
+    if (!recipientId) {
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro: ID do destinatário não fornecido');
       return NextResponse.json({
         status: 'error',
-        error: 'Dados inválidos ou faltando'
+        error: 'ID do destinatário é obrigatório'
+      }, { status: 400 });
+    }
+
+    if (!lobbyId) {
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro: ID do lobby não fornecido');
+      return NextResponse.json({
+        status: 'error',
+        error: 'ID do lobby é obrigatório'
       }, { status: 400 });
     }
     
@@ -94,32 +110,45 @@ export async function POST(request: Request) {
     
     // Verificar se temos uma conexão válida
     if (!db) {
-      console.log('API Lobby Invite POST - Erro: Conexão com banco de dados falhou');
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro: Conexão com banco de dados falhou');
       return NextResponse.json({
         status: 'error',
         error: 'Erro de conexão com o banco de dados'
       }, { status: 500 });
     }
     
-    // Verificar se o usuário existe
-    const recipient = await db.collection('users').findOne({ 
-      _id: new ObjectId(recipientId) 
-    });
+    console.log('✓ [DEBUG] API Lobby Invite POST - Conectado ao banco de dados');
     
-    if (!recipient) {
-      console.log('API - Erro: usuário não encontrado');
+    // Verificar se o usuário existe
+    try {
+      const recipient = await db.collection('users').findOne({ 
+        _id: new ObjectId(recipientId) 
+      });
+      
+      if (!recipient) {
+        console.error('❌ [DEBUG] API Lobby Invite POST - Erro: Usuário não encontrado:', recipientId);
+        return NextResponse.json({
+          status: 'error',
+          error: 'Usuário não encontrado'
+        }, { status: 404 });
+      }
+      
+      console.log('✓ [DEBUG] API Lobby Invite POST - Usuário encontrado:', recipient.username);
+    } catch (err) {
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao verificar usuário:', err);
       return NextResponse.json({
         status: 'error',
-        error: 'Usuário não encontrado'
-      }, { status: 404 });
+        error: 'Erro ao verificar dados do usuário'
+      }, { status: 500 });
     }
     
     // Validar ID do lobby e verificar se existe
     let lobbyObjectId;
     try {
       lobbyObjectId = new ObjectId(lobbyId);
+      console.log('✓ [DEBUG] API Lobby Invite POST - ID do lobby válido:', lobbyId);
     } catch (e) {
-      console.log('API - Erro: ID do lobby inválido', lobbyId);
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro: ID do lobby inválido', lobbyId);
       return NextResponse.json({
         status: 'error',
         error: 'ID do lobby inválido'
@@ -127,108 +156,133 @@ export async function POST(request: Request) {
     }
     
     // Verificar se o lobby existe
-    const lobby = await db.collection('lobbies').findOne({
-      _id: lobbyObjectId
-    });
-    
-    if (!lobby) {
-      console.log('API - Erro: lobby não encontrado');
-      return NextResponse.json({
-        status: 'error',
-        error: 'Lobby não encontrado'
-      }, { status: 404 });
-    }
-    
-    // Verificar se já existe um convite pendente
-    const existingInvite = await db.collection('lobbyinvites').findOne({
-      $and: [
-        {
-          $or: [
-            { inviter: new ObjectId(userId) },
-            { inviter: userId.toString() }
-          ]
-        },
-        {
-          $or: [
-            { recipient: new ObjectId(recipientId) },
-            { recipient: recipientId.toString() }
-          ]
-        }
-      ],
-      lobbyId: lobbyObjectId.toString(),
-      status: 'pending'
-    });
-    
-    if (existingInvite) {
-      console.log('API - Convite já enviado anteriormente');
-      return NextResponse.json({
-        status: 'success',
-        message: 'Convite já enviado anteriormente',
-        invite: existingInvite
+    try {
+      const lobby = await db.collection('lobbies').findOne({
+        _id: lobbyObjectId
       });
-    }
-    
-    // Criar novo convite
-    const newInvite = {
-      inviter: new ObjectId(userId),
-      recipient: new ObjectId(recipientId),
-      lobbyId: lobbyObjectId.toString(),
-      gameMode: gameMode || lobby.lobbyType,
-      status: 'pending',
-      createdAt: new Date()
-    };
-    
-    console.log('API - Criando novo convite:', newInvite);
-    const result = await db.collection('lobbyinvites').insertOne(newInvite);
-    
-    if (!result.insertedId) {
-      console.log('API - Erro ao inserir convite no banco de dados');
+      
+      if (!lobby) {
+        console.error('❌ [DEBUG] API Lobby Invite POST - Erro: Lobby não encontrado:', lobbyId);
+        return NextResponse.json({
+          status: 'error',
+          error: 'Lobby não encontrado'
+        }, { status: 404 });
+      }
+      
+      console.log('✓ [DEBUG] API Lobby Invite POST - Lobby encontrado:', lobby.name || lobbyId);
+    } catch (err) {
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao verificar lobby:', err);
       return NextResponse.json({
         status: 'error',
-        error: 'Erro ao criar convite'
+        error: 'Erro ao verificar dados do lobby'
       }, { status: 500 });
     }
     
-    // Criar notificação para o destinatário
+    // REMOVIDO: Verificação de convites existentes que estava bloqueando novos convites
+    // Agora vamos apenas verificar, mas permitir a criação mesmo se já houver convites
     try {
-      const inviter = await db.collection('users').findOne(
-        { _id: new ObjectId(userId) },
-        { projection: { _id: 1, username: 1, avatar: 1 } }
-      );
-      
-      await db.collection('notifications').insertOne({
-        userId: recipientId.toString(),
-        type: 'lobby_invite',
-        read: false,
-        data: {
-          inviter,
-          invite: {
-            _id: result.insertedId,
-            lobbyId: lobbyObjectId.toString(),
-            status: 'pending',
-            createdAt: new Date()
-          }
-        },
-        createdAt: new Date()
+      const existingInvite = await db.collection('lobbyinvites').findOne({
+        inviter: new ObjectId(userId),
+        recipient: new ObjectId(recipientId),
+        lobbyId: lobbyObjectId.toString(),
+        status: 'pending'
       });
       
-      console.log('API - Notificação criada com sucesso');
-    } catch (notifError) {
-      console.error('API - Erro ao criar notificação:', notifError);
-      // Continuar mesmo se a notificação falhar
+      if (existingInvite) {
+        console.log('🔄 [DEBUG] API Lobby Invite POST - Convite já existe, mas permitiremos criar outro');
+      }
+    } catch (err) {
+      console.error('⚠️ [DEBUG] API Lobby Invite POST - Erro ao verificar convites existentes:', err);
+      // Continuamos mesmo com erro aqui
     }
     
-    console.log('API - Convite criado com sucesso:', result.insertedId);
-    return NextResponse.json({
-      status: 'success',
-      message: 'Convite enviado com sucesso',
-      invite: {
-        ...newInvite,
-        _id: result.insertedId
+    // Criar novo convite
+    try {
+      const newInvite = {
+        inviter: new ObjectId(userId),
+        recipient: new ObjectId(recipientId),
+        lobbyId: lobbyObjectId.toString(),
+        gameMode: gameMode || 'casual', // Valor padrão 'casual'
+        status: 'pending',
+        createdAt: new Date()
+      };
+      
+      console.log('📝 [DEBUG] API Lobby Invite POST - Criando novo convite:', {
+        inviter: userId,
+        recipient: recipientId,
+        lobbyId: lobbyObjectId.toString()
+      });
+      
+      const result = await db.collection('lobbyinvites').insertOne(newInvite);
+      
+      if (!result.insertedId) {
+        console.error('❌ [DEBUG] API Lobby Invite POST - Erro: Falha ao inserir convite');
+        return NextResponse.json({
+          status: 'error',
+          error: 'Erro ao criar convite'
+        }, { status: 500 });
       }
-    });
+      
+      console.log('✅ [DEBUG] API Lobby Invite POST - Convite criado com sucesso:', result.insertedId.toString());
+      
+      // Criar notificação para o destinatário
+      try {
+        const inviter = await db.collection('users').findOne(
+          { _id: new ObjectId(userId) },
+          { projection: { _id: 1, username: 1, avatar: 1 } }
+        );
+        
+        // Garantir que o ID do recipiente está em formato string
+        const recipientIdString = recipientId.toString();
+        
+        const notificationData = {
+          userId: recipientIdString, // Sempre usar string para userId
+          type: 'lobby_invite',
+          read: false,
+          data: {
+            inviter,
+            invite: {
+              _id: result.insertedId,
+              lobbyId: lobbyObjectId.toString(),
+              status: 'pending',
+              createdAt: new Date()
+            }
+          },
+          createdAt: new Date()
+        };
+        
+        console.log('📤 [DEBUG] API Lobby Invite POST - Criando notificação:', {
+          userId: recipientIdString,
+          type: 'lobby_invite',
+          inviterId: userId,
+          inviterName: inviter?.username || 'Unknown'
+        });
+        
+        const notifResult = await db.collection('notifications').insertOne(notificationData);
+        
+        console.log('✅ [DEBUG] API Lobby Invite POST - Notificação criada com sucesso. ID:', notifResult.insertedId.toString());
+      } catch (notifError) {
+        console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao criar notificação:', notifError);
+        // Continuar mesmo se a notificação falhar
+      }
+      
+      return NextResponse.json({
+        status: 'success',
+        message: 'Convite enviado com sucesso',
+        invite: {
+          ...newInvite,
+          _id: result.insertedId
+        }
+      });
+    } catch (createError) {
+      console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao criar convite:', createError);
+      return NextResponse.json({
+        status: 'error',
+        error: 'Erro ao criar convite para lobby'
+      }, { status: 500 });
+    }
   } catch (error: any) {
-    console.error('Erro detalhado ao criar convite para lobby:', error);
+    console.error('❌ [DEBUG] API Lobby Invite POST - Erro detalhado:', error);
     return NextResponse.json({
       status: 'error',
       error: 'Erro ao criar convite para lobby: ' + (error.message || 'Erro desconhecido')

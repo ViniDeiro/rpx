@@ -15,7 +15,17 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
       username?: string;
+      isAdmin?: boolean;
     }
+  }
+  
+  interface User {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    username?: string;
+    isAdmin?: boolean;
   }
 }
 
@@ -50,7 +60,8 @@ export const authOptions: NextAuthOptions = {
             id: user._id.toString(),
             name: user.name || user.username,
             email: user.email,
-            username: user.username
+            username: user.username,
+            isAdmin: user.isAdmin || false
           };
         } catch (error) {
           console.error('Erro na autenticação:', error);
@@ -64,12 +75,14 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.sub || '';
         session.user.username = token.name || '';
+        session.user.isAdmin = token.isAdmin as boolean || false;
       }
       return session;
     },
     jwt: async ({ token, user }) => {
       if (user) {
         token.sub = user.id;
+        token.isAdmin = user.isAdmin || false;
       }
       return token;
     }

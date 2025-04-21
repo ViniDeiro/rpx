@@ -3,20 +3,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Menu, X, User, DollarSign, ChevronDown } from 'react-feather';
-import OptimizedImage from '../ui/optimized-image';
+import { Menu, X, DollarSign } from 'react-feather';
 import ImagePaths from '@/utils/image-paths';
 import Image from 'next/image';
-import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from 'next-auth/react';
+import { Button } from '../ui/button';
+import { motion } from 'framer-motion';
+import { User, ChevronDown } from 'react-feather';
+import OptimizedImage from '../ui/optimized-image';
+import { formatCurrency } from '@/utils/formatters';
 import { UserAvatar } from '../ui/user-avatar';
 import { useTheme } from 'next-themes';
-import { useSession } from 'next-auth/react';
 import { NavLink } from './nav-link';
 import { MobileMenu } from './mobile-menu';
 import { UserMenu } from './user-menu';
-import { Button } from '../ui/button';
 import { NotificationButton } from '../notifications/NotificationManager';
 
 export const Header = () => {
@@ -116,7 +117,36 @@ export const Header = () => {
           {/* Autenticação e perfil - Desktop */}
           <div className="hidden md:flex items-center space-x-3">
             <NotificationButton />
-            <UserMenu user={session.data?.user} status={status} />
+            {isAuthenticated ? (
+              <>
+                {/* Componente de saldo */}
+                <div className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-800/40 to-purple-800/40 rounded-full border border-indigo-500/30 shadow-sm hover:shadow-indigo-500/20 hover:border-indigo-500/50 transition-all duration-200">
+                  <span className="font-medium text-sm text-white">
+                    R$ {(user?.wallet?.balance || user?.balance || 0).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+                <UserMenu user={user} status="authenticated" />
+              </>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="ghost" 
+                  asChild 
+                  size="md" 
+                  className="px-4 py-1.5 text-sm font-medium rounded-lg hover:bg-indigo-700/30 hover:text-indigo-300 transition-all duration-200"
+                >
+                  <Link href="/auth/login">Entrar</Link>
+                </Button>
+                <Button 
+                  variant="default" 
+                  asChild 
+                  size="md" 
+                  className="px-4 py-1.5 text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-500 hover:to-purple-600 border-0 rounded-lg transition-all duration-200"
+                >
+                  <Link href="/auth/register">Cadastrar</Link>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Botão de menu mobile */}
@@ -133,8 +163,8 @@ export const Header = () => {
       <div className="md:hidden">
         <MobileMenu 
           links={navLinks} 
-          user={session.data?.user} 
-          status={status}
+          user={user}
+          status={isAuthenticated ? "authenticated" : "unauthenticated"}
           showThemeToggle={true}
         />
       </div>

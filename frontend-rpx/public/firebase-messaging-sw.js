@@ -4,12 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 // Inicializar o Firebase
 firebase.initializeApp({
-  apiKey: 'FIREBASE_API_KEY', // Será substituído pelo valor da variável de ambiente durante a build
-  authDomain: 'FIREBASE_AUTH_DOMAIN',
-  projectId: 'FIREBASE_PROJECT_ID',
-  storageBucket: 'FIREBASE_STORAGE_BUCKET',
-  messagingSenderId: 'FIREBASE_MESSAGING_SENDER_ID',
-  appId: 'FIREBASE_APP_ID'
+  apiKey: '', // Será substituído pelo valor da variável de ambiente durante a build
+  authDomain: '',
+  projectId: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  appId: ''
 });
 
 // Inicializar Firebase Messaging

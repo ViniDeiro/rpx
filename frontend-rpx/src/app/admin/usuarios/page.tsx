@@ -21,22 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { PencilIcon, MoreVerticalIcon, UserPlusIcon, SearchIcon, TrashIcon, ShieldIcon } from 'lucide-react'
 
-// Extendendo a interface de usuário para incluir isAdmin
-interface ExtendedUser {
-  id?: string;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  username?: string;
-  isAdmin?: boolean;
-}
-
-// Extendendo a interface de sessão
-interface ExtendedSession {
-  user?: ExtendedUser;
-  expires: string;
-}
-
 // Interface para usuário no sistema
 interface User {
   id: string
@@ -49,36 +33,109 @@ interface User {
 
 export default function UsuariosAdmin() {
   const router = useRouter()
-  const { data: session, status } = useSession() as { data: ExtendedSession | null, status: "loading" | "authenticated" | "unauthenticated" }
-  const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState<User[]>([])
+  const [authError, setAuthError] = useState(false)
   
   // Função para buscar usuários da API
   const fetchUsers = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/admin/users')
-      if (!response.ok) {
-        throw new Error('Falha ao buscar usuários')
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptFetch = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Realizando requisição para buscar usuários...');
+        
+        const response = await fetch('/api/admin/users', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include' // Importante: incluir cookies de autenticação
+        });
+        
+        // Verificar erros de autenticação/autorização
+        if (response.status === 401 || response.status === 403) {
+          const errorData = await response.json();
+          console.error('Erro de autorização:', errorData);
+          setAuthError(true);
+          throw new Error(`Acesso negado: ${errorData.error || 'Você não tem permissão para acessar esta página'}`);
+        }
+        
+        if (!response.ok) {
+          console.error('Erro na resposta da API:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('Detalhes do erro:', errorText);
+          throw new Error(`Falha ao buscar usuários: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Dados recebidos da API:', data);
+        console.log('Quantidade de usuários recebidos:', Array.isArray(data) ? data.length : 'Dados não são um array');
+        
+        // Verificar se os dados são um array
+        if (!Array.isArray(data)) {
+          console.error('Formato de dados inválido:', data);
+          throw new Error('Resposta da API não retornou uma lista de usuários.');
+        }
+        
+        // Log detalhado para debug
+        if (data.length === 0) {
+          console.warn('Lista de usuários vazia retornada da API');
+        } else {
+          console.log('Primeiro usuário na lista:', data[0]);
+        }
+        
+        // Formatar os dados dos usuários
+        const formattedUsers = data.map((user: any, index: number) => {
+          const formattedUser = {
+            id: user._id || user.id || `temp-id-${index}`,
+            name: user.name || user.username || 'Sem nome',
+            email: user.email || 'Sem e-mail',
+            username: user.username || 'Sem username',
+            isAdmin: user.isAdmin || user.role === 'admin' || false,
+            createdAt: user.createdAt || new Date().toISOString()
+          };
+          console.log(`Usuário ${index+1} formatado:`, formattedUser);
+          return formattedUser;
+        });
+        
+        console.log('Total de usuários formatados:', formattedUsers.length);
+        setUsers(formattedUsers);
+        
+        setAuthError(false); // Limpar erros de autenticação caso a requisição tenha sucesso
+        console.log('Usuários carregados com sucesso.');
+      } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
+        
+        // Verificar se é erro de autenticação
+        if (error instanceof Error && error.message.includes('Acesso negado')) {
+          setAuthError(true);
+          alert(`Erro de autorização: ${error.message}`);
+          return; // Não tentar novamente para erros de autorização
+        }
+        
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Tentativa ${retryCount} de ${maxRetries}...`);
+          // Esperar um tempo antes de tentar novamente (tempo cresce exponencialmente)
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attemptFetch();
+        } else {
+          // Após várias tentativas, informar o erro ao usuário
+          alert('Erro ao carregar usuários. Tente novamente.');
+        }
+      } finally {
+        setIsLoading(false);
       }
-      const data = await response.json()
-      setUsers(data.map((user: any) => ({
-        id: user.id,
-        name: user.name || 'Sem nome',
-        email: user.email || 'Sem e-mail',
-        username: user.username || 'Sem username',
-        isAdmin: user.isAdmin || user.role === 'admin' || false,
-        createdAt: user.createdAt || new Date().toISOString()
-      })))
-    } catch (error) {
-      console.error('Erro ao buscar usuários:', error)
-      alert('Erro ao carregar usuários. Tente novamente.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    };
+    
+    await attemptFetch();
+  };
 
   // Função para excluir um usuário
   const handleDeleteUser = async (userId: string) => {
@@ -105,12 +162,13 @@ export default function UsuariosAdmin() {
   // Função para alterar status de administrador
   const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
     try {
-      const response = await fetch(`/api/admin/users?id=${userId}`, {
+      const response = await fetch(`/api/admin/users`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          id: userId,
           isAdmin: !isCurrentlyAdmin
         })
       })
@@ -134,21 +192,10 @@ export default function UsuariosAdmin() {
   }
 
   useEffect(() => {
-    if (status === 'loading') return
-
-    if (!session || !session.user) {
-      router.push('/login')
-      return
-    }
-
-    if (session.user.isAdmin) {
-      setIsAdmin(true)
-      // Buscar usuários da API
-      fetchUsers()
-    } else {
-      router.push('/')
-    }
-  }, [session, status, router])
+    // O layout já trata de verificar se o usuário é admin
+    // Aqui apenas carregar os dados que precisamos
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -164,8 +211,25 @@ export default function UsuariosAdmin() {
     )
   }
 
-  if (!isAdmin) {
-    return null
+  if (authError) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] bg-red-50 p-8 rounded-lg shadow">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-red-700 mb-4">Acesso Negado</h2>
+          <p className="text-center max-w-md mb-6">
+            Você não possui permissões de administrador para acessar esta página. 
+            Verifique se sua conta tem os privilégios necessários.
+          </p>
+          <Button 
+            onClick={() => router.push('/')}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Voltar para página inicial
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -245,7 +309,7 @@ export default function UsuariosAdmin() {
                           onClick={() => handleToggleAdmin(user.id, user.isAdmin)}
                         >
                           <ShieldIcon className="h-4 w-4" />
-                          <span>{user.isAdmin ? 'Remover admin' : 'Tornar admin'}</span>
+                          <span>{user.isAdmin ? 'Remover Admin' : 'Tornar Admin'}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="flex items-center gap-2 text-red-600"
@@ -262,7 +326,7 @@ export default function UsuariosAdmin() {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10 text-gray-500">
-                  Nenhum usuário encontrado
+                  {searchTerm ? 'Nenhum usuário encontrado com os critérios de busca.' : 'Nenhum usuário cadastrado.'}
                 </TableCell>
               </TableRow>
             )}

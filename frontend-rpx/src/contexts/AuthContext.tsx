@@ -146,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             // Sincronizar com NextAuth - fazer login na sessão NextAuth também
             try {
-              const response = await fetch('/api/auth/session', {
+              console.log('Tentando sincronizar com NextAuth...');
+              const syncResponse = await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -155,12 +156,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   userId: userData.id,
                   email: userData.email,
                   name: userData.name || userData.username,
-                  image: userData.avatarUrl
+                  image: userData.avatarUrl,
+                  token: storedToken // Incluir token para autenticação completa
                 }),
               });
               
-              if (!response.ok) {
+              if (!syncResponse.ok) {
                 console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
+                
+                // Tentar forçar a sessão - estratégia de backup
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('next-auth.session-token', storedToken);
+                  // Forçar recarregamento para atualizar a sessão
+                  // window.location.reload();
+                }
+              } else {
+                console.log('✅ Sincronização com NextAuth bem-sucedida');
               }
             } catch (error) {
               console.warn('Erro ao sincronizar com NextAuth:', error);
@@ -487,27 +498,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para realizar logout
   const logout = () => {
+    console.log('Iniciando processo de logout');
+    
+    // Remover o token do localStorage
+    if (typeof window !== 'undefined') {
+      console.log('Removendo token do localStorage');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
+      
+      // Remover quaisquer outros itens relacionados à autenticação
+      localStorage.removeItem('userId');
+      sessionStorage.removeItem('auth_token');
+    }
+    
+    // Limpar o estado local
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    // Chamada à API para fazer logout no servidor
     try {
-      // Limpar token do localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-      }
+      console.log('Chamando API para logout no servidor');
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(error => {
+        console.error('Erro na chamada da API de logout:', error);
+      });
       
-      // Limpar estado
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
-      
-      // Chamar signOut do NextAuth
-      fetch('/api/auth/signout', { method: 'POST' })
-        .catch(err => console.warn('Erro ao fazer logout do NextAuth:', err));
-      
-      // Se estiver em ambiente de navegador, redirecionar para a página de login
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
+      // Fazer logout da sessão do NextAuth
+      fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(error => {
+        console.error('Erro ao fazer signout no NextAuth:', error);
+      });
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('Erro durante o processo de logout:', error);
+    }
+    
+    console.log('Processo de logout concluído. Estado limpo.');
+    
+    // Forçar recarregamento da página para garantir que todas as sessões sejam limpas
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
     }
   };
 

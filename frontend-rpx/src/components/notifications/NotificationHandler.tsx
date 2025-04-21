@@ -57,8 +57,8 @@ const NotificationHandler: React.FC = () => {
       
       console.log('NotificationHandler: Resposta da API de notificações:', response.data);
       
-      if (response.data.status === 'success') {
-        const notifs = response.data.notifications || [];
+      if (response.data.success) {
+        const notifs = response.data.data.notifications || [];
         console.log(`NotificationHandler: Recebidas ${notifs.length} notificações`);
         
         // Log para verificar convites de lobby
@@ -69,7 +69,7 @@ const NotificationHandler: React.FC = () => {
         }
         
         // Garantir que todas as notificações possuam um ID
-        const validNotifications = notifs.filter((n: any) => n && n._id);
+        const validNotifications = notifs.filter((n: any) => n && (n._id || n.id));
         
         if (validNotifications.length < notifs.length) {
           console.warn(`NotificationHandler: Filtradas ${notifs.length - validNotifications.length} notificações inválidas`);

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   BarChart2, Users, Activity, DollarSign, Package, Settings, 
-  LogOut, Home, Menu, X, ChevronRight, CheckSquare, Award
+  Home, Menu, X, ChevronRight, CheckSquare, Award
 } from 'react-feather';
+import LogoutButton from './components/LogoutButton';
 
 // Estilos globais para corrigir problemas de contraste no admin
 const globalStyles = `
@@ -63,57 +64,42 @@ const useAdminAuth = () => {
     // Verificação real usando o token JWT
     const checkAdmin = async () => {
       try {
-        // Verificar se existe um token no localStorage
-        const token = localStorage.getItem('auth_token');
+        setIsLoading(true);
         
-        if (!token) {
-          console.log('Token não encontrado, redirecionando para login');
+        // Nova implementação: usar apenas a sessão Next-Auth, não localStorage
+        console.log('Verificando autenticação via API...');
+        
+        // Fazer requisição à API para verificar status
+        const response = await fetch('/api/auth/check-admin', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include' // Importante para enviar cookies
+        });
+        
+        // Se não estiver autenticado como admin, resposta será 403 ou 401
+        if (!response.ok) {
+          console.log('Usuário não está autenticado como admin:', response.status);
           setIsAdmin(false);
-          setIsLoading(false);
           return;
         }
         
-        // Validar o token e verificar se o usuário é admin
-        try {
-          // Fazer uma requisição para verificar o perfil do usuário
-          const response = await fetch('/api/users/profile', {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (!response.ok) {
-            console.error('Erro na resposta da API:', response.status);
-            setIsAdmin(false);
-            return;
-          }
-
-          const data = await response.json();
-          
-          // Verificar se o usuário tem o papel de administrador
-          const userData = data.data?.user || data.user;
-          
-          if (userData && userData.roles && userData.roles.includes('admin')) {
-            console.log('Usuário autenticado como admin');
-            setIsAdmin(true);
-            // Também armazenar na localStorage para evitar muitas requisições
-            localStorage.setItem('rpx-admin-auth', 'authenticated');
-          } else {
-            console.log('Usuário não tem permissão de admin');
-            setIsAdmin(false);
-          }
-        } catch (error) {
-          console.error('Erro ao validar token:', error);
-          localStorage.removeItem('rpx-admin-auth');
-          setIsAdmin(false);
-        }
+        // Se chegou aqui, está autenticado
+        console.log('Usuário autenticado como admin via API');
+        setIsAdmin(true);
+        
+      } catch (error) {
+        console.error('Erro ao verificar status admin:', error);
+        setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkAdmin();
-  }, [router]);
+  }, []);
 
   return { isAdmin, isLoading };
 };
@@ -125,12 +111,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { isAdmin, isLoading } = useAdminAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    // Redireciona para login se não for admin
-    if (!isLoading && isAdmin === false) {
-      router.push('/admin/login');
-    }
-  }, [isAdmin, isLoading, router]);
+  // Removendo o redirecionamento automático para evitar loops
+  // Mostrar uma mensagem de acesso negado em vez de redirecionar
 
   // Renderiza tela de carregamento enquanto verifica autenticação
   if (isLoading) {
@@ -144,9 +126,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // Se estiver na página de login e não estiver autenticado, renderiza apenas o conteúdo
-  if (pathname === '/admin/login' && !isAdmin) {
+  // Se estiver na página de login, renderizar o conteúdo diretamente sem verificação
+  if (pathname === '/admin/login') {
     return <>{children}</>;
+  }
+
+  // Se não for admin e tenta acessar uma página admin, mostrar mensagem de acesso negado
+  if (!isAdmin && pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Acesso Negado</h2>
+            <p className="text-gray-600 mb-6">Você não tem permissão para acessar esta área. Entre com uma conta administrativa.</p>
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={() => router.push('/admin/login')}
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+              >
+                Fazer Login como Admin
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+              >
+                Voltar para o Site Principal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const navItems = [
@@ -230,16 +245,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <p className="text-xs text-gray-500">Logado</p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('rpx-admin-auth');
-                  router.push('/admin/login');
-                }}
-                className="flex w-full items-center px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-              >
-                <LogOut size={18} className="mr-3" />
-                <span>Sair</span>
-              </button>
+              <LogoutButton />
             </div>
           </div>
         </div>

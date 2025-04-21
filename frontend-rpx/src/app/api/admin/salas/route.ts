@@ -15,6 +15,12 @@ interface AdminUser {
 
 // Verificar se o usuário é admin
 async function isAdmin() {
+  // Em ambiente de desenvolvimento, sempre permitir acesso admin
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚠️ MODO DESENVOLVIMENTO: Admin ativado automaticamente para API de salas');
+    return true;
+  }
+
   const session = await getServerSession(authOptions);
   
   // Verificação básica de sessão e usuário

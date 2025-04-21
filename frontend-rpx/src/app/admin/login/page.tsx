@@ -12,14 +12,27 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
 
+  // Função para redirecionar ao dashboard administrativo
+  const redirectToDashboard = () => {
+    console.log('Navegando diretamente para o dashboard administrativo');
+    // Usar window.location para forçar uma navegação completa, não apenas client-side
+    window.location.href = '/admin';
+  };
+
   useEffect(() => {
     // Verificar se já está logado
     const checkLoginStatus = () => {
       try {
+        console.log('Verificando status de login no localStorage...');
         const adminStatus = localStorage.getItem('rpx-admin-auth');
+        
         if (adminStatus === 'authenticated') {
+          console.log('Usuário já autenticado como admin, redirecionando...');
           setIsAlreadyLoggedIn(true);
-          router.push('/admin');
+          // Pequeno atraso para garantir que a UI mostre o estado de redirecionamento
+          setTimeout(redirectToDashboard, 500);
+        } else {
+          console.log('Usuário não autenticado ou sem permissão de admin');
         }
       } catch (error) {
         console.error('Erro ao verificar status de login:', error);
@@ -27,15 +40,17 @@ export default function AdminLogin() {
     };
 
     checkLoginStatus();
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    console.log('Iniciando login com:', username);
 
     try {
       // Autenticação real usando a API
+      console.log('Enviando requisição de login para a API...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -46,10 +61,12 @@ export default function AdminLogin() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Resposta de erro da API:', errorData);
         throw new Error(errorData.message || 'Credenciais inválidas');
       }
 
       const data = await response.json();
+      console.log('Resposta de sucesso da API:', data);
       
       // Verificar diferentes estruturas possíveis de token
       let token = null;
@@ -74,29 +91,59 @@ export default function AdminLogin() {
         throw new Error('Token não recebido do servidor');
       }
       
+      console.log('Token obtido, armazenando credenciais...');
+      
       // Armazenar token
       localStorage.setItem('auth_token', token);
+      
+      // Também armazenar no cookie para o middleware
+      document.cookie = `auth_token=${token}; path=/; max-age=2592000`; // 30 dias
       
       // Verificar se o usuário é admin (verificando tanto roles quanto role)
       const isAdmin = 
         (userInfo?.roles && Array.isArray(userInfo.roles) && (userInfo.roles.includes('admin') || userInfo.roles.includes('superadmin'))) || // Verificar pelo array roles
-        userInfo?.role === 'admin' || userInfo?.role === 'superadmin'; // Verificar pelo campo role diretamente
+        userInfo?.role === 'admin' || userInfo?.role === 'superadmin' || // Verificar pelo campo role diretamente
+        userInfo?.isAdmin === true; // Verificar pelo campo isAdmin
       
       if (isAdmin) {
+        console.log('Usuário confirmado como admin, redirecionando para o dashboard');
+        // Armazenar no localStorage
         localStorage.setItem('rpx-admin-auth', 'authenticated');
-        router.push('/admin');
+        
+        // Também armazenar no cookie para o middleware
+        document.cookie = `rpx-admin-auth=authenticated; path=/; max-age=2592000`; // 30 dias
+        
+        // Mostrar que estamos logados antes de redirecionar
+        setIsAlreadyLoggedIn(true);
+        
+        // Pequeno atraso para garantir que localStorage e cookies sejam salvos
+        setTimeout(redirectToDashboard, 1000);
       } else {
         console.error('Usuário não é admin. Dados do usuário:', userInfo);
         throw new Error('Usuário não tem permissão de administrador');
       }
     } catch (error: any) {
       setError(error.message || 'Erro ao efetuar login. Tente novamente.');
-      console.error('Erro de login:', error);
+      console.error('Erro no login:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Botão para entrar com credenciais demo
+  const handleDemoLogin = () => {
+    setUsername('master');
+    setPassword('Vini200!');
+    
+    // Submeter o formulário programaticamente após preencher os campos
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      const submitEvent = new Event('submit', { cancelable: true });
+      formElement.dispatchEvent(submitEvent);
+    }
+  };
+
+  // Se já estiver logado, mostrar tela de carregamento por um breve momento
   if (isAlreadyLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -199,8 +246,15 @@ export default function AdminLogin() {
               </div>
             </div>
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-500">Usuário: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">master</span></p>
-              <p className="mt-1 text-xs text-gray-500">Senha: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">Vini200!</span></p>
+              <p className="text-xs text-gray-500 mb-2">Usuário: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">master</span></p>
+              <p className="text-xs text-gray-500 mb-4">Senha: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">Vini200!</span></p>
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                className="inline-flex justify-center items-center px-3 py-1.5 border border-transparent rounded text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition"
+              >
+                Login automático com demo
+              </button>
             </div>
           </div>
         </div>

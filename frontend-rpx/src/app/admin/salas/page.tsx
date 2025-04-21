@@ -82,6 +82,7 @@ export default function SalasAdmin() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({})
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentRoom, setCurrentRoom] = useState<FFRoom | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [newRoom, setNewRoom] = useState({
     roomId: '',
     roomPassword: '',
@@ -93,10 +94,15 @@ export default function SalasAdmin() {
   const fetchRooms = async () => {
     try {
       setIsLoading(true)
+      setErrorMessage(null)
       const response = await fetch('/api/admin/salas')
+      
       if (!response.ok) {
-        throw new Error('Falha ao carregar salas')
+        const errorText = await response.text();
+        console.error(`Erro ${response.status}: ${errorText}`);
+        throw new Error(`Falha ao carregar as salas. Status: ${response.status}`);
       }
+      
       const data = await response.json()
       setRooms(data.map((room: any) => ({
         id: room._id || room.id,
@@ -110,7 +116,8 @@ export default function SalasAdmin() {
       })))
     } catch (error) {
       console.error('Erro ao buscar salas:', error)
-      alert('Erro ao carregar salas. Tente novamente.')
+      setErrorMessage(error instanceof Error ? error.message : 'Erro ao carregar salas. Tente novamente.')
+      setRooms([])
     } finally {
       setIsLoading(false)
     }
@@ -396,106 +403,146 @@ export default function SalasAdmin() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRooms.map((room) => (
-          <Card key={room.id} className={`
-            ${room.status === 'disponivel' ? 'border-green-200' : ''}
-            ${room.status === 'em_uso' ? 'border-blue-200' : ''}
-            ${room.status === 'expirada' ? 'border-red-200' : ''}
-          `}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="flex items-center">
-                    <GamepadIcon className="h-5 w-5 mr-2 text-blue-500" />
-                    Sala #{room.id}
-                  </CardTitle>
-                  <CardDescription>
-                    Criada em {formatDate(room.createdAt)}
-                  </CardDescription>
-                </div>
-                {getStatusBadge(room.status)}
+      {/* Mensagem de erro */}
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6 flex items-start">
+          <div className="flex-shrink-0 mr-2">
+            ⚠️
+          </div>
+          <div>
+            <p className="font-medium">{errorMessage}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2" 
+              onClick={() => fetchRooms()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="h-8 w-8 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin"></div>
+          <span className="ml-3">Carregando salas...</span>
+        </div>
+      ) : (
+        // Grid de salas
+        !errorMessage && (
+          <>
+            {filteredRooms.length === 0 ? (
+              <div className="bg-gray-50 p-12 text-center rounded-lg border border-gray-200">
+                <p className="text-gray-500 mb-4">Nenhuma sala encontrada.</p>
+                <Button onClick={openCreateDialog}>Criar nova sala</Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs text-gray-500">ID da Sala</Label>
-                  <div className="font-medium">{room.roomId}</div>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">Senha</Label>
-                  <div className="font-medium flex items-center">
-                    {showPasswords[room.id] ? room.roomPassword : '••••••••'}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="ml-2 h-6 w-6 p-0"
-                      onClick={() => togglePasswordVisibility(room.id)}
-                    >
-                      {showPasswords[room.id] ? (
-                        <EyeOffIcon className="h-4 w-4" />
-                      ) : (
-                        <EyeIcon className="h-4 w-4" />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRooms.map((room) => (
+                  <Card key={room.id} className={`
+                    ${room.status === 'disponivel' ? 'border-green-200' : ''}
+                    ${room.status === 'em_uso' ? 'border-blue-200' : ''}
+                    ${room.status === 'expirada' ? 'border-red-200' : ''}
+                  `}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="flex items-center">
+                            <GamepadIcon className="h-5 w-5 mr-2 text-blue-500" />
+                            Sala #{room.id}
+                          </CardTitle>
+                          <CardDescription>
+                            Criada em {formatDate(room.createdAt)}
+                          </CardDescription>
+                        </div>
+                        {getStatusBadge(room.status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">ID da Sala</Label>
+                          <div className="font-medium">{room.roomId}</div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">Senha</Label>
+                          <div className="font-medium flex items-center">
+                            {showPasswords[room.id] ? room.roomPassword : '••••••••'}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="ml-2 h-6 w-6 p-0"
+                              onClick={() => togglePasswordVisibility(room.id)}
+                            >
+                              {showPasswords[room.id] ? (
+                                <EyeOffIcon className="h-4 w-4" />
+                              ) : (
+                                <EyeIcon className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        {room.tournamentName && (
+                          <div>
+                            <Label className="text-xs text-gray-500">Torneio</Label>
+                            <div className="font-medium">{room.tournamentName}</div>
+                          </div>
+                        )}
+                        {room.expiresAt && (
+                          <div>
+                            <Label className="text-xs text-gray-500">Expira em</Label>
+                            <div className="font-medium">{formatDate(room.expiresAt)}</div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => openEditDialog(room)}
+                        >
+                          <EditIcon className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteRoom(room.id)}
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
+                      </div>
+                      {room.status !== 'expirada' && (
+                        <Select
+                          value={room.status}
+                          onValueChange={(value) => 
+                            handleRoomStatusChange(room.id, value as FFRoom['status'])
+                          }
+                        >
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="disponivel">Disponível</SelectItem>
+                            <SelectItem value="em_uso">Em Uso</SelectItem>
+                            <SelectItem value="expirada">Expirada</SelectItem>
+                          </SelectContent>
+                        </Select>
                       )}
-                    </Button>
-                  </div>
-                </div>
-                {room.tournamentName && (
-                  <div>
-                    <Label className="text-xs text-gray-500">Torneio</Label>
-                    <div className="font-medium">{room.tournamentName}</div>
-                  </div>
-                )}
-                {room.expiresAt && (
-                  <div>
-                    <Label className="text-xs text-gray-500">Expira em</Label>
-                    <div className="font-medium">{formatDate(room.expiresAt)}</div>
-                  </div>
-                )}
+                    </CardFooter>
+                  </Card>
+                ))}
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => openEditDialog(room)}
-                >
-                  <EditIcon className="h-4 w-4 mr-1" />
-                  Editar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => handleDeleteRoom(room.id)}
-                >
-                  <TrashIcon className="h-4 w-4 mr-1" />
-                  Excluir
-                </Button>
-              </div>
-              {room.status !== 'expirada' && (
-                <Select
-                  value={room.status}
-                  onValueChange={(value) => 
-                    handleRoomStatusChange(room.id, value as FFRoom['status'])
-                  }
-                >
-                  <SelectTrigger className="w-32 h-8">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="disponivel">Disponível</SelectItem>
-                    <SelectItem value="em_uso">Em Uso</SelectItem>
-                    <SelectItem value="expirada">Expirada</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+            )}
+          </>
+        )
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId, Document, WithId } from 'mongodb';
+import mongoose from 'mongoose';
+import { GET as getCachedUsers } from '../set-users/route';
 
 // Interface para o usuário da sessão
 interface SessionUser {
@@ -25,25 +27,53 @@ interface ApiUser {
 }
 
 // Função para verificar se o usuário atual é um administrador
-async function isAdmin() {
-  // Obter a sessão do usuário
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user || !session.user.email) {
-    return false;
+async function isAdmin(request: NextRequest) {
+  // Em ambiente de desenvolvimento, sempre permitir acesso admin
+  // ATENÇÃO: APENAS PARA DESENVOLVIMENTO
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚠️ MODO DESENVOLVIMENTO: Admin ativado automaticamente');
+    return true;
   }
 
   try {
-    // Conectar ao banco de dados
+    console.log('🔍 Obtendo sessão do usuário...');
+    // Obter a sessão do usuário - mais rápido que consultar o banco
+    const session = await getServerSession(authOptions);
+    
+    // Verificar se a sessão existe e se o usuário já está marcado como admin
+    if (session?.user?.isAdmin === true) {
+      console.log('✅ Usuário já confirmado como admin na sessão');
+      return true;
+    }
+    
+    if (!session || !session.user || !session.user.email) {
+      console.log('⚠️ Sessão incompleta ou ausente');
+      return false;
+    }
+    
+    console.log(`✅ Sessão encontrada para: ${session.user.email}`);
+    
+    // Conectar ao banco de dados para verificação final
+    console.log('🔄 Verificando no banco de dados...');
     const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
     
-    // Buscar o usuário pelo email
-    const user = await usersCollection.findOne({ email: session.user.email });
+    // Consulta otimizada - buscar apenas os campos necessários
+    const user = await db.collection('users').findOne(
+      { email: session.user.email },
+      { projection: { isAdmin: 1 } }
+    );
     
-    // Verificar se o usuário existe e é administrador
-    return !!user && user.isAdmin === true;
+    if (!user) {
+      console.log('⚠️ Usuário não encontrado no banco');
+      return false;
+    }
+    
+    const isAdminUser = user.isAdmin === true;
+    console.log(`${isAdminUser ? '✅' : '❌'} Status admin: ${isAdminUser}`);
+    
+    return isAdminUser;
   } catch (error) {
-    console.error('Erro ao verificar permissões de administrador:', error);
+    console.error('❌ Erro na verificação de admin:', error);
     return false;
   }
 }
@@ -51,64 +81,160 @@ async function isAdmin() {
 /**
  * Lista todos os usuários ou recupera um usuário específico por ID
  */
-export async function GET(req: NextRequest) {
-  // Verificar se o usuário é administrador
-  if (!await isAdmin()) {
-    return NextResponse.json(
-      { error: 'Apenas administradores podem listar usuários' },
-      { status: 403 }
-    );
-  }
-
+export async function GET(request: NextRequest) {
   try {
-    // Conectar ao banco de dados
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
+    console.log('📥 Recebendo requisição GET para /api/admin/users');
     
-    // Verificar se um ID específico foi solicitado na URL
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('id');
-
-    if (userId) {
-      // Validar se o ID é um ObjectId válido
-      if (!ObjectId.isValid(userId)) {
+    // Obter ID do usuário da URL, se existir
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+    
+    // Verificar se o usuário atual é um administrador
+    console.log('🔒 Verificando permissões de administrador para acesso à lista de usuários');
+    const isAdminCheck = await isAdmin(request);
+    
+    if (!isAdminCheck) {
+      console.log('⛔ Acesso negado: usuário não é administrador');
+      // Retornar resposta mais detalhada para debugging
+      return NextResponse.json(
+        { 
+          error: 'Não autorizado. Acesso somente para administradores.',
+          message: 'Verifique se sua conta possui permissões de administrador.',
+          timestamp: new Date().toISOString()
+        },
+        { 
+          status: 403,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        }
+      );
+    }
+    
+    console.log('✅ Usuário autenticado como administrador. Prosseguindo com a busca de usuários.');
+    
+    // Conectar ao banco de dados
+    console.log('🔄 Conectando ao banco de dados');
+    let { db } = await connectToDatabase();
+    console.log('✅ Conectado ao banco de dados com sucesso');
+    
+    // Se um ID específico for fornecido, buscar apenas esse usuário
+    if (id) {
+      console.log(`🔍 Buscando usuário específico com ID: ${id}`);
+      
+      // Validar se o ID é válido
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.log(`⚠️ ID inválido fornecido: ${id}`);
         return NextResponse.json(
           { error: 'ID de usuário inválido' },
           { status: 400 }
         );
       }
       
-      // Buscar um usuário específico pelo ID
-      const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+      const user = await db.collection('users').findOne(
+        { _id: new mongoose.Types.ObjectId(id) }
+      );
       
       if (!user) {
+        console.log(`⚠️ Usuário com ID ${id} não encontrado`);
         return NextResponse.json(
           { error: 'Usuário não encontrado' },
           { status: 404 }
         );
       }
       
-      // Converter _id para string para retornar no JSON
-      return NextResponse.json({
-        ...user,
-        _id: user._id.toString()
-      });
-    } else {
-      // Buscar todos os usuários e ordenar por nome de usuário
-      const users = await usersCollection.find({}).sort({ username: 1 }).toArray();
+      console.log(`✅ Usuário com ID ${id} encontrado e retornado`);
       
-      // Converter _id para string em cada usuário
-      const formattedUsers = users.map((user) => ({
-        ...user,
-        _id: user._id.toString()
-      }));
-      
-      return NextResponse.json(formattedUsers);
+      // Definir cabeçalhos para prevenir problemas de cache
+      return NextResponse.json(
+        user,
+        { 
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        }
+      );
     }
-  } catch (error) {
-    console.error('Erro ao buscar usuários:', error);
+    
+    // Buscar todos os usuários
+    console.log('🔍 Buscando todos os usuários');
+    try {
+      // SOLUÇÃO: Método alternativo de consulta
+      console.log('Tentando método alternativo de consulta...');
+      
+      // Verificar as coleções disponíveis para garantir
+      const collections = await db.listCollections().toArray();
+      const collectionNames = collections.map(c => c.name);
+      console.log('Coleções disponíveis:', collectionNames);
+      
+      // Verificar quantos usuários existem no banco
+      const countUsers = await db.collection('users').countDocuments();
+      console.log(`Total no banco: ${countUsers} usuários`);
+      
+      // Consulta direta com cursor para maior compatibilidade
+      const cursor = db.collection('users').find();
+      const users = await cursor.toArray();
+      
+      // Verificar se temos usuários
+      if (!users || users.length === 0) {
+        console.log('⚠️ Nenhum usuário encontrado na consulta direta. Tentando fallback...');
+        
+        // FALLBACK: Tentar pegar do cache
+        const cachedResponse = await getCachedUsers(request);
+        
+        if (cachedResponse.status === 200) {
+          const cachedData = await cachedResponse.json();
+          
+          if (Array.isArray(cachedData) && cachedData.length > 0) {
+            console.log(`✅ Encontrados ${cachedData.length} usuários no cache. Usando esses.`);
+            return NextResponse.json(
+              cachedData,
+              { 
+                status: 200,
+                headers: {
+                  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0',
+                }
+              }
+            );
+          }
+        }
+      }
+      
+      // Registrar cada usuário obtido
+      users.forEach((user, idx) => {
+        console.log(`Usuário ${idx+1}: ID=${user._id}, Email=${user.email || 'sem email'}`);
+      });
+      
+      const count = users.length;
+      console.log(`✅ ${count} usuários encontrados e retornados`);
+      
+      // Retornar os usuários encontrados como array
+      return NextResponse.json(
+        users,
+        { 
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        }
+      );
+    } catch (dbError) {
+      console.error('❌ Erro ao buscar usuários do banco:', dbError);
+      throw dbError; // Propagar erro para ser capturado pelo catch externo
+    }
+  } catch (error: any) {
+    console.error('Erro ao obter usuários:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar usuários do banco de dados' },
+      { error: 'Erro interno do servidor', details: error.message },
       { status: 500 }
     );
   }
@@ -118,7 +244,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Verificar se o usuário é admin
-    if (!await isAdmin()) {
+    if (!await isAdmin(req)) {
       return NextResponse.json(
         { message: 'Não autorizado. Acesso apenas para administradores.' },
         { status: 403 }
@@ -174,11 +300,10 @@ export async function POST(req: NextRequest) {
       ...novoUsuario
     }, { status: 201 });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar usuário:', error);
-    
     return NextResponse.json(
-      { message: 'Erro ao criar usuário' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }
@@ -188,7 +313,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Verificar se o usuário atual é um administrador
-    const isAdminUser = await isAdmin();
+    const isAdminUser = await isAdmin(request);
     if (!isAdminUser) {
       return NextResponse.json(
         { error: 'Não autorizado. Apenas administradores podem atualizar usuários.' },
@@ -277,7 +402,7 @@ export async function PUT(request: NextRequest) {
       ...updatedUser,
       _id: updatedUser?._id.toString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao atualizar usuário:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
@@ -290,7 +415,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     // Verificar se o usuário é admin
-    if (!await isAdmin()) {
+    if (!await isAdmin(req)) {
       return NextResponse.json(
         { message: 'Não autorizado. Acesso apenas para administradores.' },
         { status: 403 }
@@ -330,11 +455,10 @@ export async function DELETE(req: NextRequest) {
       { message: 'Usuário excluído com sucesso' }
     );
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao excluir usuário:', error);
-    
     return NextResponse.json(
-      { message: 'Erro ao excluir usuário' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }
