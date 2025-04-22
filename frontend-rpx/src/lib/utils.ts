@@ -23,7 +23,7 @@ export function formatDate(date: Date | string) {
 /**
  * Formata um valor de moeda
  */
-export function formatCurrency(value: number) {
+export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',

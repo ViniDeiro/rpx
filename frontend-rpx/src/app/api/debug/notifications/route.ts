@@ -145,6 +145,10 @@ export async function GET(request: NextRequest) {
     try {
       dbConnection = await connectToDatabase();
       console.log('Conexão com banco de dados bem-sucedida');
+
+      // Se a conexão for bem-sucedida, verificar se já temos notificações
+      // Se não houver, criar algumas para teste
+      await createTestNotificationsIfEmpty(dbConnection);
     } catch (dbError) {
       console.error('Erro ao conectar ao banco de dados:', dbError);
       // Continuar com dados mockados se o banco de dados falhar
@@ -167,91 +171,55 @@ export async function GET(request: NextRequest) {
         try {
           const { db } = dbConnection;
           
-          // Buscar as notificações reais do usuário atual, limitando a 20
+          console.log('Buscando todas as notificações disponíveis...');
+          
+          // Buscar TODAS as notificações sem filtro de usuário (para depuração)
           const realNotifications = await db
             .collection('notifications')
-            .find({ userId })
+            .find({})  // Remover filtro de usuário para mostrar todas notificações
             .sort({ createdAt: -1 })
-            .limit(20)
+            .limit(50)  // Aumentar limite
             .toArray();
             
-          // Buscar os convites reais pendentes para o usuário atual
+          // Buscar todos os convites pendentes
           const realInvites = await db
             .collection('lobbyInvites')
-            .find({ 
-              $or: [
-                { inviteeId: userId },
-                { recipient: userId },
-                { recipient: new ObjectId(userId) }
-              ], 
-              status: 'pending' 
-            })
+            .find({ status: 'pending' })
             .sort({ createdAt: -1 })
-            .limit(10)
+            .limit(20)  // Aumentar limite
             .toArray();
             
           console.log(`Encontradas ${realNotifications.length} notificações e ${realInvites.length} convites`);
-            
+          
           // Usar dados reais se existirem, caso contrário manter os mockados
           if (realNotifications.length > 0) {
             notifications = realNotifications.map((doc: WithId<Document>) => ({
               _id: doc._id.toString(),
-              type: doc.type as string,
-              title: doc.title as string,
-              message: doc.message as string,
-              read: doc.read as boolean,
-              userId: doc.userId as string,
-              createdAt: doc.createdAt as string,
-              data: doc.data as NotificationData | null
+              type: doc.type as string || 'desconhecido',
+              title: doc.title as string || 'Sem título',
+              message: doc.message as string || 'Sem mensagem',
+              read: doc.read as boolean || false,
+              userId: doc.userId as string || 'sem_usuario',
+              createdAt: doc.createdAt ? (typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString()) : new Date().toISOString(),
+              data: doc.data as NotificationData || null
             }));
+          } else {
+            console.log('Nenhuma notificação encontrada no banco, usando dados simulados');
           }
           
           if (realInvites.length > 0) {
             lobbyInvites = realInvites.map((doc: WithId<Document>) => ({
               _id: doc._id.toString(),
-              lobbyId: doc.lobbyId as string,
-              inviteeId: doc.inviteeId || doc.recipient as string,
-              inviterId: doc.inviterId || doc.inviter as string,
-              inviterName: doc.inviterName as string,
-              status: doc.status as string,
-              gameTitle: doc.gameTitle as string,
-              createdAt: doc.createdAt as string
+              lobbyId: doc.lobbyId as string || 'lobby_desconhecido',
+              inviteeId: doc.inviteeId || doc.recipient as string || 'usuario_desconhecido',
+              inviterId: doc.inviterId || doc.inviter as string || 'convidador_desconhecido',
+              inviterName: doc.inviterName as string || 'Usuário',
+              status: doc.status as string || 'pending',
+              gameTitle: doc.gameTitle as string || 'Jogo Desconhecido',
+              createdAt: doc.createdAt ? (typeof doc.createdAt === 'string' ? doc.createdAt : new Date(doc.createdAt).toISOString()) : new Date().toISOString()
             }));
-            
-            // Obter informações adicionais dos usuários para melhorar a exibição
-            for (let i = 0; i < lobbyInvites.length; i++) {
-              const invite = lobbyInvites[i];
-              try {
-                // Tentativa 1: Tentar com o ID como ObjectId
-                let inviterUser = null;
-                try {
-                  if (typeof invite.inviterId === 'string' && invite.inviterId.match(/^[0-9a-fA-F]{24}$/)) {
-                    inviterUser = await db.collection('users').findOne({
-                      _id: new ObjectId(invite.inviterId)
-                    });
-                  }
-                } catch (err) {
-                  console.log('Erro ao buscar com ObjectId:', err);
-                }
-                
-                // Tentativa 2: Tentar com o ID como string
-                if (!inviterUser) {
-                  try {
-                    inviterUser = await db.collection('users').findOne({
-                      username: invite.inviterName
-                    });
-                  } catch (err) {
-                    console.log('Erro ao buscar por username:', err);
-                  }
-                }
-                
-                if (inviterUser) {
-                  lobbyInvites[i].inviterName = inviterUser.username || inviterUser.name || 'Usuário';
-                }
-              } catch (userErr) {
-                console.error('Erro ao buscar informações do usuário:', userErr);
-              }
-            }
+          } else {
+            console.log('Nenhum convite encontrado no banco, usando dados simulados');
           }
         } catch (fetchError) {
           console.error('Erro ao buscar dados do banco:', fetchError);
@@ -631,6 +599,57 @@ export async function GET(request: NextRequest) {
         }
       });
     }
+    // FUNÇÃO PARA DEPURAÇÃO - Criar uma notificação real para o usuário
+    else if (action === 'create-for-all') {
+      try {
+        const notification = {
+          type: 'system',
+          title: 'Notificação de Teste',
+          message: 'Esta é uma notificação de teste criada especificamente para você',
+          read: false,
+          userId: userId, // Usar o ID real do usuário atual
+          createdAt: new Date(),
+          data: {
+            debug: true,
+            createdAt: new Date().toISOString()
+          }
+        };
+        
+        if (dbConnection) {
+          try {
+            const { db } = dbConnection;
+            const result = await db.collection('notifications').insertOne(notification);
+            console.log(`Notificação criada para o usuário ${userId} com ID: ${result.insertedId}`);
+            
+            return NextResponse.json({
+              success: true,
+              message: `Notificação criada para o usuário ${userId}`,
+              data: {
+                notificationId: result.insertedId.toString(),
+                userId: userId
+              }
+            });
+          } catch (insertError) {
+            console.error('Erro ao criar notificação:', insertError);
+            return NextResponse.json({
+              success: false,
+              error: 'Erro ao criar notificação'
+            }, { status: 500 });
+          }
+        }
+        
+        return NextResponse.json({
+          success: false,
+          error: 'Banco de dados não disponível'
+        }, { status: 500 });
+      } catch (error) {
+        console.error('Erro ao criar notificação para o usuário:', error);
+        return NextResponse.json({
+          success: false,
+          error: 'Erro ao criar notificação'
+        }, { status: 500 });
+      }
+    }
     
     // Ação não reconhecida
     return NextResponse.json({
@@ -670,5 +689,100 @@ export async function POST(request: NextRequest) {
       success: false,
       error: 'Erro interno do servidor'
     }, { status: 500 });
+  }
+}
+
+// Função para criar notificações de teste no banco se não houver nenhuma
+async function createTestNotificationsIfEmpty(dbConnection: any) {
+  if (!dbConnection) return;
+  
+  try {
+    const { db } = dbConnection;
+    
+    // Verificar se existem notificações
+    const count = await db.collection('notifications').countDocuments();
+    console.log(`Existem ${count} notificações no banco de dados`);
+    
+    // Se não houver nenhuma notificação, criar algumas para teste
+    if (count === 0) {
+      console.log('Criando notificações de teste...');
+      
+      const testNotifications = [
+        {
+          type: 'system',
+          title: 'Bem-vindo ao Sistema',
+          message: 'Obrigado por testar o sistema de notificações!',
+          read: false,
+          userId: 'todos_usuarios',
+          createdAt: new Date(),
+          data: null
+        },
+        {
+          type: 'payment',
+          title: 'Pagamento Recebido',
+          message: 'Você recebeu um pagamento de teste no valor de R$ 100,00',
+          read: false,
+          userId: 'todos_usuarios',
+          createdAt: new Date(Date.now() - 3600000), // 1 hora atrás
+          data: {
+            amount: 100.00,
+            method: 'pix',
+            id: 'pay_test_123'
+          }
+        },
+        {
+          type: 'match',
+          title: 'Partida Encontrada',
+          message: 'Uma partida de teste foi encontrada para você!',
+          read: false,
+          userId: 'todos_usuarios',
+          createdAt: new Date(Date.now() - 7200000), // 2 horas atrás
+          data: {
+            gameMode: 'ranked',
+            map: 'dust2'
+          }
+        }
+      ];
+      
+      const result = await db.collection('notifications').insertMany(testNotifications);
+      console.log(`${result.insertedCount} notificações de teste criadas com sucesso!`);
+      
+      // Criar um convite de lobby de teste
+      const existingInvites = await db.collection('lobbyInvites').countDocuments();
+      
+      if (existingInvites === 0) {
+        const inviterId = new ObjectId();
+        const lobbyId = new ObjectId();
+        
+        // Primeiro criar um lobby teste
+        await db.collection('lobbies').insertOne({
+          _id: lobbyId,
+          name: 'Lobby de Teste',
+          game: 'Counter Strike 2',
+          maxPlayers: 5,
+          owner: inviterId,
+          members: [inviterId.toString()],
+          status: 'waiting',
+          createdAt: new Date()
+        });
+        
+        // Agora criar o convite
+        const inviteResult = await db.collection('lobbyInvites').insertOne({
+          lobbyId: lobbyId,
+          inviteeId: 'todos_usuarios',
+          recipient: 'todos_usuarios',
+          inviterId: inviterId,
+          inviter: inviterId,
+          inviterName: 'Jogador Teste',
+          status: 'pending',
+          gameTitle: 'Counter Strike 2',
+          createdAt: new Date()
+        });
+        
+        console.log(`Convite de lobby de teste criado: ${inviteResult.insertedId}`);
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao criar notificações de teste:', error);
   }
 } 

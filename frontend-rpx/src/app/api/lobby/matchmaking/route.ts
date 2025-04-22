@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       gameplayMode: gameplayMode,
       // Campos adicionais para compatibilidade
       mode: lobby.gameType || 'default',    // Tipo de jogo
-      type: lobby.type || 'solo',          // Tipo de partida (solo, duo, etc)
+      type: lobby.lobbyType || 'solo',          // Tipo de partida (solo, duo, etc)
       platform: platformMode,              // Plataforma
       players: memberDetails,              // Detalhes dos jogadores no lobby
       createdAt: new Date(),

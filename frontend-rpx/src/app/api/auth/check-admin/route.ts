@@ -24,7 +24,14 @@ export async function GET(request: NextRequest) {
           },
           warning: 'Modo de desenvolvimento - acesso admin automático'
         }, 
-        { status: 200 }
+        { 
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        }
       );
     }
     
@@ -39,7 +46,14 @@ export async function GET(request: NextRequest) {
           authorized: false,
           message: 'Usuário não tem permissões de administrador' 
         }, 
-        { status: 403 }
+        { 
+          status: 403,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        }
       );
     }
     
@@ -55,13 +69,27 @@ export async function GET(request: NextRequest) {
           id: session.user.id
         }
       }, 
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
     );
   } catch (error) {
     console.error('Erro ao verificar status de admin:', error);
     return NextResponse.json(
       { error: 'Erro ao verificar permissões de administrador' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
     );
   }
 } 

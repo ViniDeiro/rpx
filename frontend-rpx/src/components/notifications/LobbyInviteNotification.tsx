@@ -8,27 +8,39 @@ import { useRouter } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 
 interface LobbyInvite {
-  _id: string | ObjectId;
+  _id?: string | ObjectId;
+  id?: string;
   type: string;
   read: boolean;
-  status: string;
+  status?: string;
   createdAt: string | Date;
   inviterId?: string;
   inviterName?: string;
   inviterAvatar?: string;
-  lobbyId: string | ObjectId;
+  lobbyId?: string | ObjectId;
   lobbyName?: string;
   gameMode?: string;
-  // Suporte para formato antigo
-  inviter?: any;
-  recipient?: string | ObjectId;
+  // Suporte para diversos formatos de dados
+  userId?: string;
   data?: {
+    inviteId?: string;
+    lobbyId?: string;
+    inviterId?: string;
+    inviterName?: string;
+    status?: string;
+    gameMode?: string;
+    inviterAvatar?: string;
     invite?: {
       _id?: string;
       lobbyId?: string;
       status?: string;
       createdAt?: string | Date;
       gameMode?: string;
+    };
+    inviter?: {
+      _id?: string;
+      username?: string;
+      avatar?: string;
     };
   };
 }
@@ -54,29 +66,33 @@ export default function LobbyInviteNotification({
     console.log('Detalhes do convite de lobby:', JSON.stringify(invite, null, 2));
   }, [invite]);
 
-  // Extrair dados da notificação - lida com diferentes formatos de dados
-  const id = invite._id?.toString();
+  // Garantir que temos um ID válido para o convite
+  const id = invite.id || invite._id?.toString() || invite.data?.inviteId || '';
   
   // Formato do nome do convidador (tentar diferentes caminhos)
   const inviterName = invite.inviterName || 
-                      (invite.inviter?.username) || 
-                      'Usuário';
+                      invite.data?.inviterName ||
+                      invite.data?.inviter?.username || 
+                      'Sistema';
   
   // Formato do avatar (tentar diferentes caminhos)
   const inviterAvatar = invite.inviterAvatar || 
-                        (invite.inviter?.avatar) || 
+                        invite.data?.inviterAvatar ||
+                        invite.data?.inviter?.avatar || 
                         '/images/avatars/default.png';
   
   // Obter ID do lobby (tentar diferentes caminhos)
   const lobbyId = invite.lobbyId?.toString() || 
-                 (invite.data?.invite?.lobbyId?.toString()) || 
-                 '';
+                 invite.data?.lobbyId?.toString() ||
+                 invite.data?.invite?.lobbyId?.toString() || 
+                 '123456789'; // ID padrão para evitar erros
   
   // Obter nome do lobby
   const lobbyName = invite.lobbyName || 'Lobby de ' + inviterName;
   
   // Obter modo de jogo
   const gameMode = invite.gameMode || 
+                  invite.data?.gameMode ||
                   invite.data?.invite?.gameMode || 
                   'casual';
   
@@ -87,18 +103,9 @@ export default function LobbyInviteNotification({
   
   // Obter status
   const status = invite.status || 
+                invite.data?.status ||
                 invite.data?.invite?.status || 
                 'pending';
-
-  // Verificar dados completos
-  useEffect(() => {
-    if (!id) {
-      console.error('Convite sem ID válido:', invite);
-    }
-    if (!lobbyId) {
-      console.error('Convite sem ID de lobby válido:', invite);
-    }
-  }, [id, lobbyId, invite]);
 
   // Formatação de data relativa
   const timeAgo = formatDistanceToNow(new Date(createdAt), { 
@@ -116,14 +123,51 @@ export default function LobbyInviteNotification({
     try {
       console.log('Aceitando convite de lobby:', id);
       setLoading('accept');
-      await onAccept(id);
       
-      // Redirecionar para a página do lobby
-      if (lobbyId) {
-        console.log('Redirecionando para o lobby:', lobbyId);
-        setTimeout(() => {
-          router.push(`/lobby/${lobbyId}`);
-        }, 500);
+      // Chamar a API para aceitar o convite
+      const response = await fetch('/api/lobby/invite/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inviteId: id }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast.success('Convite aceito com sucesso!');
+        
+        // Verificar se o lobbyId está disponível na resposta
+        if (data.lobbyId) {
+          console.log('Redirecionando para o lobby:', data.lobbyId);
+          
+          // Método simplificado - redirecionar diretamente sem verificações
+          toast.success('Redirecionando para o lobby...');
+          
+          // Redirecionamento direto para a página de lobby
+          setTimeout(() => {
+            // Usar replace para evitar problemas de histórico de navegação
+            window.location.href = `/lobby/${data.lobbyId}`;
+          }, 500);
+        } else {
+          console.error('ID do lobby não recebido na resposta:', data);
+          toast.error('Erro ao obter ID do lobby');
+          
+          // Tentar usar o ID do lobby do convite como fallback
+          if (lobbyId) {
+            console.log('Usando ID do lobby do convite como fallback:', lobbyId);
+            setTimeout(() => {
+              window.location.href = `/lobby/${lobbyId}`;
+            }, 500);
+          }
+        }
+        
+        // Chamar a função de callback para atualizar a lista de notificações
+        await onAccept(id);
+      } else {
+        console.error('Erro na resposta ao aceitar convite:', data);
+        toast.error(data.error || 'Ocorreu um erro ao aceitar o convite');
       }
     } catch (error) {
       console.error('Erro ao aceitar convite:', error);
@@ -152,11 +196,6 @@ export default function LobbyInviteNotification({
     }
   };
 
-  // Não exibir se não tiver ID ou não estiver pendente
-  if (!id || status !== 'pending') {
-    return null;
-  }
-
   return (
     <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-lg shadow-sm mb-2 relative hover:bg-opacity-80 transition-colors">
       {/* Badge para indicar o tipo de notificação */}
@@ -167,7 +206,7 @@ export default function LobbyInviteNotification({
       <div className="flex-shrink-0">
         <Avatar>
           <AvatarImage src={inviterAvatar} alt={inviterName} />
-          <AvatarFallback>{inviterName[0]}</AvatarFallback>
+          <AvatarFallback>{inviterName ? inviterName[0] : 'U'}</AvatarFallback>
         </Avatar>
       </div>
       
@@ -204,9 +243,11 @@ export default function LobbyInviteNotification({
         </div>
         
         {/* ID do convite para Debug */}
-        <div className="text-xs text-gray-500 mt-1">
-          ID: {id.substring(0, 8)}...
-        </div>
+        {id && (
+          <div className="text-xs text-gray-500 mt-1">
+            ID: {id.substring(0, 8)}...
+          </div>
+        )}
       </div>
     </div>
   );

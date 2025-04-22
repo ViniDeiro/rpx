@@ -44,9 +44,15 @@ export default function DebugNotifications() {
       // Log da tentativa
       console.log('Tentando buscar notificações...');
       
-      const res = await fetch('/api/debug/notifications?action=fetch');
+      // Adicionar timestamp para evitar cache de navegador
+      const timestamp = new Date().getTime();
+      const res = await fetch(`/api/debug/notifications?action=fetch&_t=${timestamp}`);
       
       console.log('Resposta da API:', res.status, res.statusText);
+      
+      if (!res.ok) {
+        throw new Error(`Erro na API: ${res.status} ${res.statusText}`);
+      }
       
       const data = await res.json();
       console.log('Dados recebidos:', data);

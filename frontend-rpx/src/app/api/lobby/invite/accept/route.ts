@@ -133,21 +133,21 @@ export async function POST(request: Request) {
       _id: lobby._id.toString(),
       name: lobby.name,
       maxPlayers: lobby.maxPlayers,
-      type: lobby.type
+      type: lobby.lobbyType
     }, null, 2));
     
-    // Obter o lobbyId como string para consultas subsequentes
-    const lobbyIdString = lobbyObjectId.toString();
+    // IMPORTANTE: Usar ObjectId em vez de string para o lobbyId
+    const lobbyIdForQueries = lobbyObjectId;
     
     // Verificar se o lobby tem espaço para mais jogadores
     const currentPlayers = await db.collection('lobbymembers').find({
-      lobbyId: lobbyIdString
+      lobbyId: lobbyObjectId.toString()
     }).toArray();
     
-    const maxPlayers = lobby.maxPlayers || (lobby.type === 'solo' ? 1 : lobby.type === 'duo' ? 2 : 4);
+    const maxPlayers = lobby.maxPlayers || (lobby.lobbyType === 'solo' ? 1 : lobby.lobbyType === 'duo' ? 2 : 4);
     
     if (currentPlayers.length >= maxPlayers) {
-      console.log(`API Lobby Invite Accept - Erro: Lobby ${lobbyIdString} está cheio (${currentPlayers.length}/${maxPlayers})`);
+      console.log(`API Lobby Invite Accept - Erro: Lobby ${lobbyObjectId.toString()} está cheio (${currentPlayers.length}/${maxPlayers})`);
       
       // Marcar convite como expirado
       await db.collection('lobbyinvites').updateOne(
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
     });
     
     if (userMember) {
-      console.log(`API Lobby Invite Accept - Usuário ${userIdString} já está no lobby ${lobbyIdString}`);
+      console.log(`API Lobby Invite Accept - Usuário ${userIdString} já está no lobby ${lobbyObjectId.toString()}`);
       
       // Marcar convite como aceito
       await db.collection('lobbyinvites').updateOne(
@@ -179,7 +179,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         status: 'success',
         message: 'Você já está neste lobby',
-        lobbyId: lobbyIdString
+        lobbyId: lobbyObjectId.toString()
       });
     }
     
@@ -200,7 +200,7 @@ export async function POST(request: Request) {
       
       // Criar documento de membro do lobby
       const lobbyMember = {
-        lobbyId: lobbyIdString,
+        lobbyId: lobbyObjectId,  // Usar ObjectId diretamente
         userId: userObjectId,
         username: user.username,
         avatar: user.avatar,
@@ -212,7 +212,25 @@ export async function POST(request: Request) {
       
       // Inserir na coleção de membros
       await db.collection('lobbymembers').insertOne(lobbyMember);
-      console.log(`API Lobby Invite Accept - Usuário ${userIdString} adicionado ao lobby ${lobbyIdString}`);
+      console.log(`API Lobby Invite Accept - Usuário ${userIdString} adicionado ao lobby ${lobbyObjectId.toString()}`);
+      
+      // Também adicionar o usuário diretamente à coleção de lobbies
+      console.log(`API Lobby Invite Accept - Adicionando usuário na coleção de lobbies`);
+      try {
+        // Adicionar usuário à lista de membros do lobby
+        await db.collection('lobbies').updateOne(
+          { _id: lobbyObjectId },
+          { 
+            $addToSet: { members: userObjectId },
+            $set: { updatedAt: new Date() }
+          }
+        );
+        
+        console.log(`API Lobby Invite Accept - Usuário adicionado com sucesso à coleção lobbies`);
+      } catch (lobbyError) {
+        console.error('API Lobby Invite Accept - Erro ao adicionar usuário à coleção lobbies:', lobbyError);
+        // Continuar mesmo se falhar, pois o usuário já foi adicionado à coleção lobbymembers
+      }
     } catch (memberError) {
       console.error('API Lobby Invite Accept - Erro ao adicionar membro ao lobby:', memberError);
       return NextResponse.json({
@@ -237,7 +255,7 @@ export async function POST(request: Request) {
       );
       
       await db.collection('lobbychat').insertOne({
-        lobbyId: lobbyIdString,
+        lobbyId: lobbyObjectId,  // Usar ObjectId diretamente
         userId: null, // Mensagem de sistema
         username: 'Sistema',
         message: `${user?.username || 'Novo jogador'} entrou no lobby.`,
@@ -279,7 +297,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: 'success',
       message: 'Convite aceito com sucesso',
-      lobbyId: lobbyIdString
+      lobbyId: lobbyObjectId.toString()
     });
   } catch (error: any) {
     console.error('API Lobby Invite Accept - Erro:', error);

@@ -77,12 +77,19 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log(`🔍 [Notifications] Buscando notificações para usuário: ${userId}`);
     const { db } = await connectToDatabase();
 
-    // Consultar notificações convencionais
+    // Consulta CORRETA - buscar notificações do usuário logado
     const notificationsQuery = {
-      userId: userId.toString()
+      $or: [
+        { userId: userId.toString() },       // ID no formato string
+        { userId: new ObjectId(userId) },    // ID no formato ObjectId
+        { userId: 'todos_usuarios' }         // Notificações globais
+      ]
     };
+
+    console.log(`🔍 [Notifications] Consulta: ${JSON.stringify(notificationsQuery)}`);
 
     // Obter notificações do usuário
     const notificationsResults = await db
@@ -91,19 +98,33 @@ export async function GET(request: Request) {
       .sort({ read: 1, createdAt: -1 }) // Não lidas primeiro, depois por data recente
       .toArray();
 
-    // Buscar possíveis convites de lobby pendentes
+    console.log(`✅ [Notifications] Encontradas ${notificationsResults.length} notificações`);
+    console.log("📋 [Notifications] Primeiras notificações:", 
+      notificationsResults.slice(0, 3).map(n => ({
+        _id: n._id.toString(),
+        userId: n.userId,
+        type: n.type
+      }))
+    );
+
+    // Consulta CORRETA - buscar convites do usuário logado
     const lobbyInviteQuery = {
       $or: [
-        { recipient: new ObjectId(userId) },
-        { recipient: userId.toString() }
+        { recipient: userId.toString() },    // ID no formato string
+        { recipient: new ObjectId(userId) }, // ID no formato ObjectId
+        { inviteeId: userId.toString() }     // Usando campo alternativo
       ],
       status: 'pending'
     };
+
+    console.log(`🔍 [Notifications] Consulta de convites: ${JSON.stringify(lobbyInviteQuery)}`);
 
     const lobbyInvites = await db
       .collection('lobbyinvites')
       .find(lobbyInviteQuery)
       .toArray();
+
+    console.log(`✅ [Notifications] Encontrados ${lobbyInvites.length} convites de lobby`);
 
     // Para cada convite de lobby, obter informações do convidador
     const formattedInvites = [];
@@ -123,7 +144,7 @@ export async function GET(request: Request) {
       formattedInvites.push({
         id: invite._id.toString(),
         type: 'lobby_invite',
-        userId: userId.toString(),
+        userId: invite.recipient?.toString() || userId.toString(),
         read: false,
         title: 'Convite para Lobby',
         message: `${inviter?.username || 'Alguém'} convidou você para um lobby`,
@@ -169,6 +190,8 @@ export async function GET(request: Request) {
 
     // Contar notificações não lidas
     const unreadCount = allNotifications.filter(n => !n.read).length;
+
+    console.log(`📊 [Notifications] Total: ${allNotifications.length}, Não lidas: ${unreadCount}`);
 
     // Retornar resposta no formato esperado pelo frontend
     return NextResponse.json({

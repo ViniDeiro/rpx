@@ -24,13 +24,22 @@ export default function NotificationBell() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState(false);
   const { data: session } = useSession();
+  const [lastFetchTime, setLastFetchTime] = useState(0);
   
   // Função principal para buscar notificações
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (force = false) => {
+    // Evitar múltiplas chamadas em curto período de tempo
+    const now = Date.now();
+    if (!force && now - lastFetchTime < 2000) {
+      console.log('🛑 NotificationBell: Ignorando requisição - chamada muito recente');
+      return;
+    }
+    
     if (!session?.user || isLoading) return;
     
     try {
       setIsLoading(true);
+      setLastFetchTime(now);
       console.log('🔎 NotificationBell: Buscando notificações...');
       
       // Obter token para autenticação
@@ -64,8 +73,8 @@ export default function NotificationBell() {
               const inviterName = notif.inviterName || 
                                  (notif.data?.inviter?.username) || 
                                  'Desconhecido';
-              const inviteId = notif.data?.invite?._id || notif._id || notif.id;
-              const lobbyId = notif.lobbyId || notif.data?.invite?.lobbyId || notif.data?.lobbyId || 'Desconhecido';
+              const inviteId = notif.data?.inviteId || notif.id || notif._id;
+              const lobbyId = notif.data?.lobbyId || notif.lobbyId || 'Desconhecido';
               console.log(`  📨 #${index+1}: Convite de ${inviterName} | ID: ${inviteId?.substring(0,8)}... | Lobby: ${typeof lobbyId === 'string' ? lobbyId.substring(0,8) : 'N/A'}...`);
             } else {
               console.log(`  📨 #${index+1}: Tipo: ${notif.type} | ID: ${(notif._id || notif.id)?.substring(0,8)}...`);
@@ -78,8 +87,22 @@ export default function NotificationBell() {
         // Garantir que todas as notificações tenham os campos necessários
         const validNotifications = notifications.filter((n: any) => n && (n._id || n.id));
         
+        // Normalizar os dados dos convites de lobby para evitar erros
+        const normalizedNotifications = validNotifications.map((notif: any) => {
+          if (notif.type === 'lobby_invite') {
+            return {
+              ...notif,
+              _id: notif._id || notif.id,
+              id: notif.id || notif._id,
+              lobbyId: notif.data?.lobbyId || notif.lobbyId || '123456789',
+              inviterName: notif.data?.inviterName || notif.inviterName || 'Sistema'
+            };
+          }
+          return notif;
+        });
+        
         // Atualizar o estado
-        setNotifications(validNotifications);
+        setNotifications(normalizedNotifications);
         setUnreadCount(unreadCount);
         
         // Limpar erros de autenticação se houver
@@ -109,21 +132,14 @@ export default function NotificationBell() {
       console.log('🔄 NotificationBell: Iniciando componente com usuário logado:', session.user.name);
       
       // Buscar imediatamente na inicialização 
-      fetchNotifications();
+      fetchNotifications(true);
       
-      // Configurar polling para atualizar as notificações a cada 5 segundos
-      // Aumentado de 3 para 5 segundos para reduzir sobrecarga
+      // Configurar polling com intervalo maior (15 segundos)
+      // Isso reduz consideravelmente o número de requisições
       const interval = setInterval(() => {
         console.log('🔄 NotificationBell: Verificação periódica de notificações');
         fetchNotifications();
-      }, 5000);
-      
-      // Forçar outra busca após 2 segundos para garantir que dados são carregados
-      // Aumentado de 1 para 2 segundos para dar mais tempo ao servidor
-      setTimeout(() => {
-        console.log('🔄 NotificationBell: Verificação secundária de notificações');
-        fetchNotifications();
-      }, 2000);
+      }, 15000);
       
       return () => clearInterval(interval);
     }
@@ -138,11 +154,13 @@ export default function NotificationBell() {
   
   // Abrir/fechar o painel de notificações
   const toggleNotificationCenter = () => {
-    setIsOpen(!isOpen);
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    
     // Se estiver abrindo, buscar as notificações mais recentes
-    if (!isOpen) {
+    if (newIsOpen) {
       console.log('🔄 NotificationBell: Abrindo painel de notificações - Buscando atualizações');
-      fetchNotifications();
+      fetchNotifications(true);
     }
   };
 
@@ -288,7 +306,7 @@ export default function NotificationBell() {
         isOpen={isOpen} 
         onClose={() => setIsOpen(false)}
         notifications={notifications}
-        onUpdate={fetchNotifications}
+        onUpdate={() => fetchNotifications(true)}
       />
     </>
   );

@@ -5,6 +5,52 @@ import { cookies } from 'next/headers';
 import { encode, decode } from 'next-auth/jwt';
 import { getJwtSecret } from '@/lib/environment';
 
+// Método GET para obter a sessão atual
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      // Tentar verificar pelo token JWT nos cookies
+      const cookieStore = cookies();
+      const token = cookieStore.get('auth_token')?.value;
+      
+      if (!token) {
+        return NextResponse.json({});
+      }
+      
+      try {
+        const secret = getJwtSecret();
+        const decoded = await decode({ token, secret });
+        
+        if (!decoded) {
+          return NextResponse.json({});
+        }
+        
+        // Construir sessão a partir do token JWT
+        const expiration = decoded.exp ? Number(decoded.exp) * 1000 : Date.now() + 24 * 60 * 60 * 1000;
+        return NextResponse.json({
+          user: {
+            id: decoded.sub,
+            email: decoded.email,
+            name: decoded.name,
+            image: decoded.picture,
+          },
+          expires: new Date(expiration).toISOString()
+        });
+      } catch (error) {
+        console.error('Erro ao decodificar token:', error);
+        return NextResponse.json({});
+      }
+    }
+    
+    return NextResponse.json(session);
+  } catch (error) {
+    console.error('Erro ao obter sessão:', error);
+    return NextResponse.json({});
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();

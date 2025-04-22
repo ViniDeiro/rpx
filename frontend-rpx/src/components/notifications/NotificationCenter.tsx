@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { X, Bell, Users } from 'react-feather';
+import { X, Bell, Users, Info } from 'react-feather';
 import { toast } from 'react-toastify';
 import FriendRequestNotification from './FriendRequestNotification';
 import LobbyInviteNotification from './LobbyInviteNotification';
+import GenericNotification from './GenericNotification';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface NotificationCenterProps {
 interface NotificationsState {
   friendRequests: any[];
   lobbyInvites: any[];
+  systemNotifications: any[];
   loading: boolean;
   unreadCount: number;
 }
@@ -24,12 +26,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   notifications = [],
   onUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState<'todos' | 'amigos' | 'lobby'>('todos');
+  const [activeTab, setActiveTab] = useState<'todos' | 'amigos' | 'lobby' | 'sistema'>('todos');
   const [loading, setLoading] = useState<boolean>(false);
   
   // Preparar dados para exibição
   const friendRequests = notifications.filter(n => n.type === 'friend_request');
   const lobbyInvites = notifications.filter(n => n.type === 'lobby_invite');
+  const systemNotifications = notifications.filter(n => n.type !== 'friend_request' && n.type !== 'lobby_invite');
   const unreadCount = notifications.filter(n => !n.read).length;
   
   // Efeito para recarregar notificações quando abrir o painel
@@ -145,6 +148,27 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       setLoading(false);
     }
   };
+
+  const markAsRead = async (notificationId: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/notifications/mark-read?id=${notificationId}`, {
+        method: 'PUT'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        onUpdate(); // Atualizar todas as notificações
+      } else {
+        console.error('Erro ao marcar notificação como lida:', data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao marcar notificação como lida:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -180,6 +204,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
           >
             Lobby ({lobbyInvites.length})
           </button>
+          <button
+            className={`flex-1 py-3 font-medium ${activeTab === 'sistema' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}
+            onClick={() => setActiveTab('sistema')}
+          >
+            Sistema ({systemNotifications.length})
+          </button>
         </div>
 
         <div className="p-4">
@@ -213,6 +243,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                           request={request} 
                           onAccept={acceptFriendRequest} 
                           onReject={rejectFriendRequest} 
+                        />
+                      ))}
+                      {systemNotifications.map(notif => (
+                        <GenericNotification
+                          key={notif._id}
+                          notification={notif}
+                          onRead={() => markAsRead(notif._id)}
                         />
                       ))}
                     </>
@@ -255,6 +292,25 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         onAccept={acceptLobbyInvite} 
                         onReject={rejectLobbyInvite}
                         onDismiss={async () => { onUpdate(); return Promise.resolve(); }}
+                      />
+                    ))
+                  )}
+                </>
+              )}
+
+              {activeTab === 'sistema' && (
+                <>
+                  {systemNotifications.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <Info size={32} className="mx-auto mb-2" />
+                      <p>Nenhuma notificação do sistema</p>
+                    </div>
+                  ) : (
+                    systemNotifications.map(notif => (
+                      <GenericNotification
+                        key={notif._id}
+                        notification={notif}
+                        onRead={() => markAsRead(notif._id)}
                       />
                     ))
                   )}

@@ -523,7 +523,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
         <Card>
           <CardHeader>
@@ -549,30 +549,30 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Acesso rápido aos módulos */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Acesso Rápido</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {adminModules.slice(0, 4).map((module, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
+          <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
               <CardHeader className="pb-2">
-                <div className="flex items-center mb-2">
-                  {module.icon}
-                </div>
-                <CardTitle>{module.title}</CardTitle>
-              </CardHeader>
+              <div className="flex items-center mb-2">
+                {module.icon}
+              </div>
+              <CardTitle>{module.title}</CardTitle>
+            </CardHeader>
               <CardFooter className="pt-2">
-                <Button 
-                  className="w-full" 
-                  onClick={() => router.push(module.path)}
-                >
-                  Acessar
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+              <Button 
+                className="w-full" 
+                onClick={() => router.push(module.path)}
+              >
+                Acessar
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
       </div>
       
       {/* Resumo de operações */}
