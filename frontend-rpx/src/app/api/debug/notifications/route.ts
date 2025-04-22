@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
-import { Document, WithId } from 'mongodb';
+import { Document, WithId, ObjectId } from 'mongodb';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth/verify';
 
 // Interfaces para tipagem
 interface NotificationData {
@@ -38,6 +41,40 @@ interface LobbyInvite {
   createdAt: string;
 }
 
+// Função auxiliar para obter o ID do usuário da sessão
+async function getUserFromSession(request: NextRequest) {
+  try {
+    // Método 1: Usar isAuthenticated (recomendado)
+    const { isAuth, userId } = await isAuthenticated();
+    if (isAuth && userId) {
+      console.log('🔑 Usuário autenticado via middleware:', userId);
+      return userId.toString();
+    }
+    
+    // Método 2: Usar getServerSession como fallback
+    const session = await getServerSession(authOptions);
+    if (session?.user?.id) {
+      console.log('🔑 Usuário autenticado via session:', session.user.id);
+      return session.user.id;
+    }
+    
+    // Método 3: Extrair do cookie como último recurso (apenas desenvolvimento)
+    if (process.env.NODE_ENV === 'development') {
+      const cookieHeader = request.headers.get('cookie');
+      if (cookieHeader && cookieHeader.includes('next-auth.session-token')) {
+        console.log('⚠️ Modo desenvolvimento: usando ID de usuário de teste');
+        return 'user_dev_test';
+      }
+    }
+    
+    console.log('⚠️ Usuário não autenticado, usando valor padrão para depuração');
+    return 'user_test';
+  } catch (error) {
+    console.error('Erro ao obter usuário da sessão:', error);
+    return 'user_test'; // Fallback para depuração
+  }
+}
+
 // Notificações de exemplo para testes
 const mockNotifications: Notification[] = [
   {
@@ -46,7 +83,7 @@ const mockNotifications: Notification[] = [
     title: 'Bem-vindo ao RPX',
     message: 'Bem-vindo à plataforma RPX! Estamos felizes em tê-lo conosco.',
     read: false,
-    userId: 'user_test',
+    userId: 'user_test', // Será substituído pelo ID real do usuário
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     data: null
   },
@@ -56,7 +93,7 @@ const mockNotifications: Notification[] = [
     title: 'Pagamento Confirmado',
     message: 'Seu pagamento de R$ 50,00 foi confirmado.',
     read: true,
-    userId: 'user_test',
+    userId: 'user_test', // Será substituído pelo ID real do usuário
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     data: {
       amount: 50.00,
@@ -70,7 +107,7 @@ const mockNotifications: Notification[] = [
     title: 'Convite para Lobby',
     message: 'Você foi convidado para participar de uma partida por João Silva',
     read: false,
-    userId: 'user_test',
+    userId: 'user_test', // Será substituído pelo ID real do usuário
     createdAt: new Date(Date.now() - 3600000).toISOString(),
     data: {
       lobbyId: 'lobby_123',
@@ -86,7 +123,7 @@ const mockLobbyInvites: LobbyInvite[] = [
   {
     _id: '65f1a2b3c4d5e6f7a8b9c0d4',
     lobbyId: 'lobby_456',
-    inviteeId: 'user_test',
+    inviteeId: 'user_test', // Será substituído pelo ID real do usuário
     inviterId: 'user_555',
     inviterName: 'Maria Oliveira',
     status: 'pending',
@@ -99,8 +136,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
+    const userId = await getUserFromSession(request);
     
-    console.log('Debug API - Notificações - Ação:', action);
+    console.log(`Debug API - Notificações - Ação: ${action}, Usuário: ${userId}`);
 
     // Conectar ao banco de dados, se necessário
     let dbConnection = null;
@@ -115,28 +153,44 @@ export async function GET(request: NextRequest) {
     // Ação para buscar notificações
     if (action === 'fetch') {
       // Tentar buscar do banco de dados primeiro, se estivermos conectados
-      let notifications: Notification[] = [...mockNotifications];
-      let lobbyInvites: LobbyInvite[] = [...mockLobbyInvites];
+      let notifications: Notification[] = mockNotifications.map(n => ({
+        ...n,
+        userId // Substituir pelo ID do usuário real
+      }));
+      
+      let lobbyInvites: LobbyInvite[] = mockLobbyInvites.map(i => ({
+        ...i,
+        inviteeId: userId // Substituir pelo ID do usuário real
+      }));
       
       if (dbConnection) {
         try {
           const { db } = dbConnection;
           
-          // Buscar as notificações reais, limitando a 20 para não sobrecarregar
+          // Buscar as notificações reais do usuário atual, limitando a 20
           const realNotifications = await db
             .collection('notifications')
-            .find({})
+            .find({ userId })
             .sort({ createdAt: -1 })
             .limit(20)
             .toArray();
             
-          // Buscar os convites reais pendentes
+          // Buscar os convites reais pendentes para o usuário atual
           const realInvites = await db
             .collection('lobbyInvites')
-            .find({ status: 'pending' })
+            .find({ 
+              $or: [
+                { inviteeId: userId },
+                { recipient: userId },
+                { recipient: new ObjectId(userId) }
+              ], 
+              status: 'pending' 
+            })
             .sort({ createdAt: -1 })
             .limit(10)
             .toArray();
+            
+          console.log(`Encontradas ${realNotifications.length} notificações e ${realInvites.length} convites`);
             
           // Usar dados reais se existirem, caso contrário manter os mockados
           if (realNotifications.length > 0) {
@@ -156,13 +210,48 @@ export async function GET(request: NextRequest) {
             lobbyInvites = realInvites.map((doc: WithId<Document>) => ({
               _id: doc._id.toString(),
               lobbyId: doc.lobbyId as string,
-              inviteeId: doc.inviteeId as string,
-              inviterId: doc.inviterId as string,
+              inviteeId: doc.inviteeId || doc.recipient as string,
+              inviterId: doc.inviterId || doc.inviter as string,
               inviterName: doc.inviterName as string,
               status: doc.status as string,
               gameTitle: doc.gameTitle as string,
               createdAt: doc.createdAt as string
             }));
+            
+            // Obter informações adicionais dos usuários para melhorar a exibição
+            for (let i = 0; i < lobbyInvites.length; i++) {
+              const invite = lobbyInvites[i];
+              try {
+                // Tentativa 1: Tentar com o ID como ObjectId
+                let inviterUser = null;
+                try {
+                  if (typeof invite.inviterId === 'string' && invite.inviterId.match(/^[0-9a-fA-F]{24}$/)) {
+                    inviterUser = await db.collection('users').findOne({
+                      _id: new ObjectId(invite.inviterId)
+                    });
+                  }
+                } catch (err) {
+                  console.log('Erro ao buscar com ObjectId:', err);
+                }
+                
+                // Tentativa 2: Tentar com o ID como string
+                if (!inviterUser) {
+                  try {
+                    inviterUser = await db.collection('users').findOne({
+                      username: invite.inviterName
+                    });
+                  } catch (err) {
+                    console.log('Erro ao buscar por username:', err);
+                  }
+                }
+                
+                if (inviterUser) {
+                  lobbyInvites[i].inviterName = inviterUser.username || inviterUser.name || 'Usuário';
+                }
+              } catch (userErr) {
+                console.error('Erro ao buscar informações do usuário:', userErr);
+              }
+            }
           }
         } catch (fetchError) {
           console.error('Erro ao buscar dados do banco:', fetchError);
@@ -201,7 +290,8 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           notifications: allNotifications,
-          count: allNotifications.length
+          count: allNotifications.length,
+          userId: userId // Incluir o ID do usuário para depuração
         }
       });
     } 
@@ -224,7 +314,7 @@ export async function GET(request: NextRequest) {
           title,
           message,
           read: false,
-          userId: 'user_test',
+          userId, // Usar o ID real do usuário
           createdAt: new Date().toISOString(),
           data: body.data || null
         };
@@ -260,10 +350,27 @@ export async function GET(request: NextRequest) {
     else if (action === 'clear') {
       if (dbConnection) {
         try {
-          // Não excluir do banco real, apenas retornar sucesso para manter segurança
-          console.log('Simulando limpeza de notificações (sem excluir dados reais)');
+          const { db } = dbConnection;
+          // Agora podemos realmente excluir notificações do usuário atual, sem afetar outros
+          const result = await db.collection('notifications').deleteMany({ 
+            userId: userId 
+          });
+          
+          console.log(`Removidas ${result.deletedCount} notificações do usuário ${userId}`);
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              deleted: result.deletedCount || 0,
+              message: `${result.deletedCount || 0} notificações removidas com sucesso`
+            }
+          });
         } catch (clearError) {
           console.error('Erro ao limpar notificações:', clearError);
+          return NextResponse.json({
+            success: false,
+            error: 'Erro ao limpar notificações'
+          }, { status: 500 });
         }
       }
       
@@ -289,8 +396,12 @@ export async function GET(request: NextRequest) {
         if (dbConnection) {
           try {
             const { db } = dbConnection;
+            // Só permitir atualizar notificações do próprio usuário
             await db.collection('notifications').updateOne(
-              { _id: new mongoose.Types.ObjectId(notificationId) },
+              { 
+                _id: new mongoose.Types.ObjectId(notificationId),
+                userId: userId
+              },
               { $set: { read: true } }
             );
             console.log('Notificação marcada como lida no banco de dados');
@@ -317,13 +428,26 @@ export async function GET(request: NextRequest) {
       if (dbConnection) {
         try {
           const { db } = dbConnection;
-          await db.collection('notifications').updateMany(
-            { userId: 'user_test', read: false },
+          // Só marcar as notificações do usuário atual
+          const result = await db.collection('notifications').updateMany(
+            { userId: userId, read: false },
             { $set: { read: true } }
           );
-          console.log('Todas as notificações marcadas como lidas no banco de dados');
+          console.log(`${result.modifiedCount} notificações marcadas como lidas para o usuário ${userId}`);
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              modifiedCount: result.modifiedCount,
+              message: 'Todas as notificações foram marcadas como lidas'
+            }
+          });
         } catch (updateError) {
           console.error('Erro ao marcar todas as notificações como lidas:', updateError);
+          return NextResponse.json({
+            success: false,
+            error: 'Erro ao marcar notificações como lidas'
+          }, { status: 500 });
         }
       }
       
@@ -349,13 +473,61 @@ export async function GET(request: NextRequest) {
         if (dbConnection) {
           try {
             const { db } = dbConnection;
+            
+            // Verificar se o convite existe e pertence ao usuário atual
+            const invite = await db.collection('lobbyInvites').findOne({
+              _id: new mongoose.Types.ObjectId(inviteId),
+              $or: [
+                { inviteeId: userId },
+                { recipient: userId },
+                { recipient: new ObjectId(userId) }
+              ]
+            });
+            
+            if (!invite) {
+              return NextResponse.json({
+                success: false,
+                error: 'Convite não encontrado ou não pertence ao usuário atual'
+              }, { status: 404 });
+            }
+            
+            // Atualizar o status do convite
             await db.collection('lobbyInvites').updateOne(
               { _id: new mongoose.Types.ObjectId(inviteId) },
-              { $set: { status: response === 'accept' ? 'accepted' : 'rejected' } }
+              { $set: { 
+                status: response === 'accept' ? 'accepted' : 'rejected',
+                respondedAt: new Date()
+              } }
             );
-            console.log(`Convite ${inviteId} ${response === 'accept' ? 'aceito' : 'recusado'}`);
+            
+            // Se aceitou, adicionar o usuário ao lobby
+            if (response === 'accept' && invite.lobbyId) {
+              try {
+                await db.collection('lobbies').updateOne(
+                  { _id: new mongoose.Types.ObjectId(invite.lobbyId.toString()) },
+                  { $addToSet: { members: userId } }
+                );
+                console.log(`Usuário ${userId} adicionado ao lobby ${invite.lobbyId}`);
+              } catch (lobbyError) {
+                console.error('Erro ao adicionar usuário ao lobby:', lobbyError);
+              }
+            }
+            
+            console.log(`Convite ${inviteId} ${response === 'accept' ? 'aceito' : 'recusado'} por ${userId}`);
+            
+            return NextResponse.json({
+              success: true,
+              data: {
+                status: response === 'accept' ? 'accepted' : 'rejected',
+                message: `Convite ${response === 'accept' ? 'aceito' : 'recusado'} com sucesso`
+              }
+            });
           } catch (updateError) {
             console.error('Erro ao atualizar status do convite:', updateError);
+            return NextResponse.json({
+              success: false,
+              error: 'Erro ao atualizar status do convite'
+            }, { status: 500 });
           }
         }
         
@@ -373,42 +545,89 @@ export async function GET(request: NextRequest) {
     }
     // Ação para simular um convite para lobby
     else if (action === 'simulate_invite') {
-      const newInviteId = new mongoose.Types.ObjectId().toString();
+      const newInviteId = new mongoose.Types.ObjectId();
       const games = ['Counter Strike 2', 'League of Legends', 'Valorant', 'Fortnite', 'Apex Legends'];
       const names = ['Lucas Silva', 'Pedro Santos', 'Ana Oliveira', 'Juliana Ferreira', 'Rafael Costa'];
       
       const randomGame = games[Math.floor(Math.random() * games.length)];
       const randomName = names[Math.floor(Math.random() * names.length)];
+      const randomInviterId = new mongoose.Types.ObjectId();
+      const lobbyId = new mongoose.Types.ObjectId();
       
-      const newInvite: LobbyInvite = {
+      const newInvite = {
         _id: newInviteId,
-        lobbyId: `lobby_${Math.floor(Math.random() * 1000)}`,
-        inviteeId: 'user_test',
-        inviterId: `user_${Math.floor(Math.random() * 1000)}`,
+        lobbyId: lobbyId,
+        inviteeId: userId,
+        recipient: userId,
+        inviterId: randomInviterId,
+        inviter: randomInviterId,
         inviterName: randomName,
         status: 'pending',
         gameTitle: randomGame,
-        createdAt: new Date().toISOString()
+        createdAt: new Date()
       };
       
       // Salvar no banco de dados se estiver conectado
       if (dbConnection) {
         try {
           const { db } = dbConnection;
-          // Remover o _id em string para que o MongoDB gere um ObjectId
-          const { _id, ...inviteWithoutId } = newInvite;
-          await db.collection('lobbyInvites').insertOne(inviteWithoutId);
-          console.log('Convite simulado salvo no banco de dados');
+          
+          // Primeiro criar um lobby simulado
+          const lobbyResult = await db.collection('lobbies').insertOne({
+            _id: lobbyId,
+            name: `Lobby de ${randomName}`,
+            game: randomGame,
+            maxPlayers: 5,
+            owner: randomInviterId,
+            members: [randomInviterId.toString()],
+            status: 'waiting',
+            createdAt: new Date()
+          });
+          
+          console.log(`Lobby simulado criado: ${lobbyId}`);
+          
+          // Agora criar o convite
+          const inviteResult = await db.collection('lobbyInvites').insertOne(newInvite);
+          console.log('Convite simulado salvo no banco de dados:', inviteResult.insertedId);
+          
+          return NextResponse.json({
+            success: true,
+            message: 'Convite simulado criado com sucesso',
+            data: {
+              invite: {
+                _id: newInviteId.toString(),
+                inviteeId: userId,
+                inviterId: randomInviterId.toString(),
+                inviterName: randomName,
+                status: 'pending',
+                gameTitle: randomGame,
+                lobbyId: lobbyId.toString(),
+                createdAt: new Date().toISOString()
+              }
+            }
+          });
         } catch (insertError) {
           console.error('Erro ao salvar convite simulado:', insertError);
+          return NextResponse.json({
+            success: false,
+            error: 'Erro ao criar convite simulado'
+          }, { status: 500 });
         }
       }
       
       return NextResponse.json({
         success: true,
-        message: 'Convite simulado criado com sucesso',
+        message: 'Convite simulado criado com sucesso (modo offline)',
         data: {
-          invite: newInvite
+          invite: {
+            _id: newInviteId.toString(),
+            inviteeId: userId,
+            inviterId: randomInviterId.toString(),
+            inviterName: randomName,
+            status: 'pending',
+            gameTitle: randomGame,
+            createdAt: new Date().toISOString()
+          }
         }
       });
     }
