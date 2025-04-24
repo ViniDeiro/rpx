@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { 
   User, Lock, Shield, Activity, LogOut, Edit, ChevronRight, 
   Clock, Award, Star, Calendar, Gift, Settings, Zap,
-  PieChart, TrendingUp, Users, MessageCircle, Cpu, Bookmark, X, Check
+  PieChart, TrendingUp, Users, MessageCircle, Cpu, Bookmark, X, Check,
+  Instagram, Twitter, Facebook, Youtube, Twitch, MessageSquare
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Medal } from '@/components/ui/icons';
@@ -78,6 +79,16 @@ interface ProfileUser {
   rank: Rank;
   coins: number;
   matchesPlayed: number;
+  bio?: string; // Biografia do usuário
+  userNumber?: number; // ID sequencial
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    facebook?: string;
+    youtube?: string;
+    twitch?: string;
+    discord?: string;
+  };
   stats: {
     matches?: number;
     wins?: number;
@@ -164,6 +175,9 @@ export default function ProfilePage() {
         rank: (authUser as any).rank || defaultRank,
         coins: Number((authUser as any).coins) || 0,
         matchesPlayed: authUser.stats?.matches || 0,
+        bio: authUser.bio || '', // Adicionando biografia
+        userNumber: (authUser as any).userNumber || null, // Adicionando ID sequencial
+        socialLinks: authUser.socialLinks || {}, // Adicionando redes sociais
         stats: authUser.stats || {
           matches: 0,
           wins: 0,
@@ -442,9 +456,19 @@ export default function ProfilePage() {
                 <div className="bg-[#171335] rounded-xl overflow-hidden shadow-xl border border-[#3D2A85]/20">
                   {/* Área de informações do usuário */}
                   <div className="p-6 pt-14 pb-8 text-center">
-                    <h1 className="text-2xl font-bold text-white mb-3">
+                    <h1 className="text-2xl font-bold text-white mb-3 flex items-center justify-center gap-2">
                       {user?.username || 'Jogador'}
+                      <Link 
+                        href="/profile/edit" 
+                        className="inline-flex items-center justify-center bg-[#8860FF]/20 hover:bg-[#8860FF]/30 p-1 rounded-full transition-colors"
+                        title="Editar perfil"
+                      >
+                        <Edit size={14} className="text-[#8860FF]" />
+                      </Link>
                     </h1>
+                    {user?.userNumber && (
+                      <p className="text-[#A89ECC] text-xs mb-2">ID: #{user.userNumber}</p>
+                    )}
                     <div className="text-[#A89ECC] text-sm mt-2 flex justify-center gap-4">
                       <span className="flex items-center gap-1.5">
                         <Calendar size={14} />
@@ -455,6 +479,73 @@ export default function ProfilePage() {
                         {user?.stats?.matches || 0} partidas
                       </span>
                     </div>
+                    
+                    {/* Biografia do usuário */}
+                    {user?.bio && (
+                      <div className="mt-4 bg-[#1A1730] rounded-lg p-4 text-left">
+                        <h3 className="text-sm font-semibold text-white mb-2">Sobre mim</h3>
+                        <p className="text-[#A89ECC] text-xs">
+                          {user.bio}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Redes Sociais */}
+                    {user?.socialLinks && Object.values(user.socialLinks).some(link => link) && (
+                      <div className="mt-4">
+                        <h3 className="text-sm font-semibold text-white mb-2">Redes Sociais</h3>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {user.socialLinks.instagram && (
+                            <a href={`https://instagram.com/${user.socialLinks.instagram}`} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="Instagram"
+                              className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                              <Instagram size={16} />
+                            </a>
+                          )}
+                          {user.socialLinks.twitter && (
+                            <a href={`https://twitter.com/${user.socialLinks.twitter}`} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="Twitter"
+                              className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                              <Twitter size={16} />
+                            </a>
+                          )}
+                          {user.socialLinks.facebook && (
+                            <a href={user.socialLinks.facebook} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="Facebook"
+                              className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                              <Facebook size={16} />
+                            </a>
+                          )}
+                          {user.socialLinks.youtube && (
+                            <a href={user.socialLinks.youtube} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="YouTube"
+                              className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                              <Youtube size={16} />
+                            </a>
+                          )}
+                          {user.socialLinks.twitch && (
+                            <a href={`https://twitch.tv/${user.socialLinks.twitch}`} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="Twitch"
+                              className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Twitch size={16} />
+                            </a>
+                          )}
+                          {user.socialLinks.discord && (
+                            <a href={user.socialLinks.discord} 
+                              target="_blank" rel="noopener noreferrer"
+                              title="Discord"
+                              className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                              <MessageSquare size={16} />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Ranking */}
                     <div className="mt-5 bg-gradient-to-r from-[#232048] to-[#28254f] rounded-lg p-6">

@@ -12,17 +12,21 @@ export async function POST(request: Request) {
   console.log('Requisição de login recebida');
   
   try {
-    // Estabelecer conexão com o banco de dados
-    console.log('Conectando ao MongoDB...');
-    await connectToDatabase();
-    console.log('Conexão com MongoDB estabelecida');
+    // Processar os dados da requisição primeiro para validar o formato
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('Erro ao processar JSON da requisição:', parseError);
+      return NextResponse.json(
+        { error: 'Formato de requisição inválido' },
+        { status: 400 }
+      );
+    }
     
-    const body = await request.json();
     const { email, password } = body;
     
-    console.log(`Tentativa de login para o email: ${email}`);
-
-    // Validar dados de entrada
+    // Validar dados de entrada antes de tentar conexão com o banco
     if (!email || !password) {
       console.log('Login falhou: Email ou senha não fornecidos');
       return NextResponse.json(
@@ -30,13 +34,21 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    
+    console.log(`Tentativa de login para o email: ${email}`);
+    
+    // Estabelecer conexão com o banco de dados com timeout reduzido
+    try {
+      console.log('Conectando ao MongoDB...');
+      const dbConnection = await connectToDatabase();
+      console.log('Conexão com MongoDB estabelecida');
 
     // Obter modelos do MongoDB
     const { User } = await getModels();
     
     console.log('Buscando usuário no banco de dados...');
     // Buscar usuário pelo email
-    const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
       console.log(`Login falhou: Usuário com email ${email} não encontrado`);
@@ -46,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
     
-    console.log(`Usuário encontrado: ${user.username}`);
+      console.log(`Usuário encontrado: ${user.username || user.email}`);
 
     // Verificar senha
     console.log('Verificando senha...');
@@ -98,7 +110,9 @@ export async function POST(request: Request) {
       email: user.email,
       role: user.role,
       profile: user.profile || {},
-      balance: user.wallet?.balance || 0
+        balance: user.wallet?.balance || 0,
+        createdAt: user.createdAt,
+        avatarUrl: user.avatarUrl || null
     };
     
     // Retornar dados do usuário e token
@@ -108,10 +122,38 @@ export async function POST(request: Request) {
       user: userData,
       token
     });
-  } catch (error) {
-    console.error('Erro no login:', error);
+    } catch (dbError: any) {
+      // Tratamento específico para erro de conexão com o MongoDB
+      console.error('Erro na conexão/operação do MongoDB:', dbError);
+      
+      const errorMessage = dbError.message || 'Erro ao processar o login';
+      const isConnectionError = 
+        errorMessage.includes('MongoServerSelection') || 
+        errorMessage.includes('connect') ||
+        errorMessage.includes('timeout');
+        
+      if (isConnectionError) {
+        return NextResponse.json(
+          { 
+            error: 'Erro de conexão com o banco de dados',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 503 } // Service Unavailable
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'Erro ao processar o login', details: errorMessage },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error('Erro geral no processo de login:', error);
     return NextResponse.json(
-      { error: 'Erro ao processar o login' },
+      { 
+        error: 'Erro interno do servidor',
+        message: error.message
+      },
       { status: 500 }
     );
   }

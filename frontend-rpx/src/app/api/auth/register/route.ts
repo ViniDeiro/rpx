@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getModels } from '@/lib/mongodb/models';
 import { connectToDatabase } from '@/lib/mongodb/connect';
+import mongoose from 'mongoose';
 
 export async function POST(request: Request) {
   try {
     console.log('Processando solicitação de registro');
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const body = await request.json();
     console.log('Dados recebidos:', { ...body, password: '[PROTEGIDO]' });
@@ -87,6 +88,31 @@ export async function POST(request: Request) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Obter um número sequencial para o usuário
+    let userNumber = 1; // Valor padrão inicial
+
+    try {
+      // Usar findOneAndUpdate para garantir atomicidade da operação
+      const counterResult = await db.collection('counters').findOneAndUpdate(
+        { _id: 'userNumber' }, // Identificador do contador
+        { $inc: { seq: 1 } },   // Incrementar o contador
+        { 
+          upsert: true,         // Criar se não existir
+          returnDocument: 'after'  // Retornar o documento atualizado
+        }
+      );
+
+      // Se o contador foi encontrado ou criado, usar o valor dele
+      if (counterResult && counterResult.value) {
+        userNumber = counterResult.value.seq;
+      }
+      
+      console.log(`Atribuído número sequencial #${userNumber} para o novo usuário`);
+    } catch (counterError) {
+      console.error('Erro ao gerar número sequencial de usuário:', counterError);
+      // Continua com o valor padrão 1 se houver erro
+    }
+
     // Preparar dados do usuário, preservando o case original do username
     const userData = {
       username: username, // Preserva maiúsculas/minúsculas do nome de usuário
@@ -95,6 +121,7 @@ export async function POST(request: Request) {
       phone: phone || '',
       cpf: cpf || '',
       birthdate: birthdate || '',
+      userNumber: userNumber, // Adicionar o número sequencial
       profile: {
         name: name || username
       },
@@ -115,7 +142,7 @@ export async function POST(request: Request) {
 
     // Salvar usuário no banco de dados
     await newUser.save();
-    console.log('Usuário criado com sucesso, ID:', newUser._id);
+    console.log('Usuário criado com sucesso, ID:', newUser._id, 'Número:', userNumber);
 
     // Retornar resposta sem a senha
     const userResponse = {
@@ -125,6 +152,7 @@ export async function POST(request: Request) {
       phone: newUser.phone,
       cpf: newUser.cpf,
       birthdate: newUser.birthdate,
+      userNumber: newUser.userNumber, // Incluir o número sequencial na resposta
       profile: newUser.profile,
       createdAt: newUser.createdAt
     };

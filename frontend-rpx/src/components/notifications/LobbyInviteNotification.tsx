@@ -22,6 +22,7 @@ interface LobbyInvite {
   gameMode?: string;
   // Suporte para diversos formatos de dados
   userId?: string;
+  inviteId?: string;
   data?: {
     inviteId?: string;
     lobbyId?: string;
@@ -32,6 +33,7 @@ interface LobbyInvite {
     inviterAvatar?: string;
     invite?: {
       _id?: string;
+      inviteId?: string;
       lobbyId?: string;
       status?: string;
       createdAt?: string | Date;
@@ -67,8 +69,26 @@ export default function LobbyInviteNotification({
   }, [invite]);
 
   // Garantir que temos um ID válido para o convite
-  const id = invite.id || invite._id?.toString() || invite.data?.inviteId || '';
+  const id = invite.id || 
+             invite._id?.toString() || 
+             invite.inviteId ||
+             invite.data?.inviteId || 
+             invite.data?.invite?.inviteId ||
+             invite.data?.invite?._id?.toString() || 
+             '';
   
+  // Debug: mostrar detalhes mais específicos do ID do convite
+  useEffect(() => {
+    console.log('Detalhes de ID do convite:', {
+      id: invite.id,
+      _id: invite._id?.toString(),
+      inviteId: invite.inviteId,
+      'data.inviteId': invite.data?.inviteId,
+      'data.invite.inviteId': invite.data?.invite?.inviteId,
+      'data.invite._id': invite.data?.invite?._id?.toString()
+    });
+  }, [invite]);
+
   // Formato do nome do convidador (tentar diferentes caminhos)
   const inviterName = invite.inviterName || 
                       invite.data?.inviterName ||
@@ -121,8 +141,30 @@ export default function LobbyInviteNotification({
     }
     
     try {
-      console.log('Aceitando convite de lobby:', id);
+      console.log('Aceitando convite de lobby. IDs disponíveis:', {
+        id,
+        _id: invite._id?.toString(),
+        inviteId: invite.inviteId,
+        'data.inviteId': invite.data?.inviteId,
+        'data.invite.inviteId': invite.data?.invite?.inviteId,
+        'data.invite._id': invite.data?.invite?._id?.toString(),
+        'lobbyId': lobbyId
+      });
       setLoading('accept');
+      
+      // Criar um objeto de ID com todos os IDs possíveis para aumentar a chance de encontrar o convite
+      const inviteIdentifiers = {
+        inviteId: id,
+        _id: id,
+        originalId: id,
+        dataInviteId: invite.data?.inviteId || id,
+        dataInvite_id: invite.data?.invite?._id?.toString() || id,
+        dataInviteInviteId: invite.data?.invite?.inviteId || id,
+        recipientId: invite.userId || null,
+        lobbyId: lobbyId
+      };
+      
+      console.log('Enviando identificadores para API:', inviteIdentifiers);
       
       // Chamar a API para aceitar o convite
       const response = await fetch('/api/lobby/invite/accept', {
@@ -130,8 +172,13 @@ export default function LobbyInviteNotification({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ inviteId: id }),
+        body: JSON.stringify(inviteIdentifiers),
       });
+      
+      if (!response.ok) {
+        console.error('Erro ao aceitar convite:', response.status, response.statusText);
+        throw new Error(`Erro na resposta: ${response.status} ${response.statusText}`);
+      }
       
       const data = await response.json();
       

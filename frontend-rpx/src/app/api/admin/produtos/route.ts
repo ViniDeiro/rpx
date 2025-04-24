@@ -18,74 +18,6 @@ export interface Product {
   updatedAt?: string;
 }
 
-// Lista de produtos mockados para desenvolvimento
-const mockProducts = [
-  {
-    _id: new ObjectId(),
-    name: 'Insígnia de Ouro RPX',
-    description: 'Uma insígnia especial para jogadores premium',
-    price: 500,
-    category: 'insignia',
-    imageUrl: '/images/produtos/insignia-ouro.png',
-    inStock: true,
-    featured: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    _id: new ObjectId(),
-    name: 'Banner Exclusivo Campeão',
-    description: 'Um banner exclusivo para campeões de torneios',
-    price: 800,
-    category: 'banner',
-    imageUrl: '/images/produtos/banner-campeao.png',
-    inStock: true,
-    featured: false,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    _id: new ObjectId(),
-    name: 'Avatar Personalizado Premium',
-    description: 'Avatar personalizado com efeitos especiais',
-    price: 300,
-    category: 'avatar',
-    imageUrl: '/images/produtos/avatar-premium.png',
-    inStock: true,
-    featured: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
-
-// Categorias mockadas para desenvolvimento
-const mockCategories = [
-  {
-    _id: 'insignia',
-    name: 'Insígnia',
-    description: 'Insígnias e medalhas exclusivas',
-    order: 1
-  },
-  {
-    _id: 'banner',
-    name: 'Banner',
-    description: 'Banners personalizados para o perfil',
-    order: 2
-  },
-  {
-    _id: 'avatar',
-    name: 'Avatar',
-    description: 'Avatares personalizados',
-    order: 3
-  },
-  {
-    _id: 'outro',
-    name: 'Outro',
-    description: 'Outros itens',
-    order: 4
-  }
-];
-
 // Função para validar os dados do produto
 function validateProduct(product: Partial<Product>): string | null {
   if (!product.name || product.name.trim() === "") {
@@ -96,7 +28,13 @@ function validateProduct(product: Partial<Product>): string | null {
     return "Descrição do produto é obrigatória";
   }
 
-  if (product.price === undefined || product.price < 0) {
+  // Verifica se o preço é um número válido
+  if (product.price === undefined || isNaN(Number(product.price))) {
+    return "Preço deve ser um número válido";
+  }
+  
+  // Verifica se o preço é positivo
+  if (Number(product.price) <= 0) {
     return "Preço deve ser um valor positivo";
   }
 
@@ -109,58 +47,67 @@ function validateProduct(product: Partial<Product>): string | null {
 
 // GET - Obter produtos (todos ou por ID)
 export async function GET(request: NextRequest) {
-  // Em ambiente de desenvolvimento, usar dados mock
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Usando dados mock para produtos');
-    
-    // Verificar se há um ID na query
-    const url = new URL(request.url);
-    const id = url.searchParams.get('id');
-    
-    if (id) {
-      // Buscar um produto específico
-      const product = mockProducts.find(p => p._id.toString() === id);
-      
-      if (!product) {
-        return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
-      }
-      
-      return NextResponse.json(product);
-    }
-    
-    // Retornar todos os produtos
-    return NextResponse.json({ products: mockProducts });
-  }
-  
   try {
-    // Verificar autenticação para admin em produção
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    console.log('Recebida solicitação GET para /api/admin/produtos')
+    
+    // Verificar autenticação para admin (bypassa em ambiente de desenvolvimento)
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.isAdmin) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+      }
+    } else {
+      console.log('Ambiente de desenvolvimento: bypassing autenticação para GET');
     }
     
-    const { db } = await connectToDatabase();
-    const collection = db.collection('products');
-    
-    // Verificar se há um ID na query
-    const url = new URL(request.url);
-    const id = url.searchParams.get('id');
-    
-    if (id) {
-      // Buscar um produto específico
-      const product = await collection.findOne({ _id: new ObjectId(id) });
+    try {
+      // Verificar se há um ID na query
+      const url = new URL(request.url);
+      const id = url.searchParams.get('id');
+      console.log('Parâmetro ID:', id || 'nenhum');
       
-      if (!product) {
-        return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
+      // Conectar ao banco de dados
+      const { db } = await connectToDatabase();
+      const collection = db.collection('products');
+      
+      if (id) {
+        // Buscar um produto específico
+        console.log(`Buscando produto específico com ID: ${id}`);
+        try {
+          const product = await collection.findOne({ _id: new ObjectId(id) });
+          
+          if (!product) {
+            console.log(`Produto com ID ${id} não encontrado`);
+            return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
+          }
+          
+          console.log('Produto encontrado com sucesso');
+          return NextResponse.json(product);
+        } catch (idError) {
+          console.error('Erro ao buscar produto por ID:', idError);
+          return NextResponse.json({ error: 'ID de produto inválido' }, { status: 400 });
+        }
       }
       
-      return NextResponse.json(product);
+      // Buscar todos os produtos
+      console.log('Buscando todos os produtos');
+      const products = await collection.find({}).toArray();
+      console.log(`${products.length} produtos encontrados`);
+      
+      return NextResponse.json({ products });
+    } catch (dbError: any) {
+      console.error('Erro no banco de dados:', dbError);
+      
+      // Em desenvolvimento, retornar produtos mockados
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Usando dados mockados em ambiente de desenvolvimento');
+        return NextResponse.json({ 
+          products: [] 
+        });
+      }
+      
+      throw new Error(`Erro no banco de dados: ${dbError.message}`);
     }
-    
-    // Buscar todos os produtos
-    const products = await collection.find({}).toArray();
-    
-    return NextResponse.json({ products });
   } catch (error: any) {
     console.error('Erro ao buscar produtos:', error);
     return NextResponse.json(
@@ -173,69 +120,81 @@ export async function GET(request: NextRequest) {
 // POST - Criar um novo produto
 export async function POST(request: NextRequest) {
   try {
-    // Em ambiente de desenvolvimento, simular criação
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Simulando criação de produto em desenvolvimento');
+    // Verificar autenticação para admin (bypassa em ambiente de desenvolvimento)
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.isAdmin) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+      }
+    } else {
+      console.log('Ambiente de desenvolvimento: bypassing autenticação');
+    }
+    
+    const data = await request.json();
+    console.log('Dados recebidos na API:', data);
+    
+    // Verificar se a imagem foi enviada
+    if (!data.imageUrl) {
+      return NextResponse.json(
+        { error: 'Imagem do produto é obrigatória' },
+        { status: 400 }
+      );
+    }
+    
+    // Validar dados obrigatórios
+    const validationError = validateProduct(data);
+    if (validationError) {
+      return NextResponse.json(
+        { error: validationError },
+        { status: 400 }
+      );
+    }
+    
+    // Validar o tamanho da imagem
+    if (data.imageUrl && typeof data.imageUrl === 'string') {
+      const base64Size = data.imageUrl.length;
+      console.log('Tamanho da imagem base64:', Math.round(base64Size / 1024), 'KB');
       
-      const data = await request.json();
+      if (base64Size > 5000000) { // ~5MB em base64
+        return NextResponse.json(
+          { error: 'A imagem é muito grande. O tamanho máximo é 5MB.' },
+          { status: 400 }
+        );
+      }
+    }
+    
+    try {
+      const { db } = await connectToDatabase();
+      const collection = db.collection('products');
       
-      // Criar um novo produto mock
-      const newProduct = {
-        _id: new ObjectId(),
+      // Criar o produto no banco
+      const result = await collection.insertOne({
         ...data,
         createdAt: new Date(),
         updatedAt: new Date()
-      };
+      });
       
-      // Adicionar ao array de produtos mock (apenas para simulação)
-      mockProducts.push(newProduct);
+      if (!result.insertedId) {
+        return NextResponse.json(
+          { error: 'Falha ao criar produto' },
+          { status: 500 }
+        );
+      }
+      
+      // Buscar o produto recém-criado
+      const newProduct = await collection.findOne({ _id: result.insertedId });
       
       return NextResponse.json(
         { message: 'Produto criado com sucesso', product: newProduct },
         { status: 201 }
       );
-    }
-    
-    // Verificar autenticação para admin em produção
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-    
-    const data = await request.json();
-    
-    // Validar dados obrigatórios
-    if (!data.name || !data.description || !data.price || !data.category) {
+    } catch (dbError: any) {
+      console.error('Erro no banco de dados:', dbError);
       return NextResponse.json(
-        { error: 'Dados incompletos. Nome, descrição, preço e categoria são obrigatórios.' },
-        { status: 400 }
-      );
-    }
-    
-    const { db } = await connectToDatabase();
-    const collection = db.collection('products');
-    
-    // Criar o produto no banco
-    const result = await collection.insertOne({
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    
-    if (!result.insertedId) {
-      return NextResponse.json(
-        { error: 'Falha ao criar produto' },
+        { error: `Erro no banco de dados: ${dbError.message}` },
         { status: 500 }
       );
     }
-    
-    // Buscar o produto recém-criado
-    const newProduct = await collection.findOne({ _id: result.insertedId });
-    
-    return NextResponse.json(
-      { message: 'Produto criado com sucesso', product: newProduct },
-      { status: 201 }
-    );
   } catch (error: any) {
     console.error('Erro ao criar produto:', error);
     return NextResponse.json(
@@ -248,51 +207,17 @@ export async function POST(request: NextRequest) {
 // PUT - Atualizar um produto existente
 export async function PUT(request: NextRequest) {
   try {
-    // Em ambiente de desenvolvimento, simular atualização
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Simulando atualização de produto em desenvolvimento');
-      
-      const url = new URL(request.url);
-      const id = url.searchParams.get('id');
-      
-      if (!id) {
-        return NextResponse.json(
-          { error: 'ID do produto não fornecido' },
-          { status: 400 }
-        );
+    // Verificar autenticação para admin (bypassa em ambiente de desenvolvimento)
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.isAdmin) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
       }
-      
-      const data = await request.json();
-      
-      // Encontrar o produto no array mock
-      const index = mockProducts.findIndex(p => p._id.toString() === id);
-      
-      if (index === -1) {
-        return NextResponse.json(
-          { error: 'Produto não encontrado' },
-          { status: 404 }
-        );
-      }
-      
-      // Atualizar o produto mock
-      mockProducts[index] = {
-        ...mockProducts[index],
-        ...data,
-        updatedAt: new Date()
-      };
-      
-      return NextResponse.json({
-        message: 'Produto atualizado com sucesso',
-        product: mockProducts[index]
-      });
+    } else {
+      console.log('Ambiente de desenvolvimento: bypassing autenticação para PUT');
     }
     
-    // Verificar autenticação para admin em produção
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-    
+    // Extrair ID do parâmetro de consulta
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     
@@ -304,35 +229,63 @@ export async function PUT(request: NextRequest) {
     }
     
     const data = await request.json();
+    console.log('Dados recebidos para atualização:', data);
+    
+    // Validar dados obrigatórios
+    const validationError = validateProduct(data);
+    if (validationError) {
+      return NextResponse.json(
+        { error: validationError },
+        { status: 400 }
+      );
+    }
+    
+    // Validar o tamanho da imagem se estiver sendo atualizada
+    if (data.imageUrl && typeof data.imageUrl === 'string' && data.imageUrl.startsWith('data:image/')) {
+      const base64Size = data.imageUrl.length;
+      console.log('Tamanho da imagem base64:', Math.round(base64Size / 1024), 'KB');
+      
+      if (base64Size > 5000000) { // ~5MB em base64
+        return NextResponse.json(
+          { error: 'A imagem é muito grande. O tamanho máximo é 5MB.' },
+          { status: 400 }
+        );
+      }
+    }
     
     const { db } = await connectToDatabase();
     const collection = db.collection('products');
     
     // Verificar se o produto existe
-    const product = await collection.findOne({ _id: new ObjectId(id) });
-    
-    if (!product) {
+    const existingProduct = await collection.findOne({ _id: new ObjectId(id) });
+    if (!existingProduct) {
       return NextResponse.json(
         { error: 'Produto não encontrado' },
         { status: 404 }
       );
     }
     
-    // Atualizar o produto
+    // Preparar os dados para atualização
+    const updateData = {
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    // Remover o _id se estiver presente para evitar tentativa de modificação
+    if (updateData._id) {
+      delete updateData._id;
+    }
+    
+    // Atualizar o produto no banco
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      {
-        $set: {
-          ...data,
-          updatedAt: new Date()
-        }
-      }
+      { $set: updateData }
     );
     
     if (result.matchedCount === 0) {
       return NextResponse.json(
-        { error: 'Falha ao atualizar produto' },
-        { status: 500 }
+        { error: 'Produto não encontrado' },
+        { status: 404 }
       );
     }
     
@@ -352,49 +305,23 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Remover um produto
+// DELETE - Excluir um produto
 export async function DELETE(request: NextRequest) {
   try {
-    // Em ambiente de desenvolvimento, simular exclusão
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Simulando exclusão de produto em desenvolvimento');
-      
-      const url = new URL(request.url);
-      const id = url.searchParams.get('id');
-      
-      if (!id) {
-        return NextResponse.json(
-          { error: 'ID do produto não fornecido' },
-          { status: 400 }
-        );
+    // Verificar autenticação para admin (bypassa em ambiente de desenvolvimento)
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.isAdmin) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
       }
-      
-      // Encontrar o produto no array mock
-      const index = mockProducts.findIndex(p => p._id.toString() === id);
-      
-      if (index === -1) {
-        return NextResponse.json(
-          { error: 'Produto não encontrado' },
-          { status: 404 }
-        );
-      }
-      
-      // Remover o produto do array mock
-      mockProducts.splice(index, 1);
-      
-      return NextResponse.json({
-        message: 'Produto excluído com sucesso'
-      });
+    } else {
+      console.log('Ambiente de desenvolvimento: bypassing autenticação para DELETE');
     }
     
-    // Verificar autenticação para admin em produção
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-    
+    // Extrair ID do parâmetro de consulta
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
+    console.log('Solicitação para excluir produto com ID:', id);
     
     if (!id) {
       return NextResponse.json(
@@ -407,16 +334,15 @@ export async function DELETE(request: NextRequest) {
     const collection = db.collection('products');
     
     // Verificar se o produto existe
-    const product = await collection.findOne({ _id: new ObjectId(id) });
-    
-    if (!product) {
+    const existingProduct = await collection.findOne({ _id: new ObjectId(id) });
+    if (!existingProduct) {
       return NextResponse.json(
         { error: 'Produto não encontrado' },
         { status: 404 }
       );
     }
     
-    // Remover o produto
+    // Excluir o produto
     const result = await collection.deleteOne({ _id: new ObjectId(id) });
     
     if (result.deletedCount === 0) {
@@ -427,7 +353,8 @@ export async function DELETE(request: NextRequest) {
     }
     
     return NextResponse.json({
-      message: 'Produto excluído com sucesso'
+      message: 'Produto excluído com sucesso',
+      id: id
     });
   } catch (error: any) {
     console.error('Erro ao excluir produto:', error);

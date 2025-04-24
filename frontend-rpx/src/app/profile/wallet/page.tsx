@@ -8,22 +8,15 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Interface para definir o tipo de Transaction
 interface Transaction {
-  id: number;
+  id: string;
   type: string;
   amount: number;
   status: string;
   date: string;
   method?: string; // Propriedade opcional
+  description?: string;
+  reference?: string;
 }
-
-// Dados fictícios de exemplo para transações
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 1, type: 'deposit', amount: 100, status: 'completed', date: '2023-11-15T14:22:00', method: 'pix' },
-  { id: 2, type: 'withdrawal', amount: 50, status: 'completed', date: '2023-11-12T10:15:00', method: 'pix' },
-  { id: 3, type: 'deposit', amount: 200, status: 'completed', date: '2023-11-10T18:35:00', method: 'card' },
-  { id: 4, type: 'match_win', amount: 120, status: 'completed', date: '2023-11-08T15:40:00' },
-  { id: 5, type: 'match_bet', amount: 50, status: 'completed', date: '2023-11-08T14:20:00' },
-];
 
 export default function WalletPage() {
   const router = useRouter();
@@ -31,16 +24,31 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [error, setError] = useState<string | null>(null);
 
-  // Simular carregamento de transações
+  // Carregar transações reais da API
   useEffect(() => {
     if (isAuthenticated) {
       const loadTransactions = async () => {
         setIsTransactionsLoading(true);
-        // Em produção, seria uma chamada real à API
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setTransactions(MOCK_TRANSACTIONS);
-        setIsTransactionsLoading(false);
+        setError(null);
+        
+        try {
+          const response = await fetch('/api/wallet/transactions');
+          
+          if (!response.ok) {
+            throw new Error('Falha ao carregar transações');
+          }
+          
+          const data = await response.json();
+          setTransactions(data.transactions || []);
+        } catch (err) {
+          console.error('Erro ao carregar transações:', err);
+          setError('Não foi possível carregar suas transações. Tente novamente mais tarde.');
+          setTransactions([]);
+        } finally {
+          setIsTransactionsLoading(false);
+        }
       };
       
       loadTransactions();
@@ -67,7 +75,10 @@ export default function WalletPage() {
   // Filtrar transações com base na tab ativa
   const filteredTransactions = transactions.filter(transaction => {
     if (activeTab === 'all') return true;
-    return transaction.type.includes(activeTab);
+    if (activeTab === 'deposits') return transaction.type.includes('deposit');
+    if (activeTab === 'withdrawals') return transaction.type.includes('withdrawal');
+    if (activeTab === 'matches') return transaction.type.includes('match');
+    return false;
   });
 
   // Renderiza o ícone correto para cada tipo de transação
@@ -95,8 +106,14 @@ export default function WalletPage() {
   }
 
   // Obter texto descritivo do tipo de transação
-  const getTransactionDescriptionText = (type: string): string => {
-    switch (type) {
+  const getTransactionDescriptionText = (transaction: Transaction): string => {
+    // Se a transação já tiver uma descrição, usá-la
+    if (transaction.description) {
+      return transaction.description;
+    }
+    
+    // Caso contrário, usar o tipo para gerar uma descrição
+    switch (transaction.type) {
       case 'deposit':
         return 'Depósito na carteira';
       case 'withdrawal':
@@ -107,6 +124,22 @@ export default function WalletPage() {
         return 'Aposta em partida';
       default:
         return 'Transação';
+    }
+  };
+
+  // Mapear status para texto legível
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'completed':
+        return 'Concluído';
+      case 'pending':
+        return 'Pendente';
+      case 'failed':
+        return 'Falhou';
+      case 'refunded':
+        return 'Reembolsado';
+      default:
+        return status;
     }
   };
 
@@ -205,6 +238,10 @@ export default function WalletPage() {
               <div className="p-8 flex justify-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
+            ) : error ? (
+              <div className="p-8 text-center text-red-400">
+                {error}
+              </div>
             ) : filteredTransactions.length > 0 ? (
               filteredTransactions.map((transaction) => (
                 <div key={transaction.id} className="p-4 hover:bg-card-hover transition-colors">
@@ -214,21 +251,28 @@ export default function WalletPage() {
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">
-                        {getTransactionDescriptionText(transaction.type)}
+                        {getTransactionDescriptionText(transaction)}
                         {transaction.method && (
                           <span className="text-sm text-gray-400 ml-2">
-                            via {transaction.method === 'pix' ? 'PIX' : 'Cartão'}
+                            via {transaction.method === 'pix' ? 'PIX' : transaction.method === 'credit_card' ? 'Cartão' : transaction.method}
                           </span>
                         )}
                       </div>
                       <div className="text-sm text-gray-400">
                         {formatDate(transaction.date)}
+                        {transaction.reference && (
+                          <span className="ml-2">#{transaction.reference}</span>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
                       {renderTransactionAmount(transaction.type, transaction.amount)}
-                      <div className="text-xs text-gray-400 mt-1">
-                        {transaction.status === 'completed' ? 'Concluído' : 'Pendente'}
+                      <div className={`text-xs mt-1 ${
+                        transaction.status === 'completed' ? 'text-green-400' : 
+                        transaction.status === 'pending' ? 'text-yellow-400' : 
+                        'text-red-400'
+                      }`}>
+                        {getStatusText(transaction.status)}
                       </div>
                     </div>
                   </div>
@@ -237,26 +281,33 @@ export default function WalletPage() {
             ) : (
               <div className="p-8 text-center text-gray-400">
                 Nenhuma transação encontrada.
+                <div className="mt-2">
+                  <Link href="/profile/wallet/deposit" className="text-primary hover:underline">
+                    Faça seu primeiro depósito!
+                  </Link>
+                </div>
               </div>
             )}
           </div>
           
-          {/* Paginação (simplificada) */}
-          <div className="p-4 border-t border-gray-700 flex justify-between items-center">
-            <button 
-              className="px-3 py-1 text-sm bg-card-hover rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled
-            >
-              Anterior
-            </button>
-            <span className="text-sm text-gray-400">Página 1 de 1</span>
-            <button 
-              className="px-3 py-1 text-sm bg-card-hover rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled
-            >
-              Próxima
-            </button>
-          </div>
+          {/* Paginação */}
+          {filteredTransactions.length > 0 && (
+            <div className="p-4 border-t border-gray-700 flex justify-between items-center">
+              <button 
+                className="px-3 py-1 text-sm bg-card-hover rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+              >
+                Anterior
+              </button>
+              <span className="text-sm text-gray-400">Página 1 de 1</span>
+              <button 
+                className="px-3 py-1 text-sm bg-card-hover rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+              >
+                Próxima
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export const Sidebar: React.FC = () => {
   
   const mainLinks: SidebarLink[] = [
     { href: '/', label: 'Início', icon: Home },
-    { href: '/matches', label: 'Partidas', icon: Users },
+    { href: '/matches', label: 'Desafios', icon: Users },
     { href: '/tournaments', label: 'Torneios', icon: Award },
     { href: '/ranking', label: 'Rankings', icon: BarChart2 },
     { href: '/store', label: 'Loja', icon: ShoppingBag },

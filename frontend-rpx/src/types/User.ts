@@ -5,6 +5,15 @@ export interface User {
   image?: string;
   username?: string;
   role?: string;
+  bio?: string;
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    facebook?: string;
+    youtube?: string;
+    twitch?: string;
+    discord?: string;
+  };
   status?: 'online' | 'offline' | 'away' | 'busy';
   createdAt?: string;
   updatedAt?: string;

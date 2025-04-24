@@ -28,86 +28,64 @@ let isConnected = false;
 
 export async function connectToDatabase(): Promise<DatabaseConnection> {
   try {
-    // Se já estamos conectados, retornar a conexão existente, mas com verificação mais rigorosa
+    // Se já estamos conectados, retornar a conexão existente
     if (isConnected && mongoose.connection && mongoose.connection.readyState === 1) {
       console.log('⚙️ Usando conexão MongoDB existente');
-      
-      // Verificação mais rigorosa para garantir que a conexão está ativa
-      try {
-        if (mongoose.connection.db) {
-          // Verificação mais rápida que não requer privilégios de admin
-          await (mongoose.connection.db.collection('lobbies') as unknown as MongoDBCollectionCompat).stats();
-          console.log('✅ Conexão MongoDB verificada e funcionando');
-        } else {
-          throw new Error('connection.db não está disponível');
-        }
-      } catch (pingError) {
-        console.warn('⚠️ Conexão existente falhou na verificação, reconectando...', pingError);
-        // Forçar reconexão
-        isConnected = false;
-        try {
-          await mongoose.disconnect();
-        } catch (disconnectError) {
-          console.warn('Erro ao desconectar, ignorando:', disconnectError);
-        }
-        cachedConnection = null;
-      }
-      
-      if (isConnected) {
         return { 
           db: mongoose.connection.db as unknown as Db
         };
-      }
     }
 
     console.log('🔄 Estabelecendo nova conexão com MongoDB');
     
-    // String de conexão Atlas com timeout aumentado
-    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://vinideirolopess:c7MVBr6XpIkQwGaZ@cluster0.vocou4s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0&connectTimeoutMS=30000&socketTimeoutMS=45000';
+    // Remover parâmetros adicionais que podem estar causando problemas
+    // e adicionar parâmetros para lidar com problemas de ReplicaSetNoPrimary
+    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://vinideirolopess:c7MVBr6XpIkQwGaZ@cluster0.vocou4s.mongodb.net/?retryWrites=true&w=majority';
     
-    if (!MONGODB_URI) {
+    // Modificar a URI para incluir opções que aumentam a tolerância a falhas de ReplicaSet
+    const modifiedUri = MONGODB_URI.includes('?') 
+      ? `${MONGODB_URI}&readPreference=primaryPreferred&directConnection=false&retryReads=true&maxIdleTimeMS=150000&serverSelectionTimeoutMS=15000`
+      : `${MONGODB_URI}?readPreference=primaryPreferred&directConnection=false&retryReads=true&maxIdleTimeMS=150000&serverSelectionTimeoutMS=15000`;
+    
+    if (!modifiedUri) {
       throw new Error('A URI do MongoDB não está definida no ambiente');
     }
     
     // Log seguro da URI (ocultando senha)
-    const sanitizedUri = MONGODB_URI.replace(/\/\/(.*):(.*)@/, '//***:***@');
-    console.log(`📡 Conectando ao MongoDB: ${sanitizedUri}`);
-    
-    // Obter o nome do banco de dados da URI
-    const dbName = process.env.MONGODB_DB || 'rpx-database';
-    console.log(`📂 Banco de dados: ${dbName}`);
+    const sanitizedUri = modifiedUri.replace(/\/\/(.*):(.*)@/, '//***:***@');
+    console.log(`📡 Conectando ao MongoDB com preferência de leitura primaryPreferred: ${sanitizedUri}`);
     
     // Limpar conexões anteriores
-    if (mongoose.connection && mongoose.connection.readyState !== 0) { // 0 = disconnected
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
       console.log('🧹 Limpando conexões anteriores...');
       try {
         await mongoose.disconnect();
-        // Esperar um pouco para garantir que a desconexão seja processada
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (disconnectError) {
         console.warn('⚠️ Erro ao desconectar, prosseguindo mesmo assim:', disconnectError);
       }
     }
     
-    // Configurar opções do mongoose com valores mais altos
+    // Configurar opções do mongoose
     mongoose.set('strictQuery', false);
     
-    // Configurações mais robustas para conexão
+    // Configurações otimizadas para lidar com problemas de ReplicaSetNoPrimary
     const options = {
-      serverSelectionTimeoutMS: 30000, // 30 segundos para seleção do servidor
-      connectTimeoutMS: 30000,         // 30 segundos para estabelecer conexão
-      socketTimeoutMS: 60000,          // 60 segundos para timeout de socket
-      maxPoolSize: 20,                 // Máximo de conexões no pool (aumentado)
-      minPoolSize: 5,                  // Mínimo de conexões no pool (aumentado)
-      retryWrites: true,               // Tentar reescrever operações que falharam
-      retryReads: true,                // Tentar reler operações que falharam
-      autoIndex: false,                // Não criar índices automaticamente (melhora performance)
-      family: 4,                       // Forçar IPv4
+      serverSelectionTimeoutMS: 15000,  // Aumentado para 15 segundos
+      connectTimeoutMS: 10000,          // Mantido em 10 segundos
+      socketTimeoutMS: 45000,           // Aumentado para 45 segundos
+      maxPoolSize: 10,                  // Mantido em 10 conexões
+      minPoolSize: 1,                   // Começar com 1 conexão
+      retryWrites: true,                // Tentar reescrever operações que falharam
+      retryReads: true,                 // Tentar reler operações que falharam
+      heartbeatFrequencyMS: 10000,      // Verificar a saúde do cluster a cada 10 segundos
+      family: 4,                        // Forçar IPv4
+      readPreference: 'primaryPreferred' as const // Especificar como ReadPreferenceMode
     };
     
     console.log('🚀 Iniciando conexão com MongoDB...');
     
-    // Monitorar progresso da conexão com eventos
+    // Adicionar manipuladores de eventos para monitorar a conexão
     mongoose.connection.on('connecting', () => {
       console.log('🔄 Conectando ao MongoDB...');
     });
@@ -115,113 +93,68 @@ export async function connectToDatabase(): Promise<DatabaseConnection> {
     mongoose.connection.on('connected', () => {
       console.log('✅ Conectado ao MongoDB!');
     });
+    
+    mongoose.connection.on('disconnected', () => {
+      console.log('⚠️ Desconectado do MongoDB');
+    });
 
     mongoose.connection.on('error', (err) => {
       console.error('❌ Erro na conexão MongoDB:', err);
+      
+      // Verificar se é um erro de ReplicaSetNoPrimary e logar informações adicionais
+      if (err.message && err.message.includes('ReplicaSetNoPrimary')) {
+        console.error('⚠️ Erro de ReplicaSetNoPrimary detectado. Tentando novamente com preferência de leitura secundária...');
+      }
     });
     
-    // Tentar conexão com retry automático (5 tentativas - mais tentativas)
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    // Tente conectar com retry manual
+    let connected = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!connected && attempts < maxAttempts) {
+      attempts++;
       try {
-        console.log(`🔄 Tentativa de conexão ${attempt} de 5...`);
-        await mongoose.connect(MONGODB_URI, options);
-        console.log(`✅ Conexão realizada na tentativa ${attempt}`);
-        break; // Se a conexão for bem-sucedida, saímos do loop
-      } catch (connError) {
-        console.error(`❌ Falha na tentativa ${attempt}:`, connError);
+        console.log(`🔄 Tentativa de conexão ${attempts}/${maxAttempts}...`);
+        await mongoose.connect(modifiedUri, options);
+        console.log('✅ Conectado ao MongoDB!');
+        connected = true;
+      } catch (connError: any) {
+        console.error(`❌ Falha na tentativa ${attempts}:`, connError.message);
         
-        if (attempt === 5) {
-          console.error('❌ Todas as tentativas falharam');
-          throw connError; // Propagar o erro na última tentativa
+        // Verificar se é um erro de ReplicaSetNoPrimary
+        if (connError.message && connError.message.includes('ReplicaSetNoPrimary')) {
+          console.log('⚠️ Problema de ReplicaSetNoPrimary detectado, aguardando e tentando novamente...');
         }
         
-        // Esperar antes da próxima tentativa (crescimento exponencial do tempo de espera)
-        const delayMs = Math.pow(2, attempt) * 1000;
+        if (attempts === maxAttempts) {
+          console.error('❌ Todas as tentativas falharam');
+          throw connError;
+        }
+        
+        // Esperar antes da próxima tentativa
+        const delayMs = 2000 * attempts; // Aumentar o tempo de espera a cada tentativa
         console.log(`⏱️ Aguardando ${delayMs}ms antes da próxima tentativa...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
     
-    // Verificar se a conexão está disponível
-    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-      throw new Error('Falha ao conectar ao MongoDB: conexão não estabelecida');
-    }
-    
-    if (!mongoose.connection.db) {
-      throw new Error('Falha ao conectar ao MongoDB: db não disponível');
-    }
-    
-    // Verificar explicitamente se a conexão está funcional acessando a coleção lobbies
-    try {
-      await (mongoose.connection.db.collection('lobbies') as unknown as MongoDBCollectionCompat).stats();
-      console.log('✅ Conexão verificada com sucesso através de acesso à coleção lobbies');
-    } catch (accessError) {
-      console.warn('⚠️ Aviso: Não foi possível verificar acesso à coleção lobbies:', accessError);
-      // Continuar mesmo assim, pode ser que a coleção ainda não exista
-    }
-    
     // Cache da conexão
     cachedConnection = mongoose.connection;
     isConnected = true;
-    console.log(`🎉 MongoDB conectado com sucesso ao banco ${dbName}`);
     
-    // Retornar a conexão real
+    // Retornar a conexão
     return {
       db: mongoose.connection.db as unknown as Db
     };
   } catch (error) {
-    console.error('❌ Erro fatal ao conectar ao MongoDB:', error);
-    // Registrar o erro detalhado para troubleshooting
-    if (error instanceof Error) {
-      console.error('📋 Detalhes do erro:', error.message);
-      console.error('🔍 Stack trace:', error.stack);
-    }
+    console.error('❌ Erro ao conectar ao MongoDB:', error);
     
     // Redefinir flags de conexão em caso de erro
     isConnected = false;
     cachedConnection = null;
     
-    // Criar uma conexão mínima para não quebrar APIs
-    console.warn('⚠️ Retornando modo de compatibilidade para o banco de dados');
-    
-    // Importante: em vez de propagar o erro, retornar um objeto db simulado que não quebrará a aplicação
-    // Isso permitirá que a aplicação continue funcionando mesmo com erro de conexão
-    return {
-      db: {
-        collection: (name: string) => ({
-          find: () => ({ 
-            toArray: async () => {
-              console.log(`🔶 MODO COMPATIBILIDADE: Simulando find em ${name}`);
-              return [];
-            }
-          }),
-          findOne: async () => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando findOne em ${name}`);
-            return null;
-          },
-          insertOne: async (doc: any) => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando insertOne em ${name}`, doc);
-            return { insertedId: 'simulated-id-' + Date.now() };
-          },
-          updateOne: async () => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando updateOne em ${name}`);
-            return { modifiedCount: 1 };
-          },
-          deleteOne: async () => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando deleteOne em ${name}`);
-            return { deletedCount: 1 };
-          },
-          updateMany: async () => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando updateMany em ${name}`);
-            return { modifiedCount: 1 };
-          },
-          stats: async () => {
-            console.log(`🔶 MODO COMPATIBILIDADE: Simulando stats em ${name}`);
-            return {};
-          }
-        })
-      } as unknown as Db
-    };
+    throw error; // Propagar o erro para ser tratado pelo chamador
   }
 }
 

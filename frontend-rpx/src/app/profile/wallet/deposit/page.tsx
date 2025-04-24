@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { DollarSign, CreditCard, ArrowLeft } from 'react-feather';
+import { DollarSign, CreditCard, ArrowLeft, AlertTriangle } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Opções de pagamento
@@ -27,6 +27,7 @@ export default function DepositPage() {
   const [customAmount, setCustomAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Manipulador para valor personalizado
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,21 +51,48 @@ export default function DepositPage() {
   // Processar depósito
   const handleDeposit = async () => {
     if (amount <= 0) {
-      alert('Por favor, selecione um valor válido');
+      setError('Por favor, selecione um valor válido');
+      return;
+    }
+
+    if (amount < 10) {
+      setError('O valor mínimo para depósito é R$ 10,00');
       return;
     }
 
     setIsProcessing(true);
+    setError(null);
     
     try {
-      // Simular processamento
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/wallet/deposit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          paymentMethod,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao processar depósito');
+      }
+      
+      const data = await response.json();
+      
+      // Se tiver URL de redirecionamento, redirecionar para a página do Mercado Pago
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
       
       // Redirecionar para página de sucesso
       router.push('/profile/wallet/deposit/success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao processar depósito:', error);
-      alert('Ocorreu um erro ao processar seu depósito. Tente novamente mais tarde.');
+      setError(error.message || 'Ocorreu um erro ao processar seu depósito. Tente novamente mais tarde.');
     } finally {
       setIsProcessing(false);
     }
@@ -104,6 +132,13 @@ export default function DepositPage() {
                 <span className="font-bold text-xl text-primary">{formatCurrency(user?.balance || 0)}</span>
               </div>
             </div>
+
+            {error && (
+              <div className="bg-red-900/30 border border-red-500/30 rounded-md p-4 mb-6 flex items-start">
+                <AlertTriangle className="text-red-400 mr-3 flex-shrink-0 mt-0.5" size={18} />
+                <p className="text-red-200 text-sm">{error}</p>
+              </div>
+            )}
 
             <h2 className="font-bold mb-4">Escolha o valor para depósito</h2>
             
@@ -211,10 +246,11 @@ export default function DepositPage() {
             <div>
               <h3 className="font-medium text-blue-400">Informações de depósito:</h3>
               <ul className="mt-2 text-sm text-gray-300 space-y-1">
-                <li>• O valor mínimo para depósito é de R$ 20,00</li>
+                <li>• O valor mínimo para depósito é de R$ 10,00</li>
                 <li>• Depósitos via PIX são processados imediatamente</li>
                 <li>• Depósitos com cartão podem levar até 1 hora para serem processados</li>
                 <li>• Você será redirecionado para a página de pagamento após confirmar</li>
+                <li>• Em caso de problemas, entre em contato com o suporte</li>
               </ul>
             </div>
           </div>

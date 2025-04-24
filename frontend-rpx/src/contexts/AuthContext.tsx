@@ -21,6 +21,15 @@ type User = {
   achievements?: string[];
   purchases?: string[];
   avatarUrl?: string; // URL da imagem de avatar personalizada
+  bio?: string; // Biografia do usuário
+  socialLinks?: {
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    twitch?: string;
+    youtube?: string;
+    discord?: string;
+  };
   profile?: {
     name?: string;
     avatar?: string;
@@ -59,8 +68,10 @@ export interface AuthContextType {
   register: (userData: any) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User> & { currentPassword?: string, newPassword?: string }) => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => Promise<void>; // Novo método para atualizar perfil
   updateCustomization: (type: 'avatar' | 'banner', itemId: string) => Promise<void>;
   updateUserAvatar: (file: File) => Promise<void>; // Nova função para fazer upload de avatar
+  refreshUser: () => Promise<void>; // Nova função para atualizar os dados do usuário
 }
 
 // Criando o contexto
@@ -141,6 +152,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (userData) {
             console.log('Perfil carregado com sucesso:', userData.id);
             console.log('Dados do perfil:', JSON.stringify(userData, null, 2));
+            
+            // Pré-carregar a imagem do avatar para evitar problemas de carregamento
+            if (userData.avatarUrl) {
+              try {
+                await preloadImage(userData.avatarUrl);
+                console.log('Avatar pré-carregado com sucesso');
+              } catch (error) {
+                console.warn('Erro ao pré-carregar avatar:', error);
+              }
+            }
+            
             setUser(userData);
             setIsAuthenticated(true);
             
@@ -214,6 +236,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
+      // Verificar campos obrigatórios
+      if (!email || !password) {
+        throw new Error('Email e senha são obrigatórios');
+      }
+
+      console.log('Iniciando processo de login para:', email);
+      
       // Fazer a requisição para a API
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -223,56 +252,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       
+      // Se a resposta não for OK, tentar obter a mensagem de erro da API
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Credenciais inválidas');
+        const errorMessage = errorData.error || errorData.message || `Erro no login (${response.status})`;
+        console.error('Resposta de erro da API:', errorMessage);
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      // Tentar processar a resposta
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Erro ao processar resposta JSON:', jsonError);
+        throw new Error('Resposta inválida do servidor');
+      }
+      
+      // Verificar se a resposta contém um token
+      if (!data.token) {
+        console.error('Resposta não contém token:', data);
+        throw new Error('Resposta de login inválida: token não encontrado');
+      }
+      
+      // Verificar se a resposta contém os dados do usuário
+      if (!data.user) {
+        console.error('Resposta não contém dados do usuário:', data);
+        throw new Error('Resposta de login inválida: dados do usuário não encontrados');
+      }
       
       // Salvar o token no localStorage e no estado
-      if (data.token) {
-        localStorage.setItem('auth_token', data.token);
-        setToken(data.token);
-        
-        // Definir o usuário e estado de autenticação
-        if (data.user) {
-          setUser(data.user);
-          setIsAuthenticated(true);
-          
-          // Sincronizar com NextAuth
-          try {
-            const syncResponse = await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ 
-                userId: data.user.id,
-                email: data.user.email,
-                name: data.user.name || data.user.username,
-                image: data.user.avatarUrl
-              }),
-            });
-            
-            if (!syncResponse.ok) {
-              console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
-            }
-          } catch (error) {
-            console.warn('Erro ao sincronizar com NextAuth:', error);
-            // Continuar mesmo se a sincronização falhar
-          }
-          
-          return { success: true };
+      localStorage.setItem('auth_token', data.token);
+      setToken(data.token);
+      
+      // Pré-carregar a imagem do avatar para evitar problemas de carregamento
+      if (data.user.avatarUrl) {
+        try {
+          await preloadImage(data.user.avatarUrl);
+          console.log('Avatar pré-carregado com sucesso');
+        } catch (error) {
+          console.warn('Erro ao pré-carregar avatar:', error);
         }
       }
       
-      throw new Error('Resposta de login inválida');
+      // Definir o usuário e estado de autenticação
+      setUser(data.user);
+      setIsAuthenticated(true);
+      
+      // Sincronizar com NextAuth
+      try {
+        const syncResponse = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            userId: data.user.id,
+            email: data.user.email,
+            name: data.user.name || data.user.username,
+            image: data.user.avatarUrl
+          }),
+        });
+        
+        if (!syncResponse.ok) {
+          console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
+        }
+      } catch (error) {
+        console.warn('Erro ao sincronizar com NextAuth:', error);
+        // Continuar mesmo se a sincronização falhar
+      }
+      
+      console.log('Login realizado com sucesso para:', email);
+      return { success: true };
     } catch (error) {
       console.error('Erro no login:', error);
+      
+      // Tratar erro para apresentar mensagem mais amigável
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido no login';
+      
+      // Verificar tipos específicos de erro para mensagens mais claras
+      let friendlyMessage = errorMessage;
+      if (errorMessage.includes('MongoServerSelection') || errorMessage.includes('connect')) {
+        friendlyMessage = 'Erro de conexão com o banco de dados. Verifique sua conexão com a internet.';
+      } else if (errorMessage.includes('credenciais') || errorMessage.includes('inválidas')) {
+        friendlyMessage = 'Email ou senha incorretos. Por favor, tente novamente.';
+      }
+      
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Erro desconhecido no login' 
+        error: friendlyMessage
       };
     } finally {
       setIsLoading(false);
@@ -374,6 +442,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       return updatedUser;
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Adicionar a função updateUserProfile após updateUser
+  const updateUserProfile = async (userData: Partial<User>) => {
+    if (!token) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao atualizar perfil');
+      }
+
+      const data = await response.json();
+      
+      // Atualizar o usuário no contexto
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        return { ...prevUser, ...data.user };
+      });
+
+      console.log('Perfil atualizado com sucesso');
+      return data;
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
       throw error;
@@ -545,20 +653,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Função para atualizar os dados do usuário
+  const refreshUser = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Verificar se o usuário está autenticado
+      if (!isAuthenticated) {
+        throw new Error('Usuário não autenticado');
+      }
+      
+      // Verificar se o token é válido
+      if (!token) {
+        throw new Error('Token inválido');
+      }
+      
+      // Fazer uma requisição para a API para atualizar os dados do usuário
+      const response = await fetch('/api/users/profile', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar os dados do usuário');
+      }
+      
+      const data = await response.json();
+      
+      // Verificar se a resposta contém os dados do usuário
+      if (!data.user) {
+        throw new Error('Dados do usuário não encontrados');
+      }
+      
+      // Atualizar o estado do usuário
+      setUser(data.user);
+      
+      console.log('Dados do usuário atualizados com sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar os dados do usuário:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
-        isAuthenticated: !!user,
+        isAuthenticated,
         isLoading,
-        isSimulatedMode: false, // Sempre retorna false
+        isSimulatedMode,
         login,
         register,
         logout,
         updateUser,
+        updateUserProfile,
         updateCustomization,
         updateUserAvatar,
+        refreshUser,
       }}
     >
       {children}

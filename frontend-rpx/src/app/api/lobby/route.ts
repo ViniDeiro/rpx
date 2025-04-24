@@ -90,7 +90,42 @@ export async function POST(request: NextRequest) {
     const userObjectId = new ObjectId(userId);
     const now = new Date();
     
+    // Verificar se já existe um lobby fixo para este usuário
+    // Usamos o ID do usuário como base para o ID do lobby
+    const fixedLobbyId = new ObjectId(userId);
+    
+    // Verificar se já existe um lobby com esse ID
+    const existingLobby = await db.collection('lobbies').findOne({ _id: fixedLobbyId });
+    
+    if (existingLobby) {
+      // Se o lobby já existe, apenas retornar o ID dele
+      console.log(`Lobby fixo já existe para o usuário ${userId}, ID: ${fixedLobbyId}`);
+      
+      // Atualizar dados do lobby existente
+      await db.collection('lobbies').updateOne(
+        { _id: fixedLobbyId },
+        { 
+          $set: {
+            status: 'active',
+            lobbyType: body.lobbyType,
+            maxPlayers: maxPlayers,
+            gameMode: body.gameMode || 'casual',
+            updatedAt: now,
+            settings: body.settings || {}
+          }
+        }
+      );
+      
+      return NextResponse.json({
+        status: 'success',
+        message: 'Lobby existente atualizado',
+        lobbyId: fixedLobbyId.toString()
+      });
+    }
+    
+    // Se não existe, criar um novo lobby com o ID fixo
     const lobbyData = {
+      _id: fixedLobbyId, // Usar ID fixo baseado no ID do usuário
       name: body.name || `Lobby de ${userId}`,
       owner: userObjectId,
       members: [userObjectId], // Proprietário já é um membro
@@ -103,6 +138,8 @@ export async function POST(request: NextRequest) {
       readyMembers: [], // Ninguém está pronto no início
       settings: body.settings || {}
     };
+    
+    console.log(`Criando lobby fixo para usuário ${userId}, ID: ${fixedLobbyId}`);
     
     // Inserir no banco de dados
     const result = await db.collection('lobbies').insertOne(lobbyData);

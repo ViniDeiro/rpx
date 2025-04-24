@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
+  userNumber: number; // ID sequencial
   name: string;
   email: string;
   password: string;
@@ -10,6 +11,15 @@ export interface IUser extends Document {
   phone?: string;
   avatarUrl?: string;
   bannerUrl?: string;
+  bio?: string;
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    facebook?: string;
+    youtube?: string;
+    twitch?: string;
+    discord?: string;
+  };
   balance: number;
   friends: mongoose.Types.ObjectId[];
   pendingFriendRequests: mongoose.Types.ObjectId[];
@@ -26,10 +36,30 @@ export interface IUser extends Document {
 
 interface UserModel extends mongoose.Model<IUser> {
   hashPassword(password: string): Promise<string>;
+  getNextUserNumber(): Promise<number>;
+}
+
+// Esquema de contador para gerar IDs sequenciais
+const counterSchema = new Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+
+// Modelo global para o contador (compatível com Next.js)
+let Counter: mongoose.Model<any>;
+try {
+  Counter = mongoose.model('Counter');
+} catch (e) {
+  Counter = mongoose.model('Counter', counterSchema);
 }
 
 const UserSchema = new Schema<IUser>(
   {
+    userNumber: {
+      type: Number,
+      unique: true,
+      required: true
+    },
     name: {
       type: String,
       required: [true, 'Nome é obrigatório'],
@@ -74,6 +104,19 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: null,
     },
+    bio: {
+      type: String,
+      default: '',
+      maxlength: [500, 'A biografia deve ter no máximo 500 caracteres']
+    },
+    socialLinks: {
+      instagram: { type: String, default: '' },
+      twitter: { type: String, default: '' },
+      facebook: { type: String, default: '' },
+      youtube: { type: String, default: '' },
+      twitch: { type: String, default: '' },
+      discord: { type: String, default: '' }
+    },
     balance: {
       type: Number,
       default: 500, // Saldo inicial para novos usuários
@@ -94,8 +137,27 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
+// Método estático para buscar o próximo número na sequência
+UserSchema.statics.getNextUserNumber = async function(): Promise<number> {
+  const counter = await Counter.findByIdAndUpdate(
+    { _id: 'userNumber' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+};
+
 // Método para criptografar senha antes de salvar
 UserSchema.pre('save', async function (next) {
+  // Se for um novo usuário, obter o próximo número de usuário
+  if (this.isNew) {
+    try {
+      this.userNumber = await (this.constructor as UserModel).getNextUserNumber();
+    } catch (error: any) {
+      return next(error);
+    }
+  }
+
   // Só criptografa se a senha foi modificada (ou é nova)
   if (!this.isModified('password')) return next();
 

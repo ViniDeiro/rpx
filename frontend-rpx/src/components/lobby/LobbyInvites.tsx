@@ -79,14 +79,20 @@ export default function LobbyInvites({ onInviteAccepted }: LobbyInvitesProps) {
       setInvitations(prev => prev.filter(inv => inv._id !== invitationId));
 
       if (action === 'accept') {
-        toast.success('Convite aceito! Redirecionando para o lobby...');
-        
-        // Se onInviteAccepted for fornecido, chamá-lo
-        if (onInviteAccepted) {
-          onInviteAccepted(response.data.lobbyId);
+        // Verificar se temos um lobbyId na resposta
+        if (response.data?.lobbyId) {
+          toast.success('Convite aceito! Redirecionando para o lobby...');
+          
+          // Se onInviteAccepted for fornecido, chamá-lo
+          if (onInviteAccepted) {
+            onInviteAccepted(response.data.lobbyId);
+          } else {
+            // Redirecionar diretamente para a página do lobby
+            router.push(`/lobby/${response.data.lobbyId}`);
+          }
         } else {
-          // Caso contrário, redirecionar
-          router.push(response.data.redirect);
+          console.error('Erro: LobbyId não encontrado na resposta', response.data);
+          toast.error('Erro ao redirecionar para o lobby. Tente novamente.');
         }
       } else {
         toast.info('Convite recusado.');

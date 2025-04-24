@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Save, Upload } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, Check, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 export default function NovoProdutoForm() {
   const router = useRouter()
@@ -21,10 +22,18 @@ export default function NovoProdutoForm() {
     description: '',
     price: 0,
     category: '',
-    imageUrl: '/placeholder.png',
+    imageUrl: '',
     inStock: true,
     featured: false
   })
+  
+  // Estados para controle do upload de imagem
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [imageSize, setImageSize] = useState<string | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -37,6 +46,89 @@ export default function NovoProdutoForm() {
 
   const handleSwitchChange = (name: string, checked: boolean) => {
     setProduct(prev => ({ ...prev, [name]: checked }))
+  }
+  
+  // Funções para lidar com upload de imagem
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      processFile(file)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      processFile(file)
+    }
+  }
+
+  const processFile = async (file: File) => {
+    // Verificar se é uma imagem
+    if (!file.type.match('image.*')) {
+      setImageError('Por favor, envie apenas arquivos de imagem (jpg, png, etc).')
+      return
+    }
+
+    // Verificar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('A imagem é muito grande. O tamanho máximo é 5MB.')
+      return
+    }
+
+    try {
+      // Criar preview da imagem original
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        setPreview(result)
+        
+        // Atualizar o estado do produto com a URL da imagem
+        setProduct(prev => ({ ...prev, imageUrl: result }))
+      }
+      reader.readAsDataURL(file)
+      
+      // Armazenar o arquivo redimensionado
+      setSelectedFile(file)
+      setImageError(null)
+      
+      // Exibir tamanho da imagem
+      const fileSizeKB = Math.round(file.size / 1024)
+      setImageSize(`${fileSizeKB} KB`)
+    } catch (error) {
+      console.error('Erro ao processar a imagem:', error)
+      setImageError('Erro ao processar a imagem. Tente novamente com outra imagem.')
+    }
+  }
+
+  const clearFile = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setPreview(null)
+    setSelectedFile(null)
+    setImageSize(null)
+    setProduct(prev => ({ ...prev, imageUrl: '' }))
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const openFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,24 +143,45 @@ export default function NovoProdutoForm() {
         return
       }
       
+      if (!product.imageUrl) {
+        alert('Por favor, faça upload de uma imagem para o produto.')
+        setIsSubmitting(false)
+        return
+      }
+      
+      // Log dos dados enviados para debug
+      console.log('Enviando dados:', product)
+      
       // Enviar para a API
       const response = await fetch('/api/admin/produtos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(product)
+        body: JSON.stringify({
+          name: product.name,
+          description: product.description,
+          price: Number(product.price),
+          category: product.category,
+          imageUrl: product.imageUrl,
+          inStock: product.inStock,
+          featured: product.featured
+        })
       })
       
+      // Log da resposta para debug
+      const responseData = await response.json()
+      console.log('Resposta da API:', responseData)
+      
       if (!response.ok) {
-        throw new Error('Falha ao criar produto')
+        throw new Error(responseData.error || 'Falha ao criar produto')
       }
       
       alert('Produto criado com sucesso!')
       router.push('/admin/loja')
     } catch (error) {
       console.error('Erro ao criar produto:', error)
-      alert('Erro ao criar produto. Tente novamente.')
+      alert(`Erro ao criar produto: ${error instanceof Error ? error.message : 'Tente novamente.'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -154,59 +267,93 @@ export default function NovoProdutoForm() {
               </Select>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">URL da Imagem</Label>
-              <Input 
-                id="imageUrl"
-                name="imageUrl"
-                value={product.imageUrl}
-                onChange={handleChange}
-                placeholder="Ex: https://exemplo.com/imagem.jpg"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="inStock"
-                checked={product.inStock}
-                onCheckedChange={(checked) => handleSwitchChange('inStock', checked)}
-              />
-              <Label htmlFor="inStock">Em estoque</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="featured"
-                checked={product.featured}
-                onCheckedChange={(checked) => handleSwitchChange('featured', checked)}
-              />
-              <Label htmlFor="featured">Produto em destaque</Label>
-            </div>
-          </div>
-          
-          <div className="space-y-2 border-t pt-4">
-            <Label>Imagem do Produto</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <div className="flex flex-col items-center">
-                <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  Arraste uma imagem ou clique para fazer upload
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  PNG, JPG ou GIF até 5MB
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                >
-                  Selecionar Arquivo
-                </Button>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="inStock"
+                  checked={product.inStock}
+                  onCheckedChange={(checked) => handleSwitchChange('inStock', checked)}
+                />
+                <Label htmlFor="inStock">Em estoque</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="featured"
+                  checked={product.featured}
+                  onCheckedChange={(checked) => handleSwitchChange('featured', checked)}
+                />
+                <Label htmlFor="featured">Produto em destaque</Label>
               </div>
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Imagem do Produto *</Label>
+            <div
+              onClick={!preview ? openFileDialog : undefined}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`
+                relative border-2 border-dashed rounded-lg transition-colors cursor-pointer
+                ${isDragging 
+                  ? 'border-purple-500 bg-purple-900/20' 
+                  : preview 
+                    ? 'border-green-500 bg-green-900/10' 
+                    : 'border-gray-300 hover:border-gray-500 hover:bg-gray-50/10'
+                }
+              `}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {preview ? (
+                <div className="relative p-4 flex flex-col items-center">
+                  <div className="relative h-48 w-96 mx-auto overflow-hidden rounded-md">
+                    <Image
+                      src={preview}
+                      alt="Preview da imagem"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      aria-label="Remover imagem"
+                    >
+                      <X size={20} />
+                    </button>
+                    <span className="text-sm text-green-500 flex items-center gap-1">
+                      <Check size={16} /> Imagem selecionada
+                      {imageSize && <span className="text-xs text-gray-500 ml-1">({imageSize})</span>}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-sm">
+                    Arraste uma imagem ou clique para selecionar
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PNG, JPG ou GIF (máx. 5MB)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {imageError && (
+              <p className="mt-2 text-sm text-red-500">{imageError}</p>
+            )}
           </div>
         </CardContent>
         

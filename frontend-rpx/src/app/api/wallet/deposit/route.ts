@@ -3,6 +3,19 @@ import { getModels } from '@/lib/mongodb/models';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
+
+// Inicializar SDK do MercadoPago
+const initMercadoPago = () => {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('Token do Mercado Pago não configurado');
+  }
+  
+  return new MercadoPagoConfig({ 
+    accessToken: accessToken 
+  });
+};
 
 // POST - Solicitar depósito na carteira
 export async function POST(req: NextRequest) {
@@ -103,6 +116,7 @@ export async function POST(req: NextRequest) {
     
     // Salvar transação no banco de dados
     const result = await db.collection('transactions').insertOne(transaction);
+    const transactionId = result.insertedId.toString();
     
     // Adicionar transação à carteira do usuário
     if (!user.wallet) {
@@ -116,30 +130,104 @@ export async function POST(req: NextRequest) {
     user.wallet.transactions.push(result.insertedId);
     await user.save();
     
-    // Gerar instruções de pagamento (simulado)
+    // Preparar resposta padrão
     let paymentInstructions = {};
+    let mercadoPagoRedirectUrl = '';
     
-    if (paymentMethod === 'pix') {
-      paymentInstructions = {
-        pixKey: 'rpx-platform@exemplo.com',
-        qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=rpx-platform-payment',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+    try {
+      // Inicializar o Mercado Pago
+      const client = initMercadoPago();
+      const preferenceClient = new Preference(client);
+      
+      // URL do webhook para receber notificações
+      const webhookUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/webhook/mercadopago`;
+      
+      // URL de retorno após o pagamento
+      const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/profile/wallet/deposit/success`;
+      const failureUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/profile/wallet/deposit/failure`;
+      
+      // Obter nome do usuário
+      const userName = user.name || user.username || 'Usuário';
+      
+      // Criar preferência no Mercado Pago
+      const preferenceData = {
+        items: [
+          {
+            id: transactionId,
+            title: `Depósito na Carteira RPX`,
+            description: `Depósito para ${userName}`,
+            quantity: 1,
+            currency_id: 'BRL',
+            unit_price: amount
+          }
+        ],
+        external_reference: transactionId,
+        notification_url: webhookUrl,
+        back_urls: {
+          success: successUrl,
+          failure: failureUrl,
+          pending: successUrl
+        },
+        auto_return: 'approved'
       };
-    } else if (paymentMethod === 'bank_transfer') {
-      paymentInstructions = {
-        bank: 'Banco RPX',
-        agency: '0001',
-        account: '123456-7',
-        name: 'RPX Platform Tecnologia Ltda',
-        document: '12.345.678/0001-90'
-      };
+      
+      // Adicionar configurações específicas para PIX ou cartão, se necessário
+      if (paymentMethod === 'pix') {
+        // Na versão atual do SDK, as configurações de métodos de pagamento podem ser diferentes
+        // Consulte a documentação atualizada do Mercado Pago
+      }
+      
+      // Criar a preferência
+      const response = await preferenceClient.create({ body: preferenceData });
+      
+      // Obter URL de pagamento
+      mercadoPagoRedirectUrl = response.init_point || '';
+      
+      // Atualizar a transação com o ID da preferência
+      await db.collection('transactions').updateOne(
+        { _id: result.insertedId },
+        { 
+          $set: { 
+            'mercadoPago.preferenceId': response.id,
+            'mercadoPago.initPoint': response.init_point
+          }
+        }
+      );
+      
+      // Criar instruções de pagamento
+      if (paymentMethod === 'pix') {
+        paymentInstructions = {
+          redirectUrl: mercadoPagoRedirectUrl,
+          message: 'Você será redirecionado para o Mercado Pago para efetuar o pagamento via PIX'
+        };
+      } else {
+        paymentInstructions = {
+          redirectUrl: mercadoPagoRedirectUrl,
+          message: 'Você será redirecionado para o Mercado Pago para efetuar o pagamento'
+        };
+      }
+      
+    } catch (mpError) {
+      console.error('Erro ao criar preferência no Mercado Pago:', mpError);
+      
+      // Atualizar status da transação para erro
+      await db.collection('transactions').updateOne(
+        { _id: result.insertedId },
+        { $set: { status: 'failed', error: 'Erro ao criar pagamento' } }
+      );
+      
+      // Se falhar a integração com MercadoPago, retornamos erro
+      return NextResponse.json(
+        { error: 'Erro ao configurar gateway de pagamento. Tente novamente mais tarde.' },
+        { status: 500 }
+      );
     }
     
     // Retornar dados da transação
     return NextResponse.json({
       message: 'Solicitação de depósito registrada com sucesso',
       transaction: {
-        id: result.insertedId.toString(),
+        id: transactionId,
         type: 'deposit',
         amount: amount,
         status: 'pending',
@@ -147,7 +235,8 @@ export async function POST(req: NextRequest) {
         reference: reference,
         createdAt: new Date()
       },
-      paymentInstructions
+      paymentInstructions,
+      redirectUrl: mercadoPagoRedirectUrl
     });
   } catch (error) {
     console.error('Erro ao processar solicitação de depósito:', error);

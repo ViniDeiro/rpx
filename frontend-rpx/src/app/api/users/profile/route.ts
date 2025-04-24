@@ -85,8 +85,11 @@ export async function GET() {
         cpf: user.cpf, 
         birthdate: user.birthdate,
         role: user.role,
+        userNumber: user.userNumber || null,
         // Garantir que o avatarUrl seja incluído
         avatarUrl: user.avatarUrl || null,
+        bio: user.bio || '',
+        socialLinks: user.socialLinks || {},
         profile: user.profile || {},
         balance: user.wallet?.balance || 0,
         stats: user.stats || {},
@@ -184,7 +187,7 @@ export async function PUT(request: Request) {
       const updateData: any = {};
       
       // Lista de campos permitidos para atualização
-      const allowedFields = ['username', 'email', 'phone', 'cpf', 'birthdate'];
+      const allowedFields = ['username', 'email', 'phone', 'cpf', 'birthdate', 'bio'];
       
       for (const field of allowedFields) {
         if (userData[field] !== undefined) {
@@ -195,6 +198,11 @@ export async function PUT(request: Request) {
       // Tratamento especial para o campo profile
       if (userData.profile) {
         updateData.profile = userData.profile;
+      }
+      
+      // Tratamento para redes sociais
+      if (userData.socialLinks) {
+        updateData.socialLinks = userData.socialLinks;
       }
       
       // Adicionar timestamp de atualização
@@ -244,7 +252,10 @@ export async function PUT(request: Request) {
         cpf: updatedUser.cpf, 
         birthdate: updatedUser.birthdate,
         role: updatedUser.role,
+        userNumber: updatedUser.userNumber || null,
         avatarUrl: updatedUser.avatarUrl || null,
+        bio: updatedUser.bio || '',
+        socialLinks: updatedUser.socialLinks || {},
         profile: updatedUser.profile || {},
         balance: updatedUser.wallet?.balance || 0,
         stats: updatedUser.stats || {},

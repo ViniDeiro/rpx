@@ -165,6 +165,17 @@ export async function GET() {
             
           console.log(`Criando match entre lobbies ${lobby1Id} e ${lobby2Id}`);
           
+          // VERIFICAÇÃO: Checar se lobbies já estão em alguma partida
+          const existingMatch = await db.collection('matches').findOne({
+            lobbies: { $in: [lobby1Id, lobby2Id] },
+            status: { $nin: ['completed', 'canceled'] }
+          });
+          
+          if (existingMatch) {
+            console.log(`Um dos lobbies já está em uma partida ativa (ID: ${existingMatch.matchId}). Pulando.`);
+            continue;
+          }
+          
           // Criar um novo match
           const matchId = new ObjectId().toString();
           
@@ -213,7 +224,7 @@ export async function GET() {
             continue;
           }
           
-          // Criar documento do match no banco de dados
+          // Criar documento do match no banco de dados com informações completas
           await db.collection('matches').insertOne({
             matchId,
             lobbies: [lobby1Id, lobby2Id],
@@ -224,8 +235,15 @@ export async function GET() {
             gameType,
             platformMode,
             gameplayMode,
-            status: 'waiting',  // Alterado de 'pending' para 'waiting' para maior consistência
-            createdAt: new Date()
+            status: 'waiting_admin',  // Status específico para indicar que aguarda configuração do admin
+            idSala: null,          // Campo para o admin preencher com ID da sala
+            senhaSala: null,       // Campo para o admin preencher com senha da sala
+            salaConfigurada: false, // Indica se o admin já configurou a sala
+            timerStarted: false,   // Indica se o timer de 5 minutos já foi iniciado
+            timerStartedAt: null,  // Timestamp de quando o timer foi iniciado
+            timerDuration: 5 * 60, // Duração do timer em segundos (5 minutos)
+            createdAt: new Date(),
+            updatedAt: new Date()
           });
           
           // Adicionar os lobbies à lista de processados
@@ -239,11 +257,15 @@ export async function GET() {
           for (const player of allPlayers) {
             await db.collection('notifications').insertOne({
               userId: player.userId,
-              type: 'system',
+              type: 'match_created',  // Tipo específico para notificação de partida
+              title: 'Partida encontrada!',
+              message: 'Uma partida foi encontrada! Aguarde a configuração da sala pelo administrador.',
               read: false,
               data: {
-                message: 'Uma partida foi encontrada! Prepare-se para jogar.',
-                matchId
+                matchId,
+                gameType,
+                platformMode,
+                gameplayMode
               },
               createdAt: new Date()
             });
