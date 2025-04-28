@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Check, Flag, Lock, Star, Users, DollarSign } from 'react-feather';
+import { ArrowRight, Check, Flag, Lock, Star, Users, DollarSign, Target, Award, User, Shield } from 'react-feather';
 import { formatCurrency } from '@/utils/formatters';
 import { SponsorPromoBanner } from '@/components/ui/SponsorPromoBanner';
 
@@ -158,8 +158,11 @@ export default function Home() {
       <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-black">
         {/* Vídeo de fundo com overlay */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black/70 to-black z-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/60 via-indigo-950/80 to-black/90 z-10"></div>
           <div className="absolute inset-0 bg-[url('/images/game-bg.jpg')] bg-cover bg-center opacity-50"></div>
+          
+          {/* Efeito de brilho adicional */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-purple-900/20 via-blue-900/10 to-transparent z-5 opacity-70"></div>
           
           {/* Partículas animadas */}
           {particles.map(particle => (
@@ -206,7 +209,7 @@ export default function Home() {
                     href="/sobre" 
                     className="border border-gray-600 hover:border-purple-400 hover:bg-purple-900/20 text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center justify-center"
                   >
-                    Ver torneios
+                    Saiba mais
                   </Link>
                 </div>
                 
@@ -493,6 +496,221 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Seção de Prêmios e Rankings */}
+      <section className="py-10 bg-gradient-to-br from-purple-950 to-indigo-950 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('/images/pattern-rpx.png')] bg-repeat opacity-5"></div>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-indigo-200">
+              Sistema de Ranking e Premiações
+            </h2>
+            <p className="text-gray-300 max-w-2xl mx-auto">
+              Jogue, suba de ranking e concorra a prêmios mensais. Os melhores jogadores recebem recompensas exclusivas.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            {/* Challenger Card */}
+            <div className="bg-gradient-to-br from-purple-900/60 to-fuchsia-900/30 rounded-xl p-6 border border-purple-600/30 shadow-lg shadow-purple-500/10 relative overflow-hidden group">
+              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-purple-600/20 blur-2xl group-hover:bg-purple-500/30 transition-all duration-700"></div>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white">Top 20: Challenger</h3>
+                <div className="w-12 h-12 relative">
+                  <Image src="/images/ranks/challenger.png" alt="Challenger Rank" width={48} height={48} className="object-contain" />
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Jogadores já no rank Challenger (top 20) recebem premiações mensais de até <span className="font-semibold text-amber-300">R$ 16.000</span>
+              </p>
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex items-center text-xs text-white/70">
+                  <Award className="mr-1 text-purple-400" size={14} /> 
+                  <span>Premiação mensal</span>
+                </div>
+                <Link href="/ranking/premios" className="text-xs text-purple-300 hover:text-purple-200 font-medium">
+                  Ver tabela completa →
+                </Link>
+              </div>
+            </div>
+            
+            {/* Legend Card */}
+            <div className="bg-gradient-to-br from-indigo-900/60 to-blue-900/30 rounded-xl p-6 border border-indigo-600/30 shadow-lg shadow-indigo-500/10 relative overflow-hidden group">
+              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-indigo-600/20 blur-2xl group-hover:bg-indigo-500/30 transition-all duration-700"></div>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white">Top 21-100: Legend</h3>
+                <div className="w-12 h-12 relative">
+                  <Image src="/images/ranks/legend.png" alt="Legend Rank" width={48} height={48} className="object-contain" />
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Jogadores no rank Legend (posições 21-100) recebem de <span className="font-semibold text-amber-300">R$ 200</span> a <span className="font-semibold text-amber-300">R$ 1.200</span> em premiações
+              </p>
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex items-center text-xs text-white/70">
+                  <Award className="mr-1 text-indigo-400" size={14} /> 
+                  <span>Premiação mensal</span>
+                </div>
+                <Link href="/ranking/premios" className="text-xs text-indigo-300 hover:text-indigo-200 font-medium">
+                  Ver tabela completa →
+                </Link>
+              </div>
+            </div>
+            
+            {/* Premiação Total */}
+            <div className="bg-gradient-to-br from-amber-900/40 to-orange-900/20 rounded-xl p-6 border border-amber-700/30 shadow-lg shadow-amber-500/10 relative overflow-hidden group">
+              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-amber-600/10 blur-2xl group-hover:bg-amber-500/20 transition-all duration-700"></div>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white">Premiação Mensal</h3>
+                <div className="w-12 h-12 flex items-center justify-center">
+                  <DollarSign size={30} className="text-amber-400" />
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Mais de <span className="font-semibold text-amber-300">R$ 100.000</span> em prêmios distribuídos mensalmente entre os melhores jogadores da plataforma
+              </p>
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex items-center text-xs text-white/70">
+                  <Target className="mr-1 text-amber-400" size={14} /> 
+                  <span>Classificação contínua</span>
+                </div>
+                <Link href="/ranking" className="text-xs text-amber-300 hover:text-amber-200 font-medium">
+                  Ver ranking atual →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tutorial de como jogar - Seção adicionada */}
+      <section className="py-16 px-4 bg-gradient-to-b from-background to-card-bg/40">
+        <div className="container mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold mb-6 text-white">Como jogar na <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">RPX</span></h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Aprenda em poucos passos como começar a fazer suas apostas e ganhar com a comunidade de Free Fire
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div className="bg-card-bg/50 backdrop-blur-sm border border-border rounded-xl p-6 hover:border-primary/40 transition-all duration-300 hover:transform hover:scale-105 relative">
+              <div className="absolute -top-5 -left-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">1</div>
+              <div className="mb-5 mt-3 flex justify-center">
+                <User size={50} className="text-primary-light" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-center">Crie sua conta</h3>
+              <p className="text-gray-300 text-center mb-4">
+                Registre-se gratuitamente na plataforma em menos de 2 minutos. Você só precisa de um e-mail válido e uma senha.
+              </p>
+              <div className="text-center">
+                <Link href="/auth/register" className="text-sm font-medium text-primary hover:text-primary-light transition-colors">
+                  Criar conta agora →
+                </Link>
+              </div>
+            </div>
+            
+            <div className="bg-card-bg/50 backdrop-blur-sm border border-border rounded-xl p-6 hover:border-primary/40 transition-all duration-300 hover:transform hover:scale-105 relative">
+              <div className="absolute -top-5 -left-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">2</div>
+              <div className="mb-5 mt-3 flex justify-center">
+                <DollarSign size={50} className="text-primary-light" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-center">Faça seu depósito</h3>
+              <p className="text-gray-300 text-center mb-4">
+                Escolha entre Pix, cartão de crédito ou criptomoedas para fazer seu primeiro depósito e ganhar bônus.
+              </p>
+              <div className="text-center">
+                <Link href="/deposit" className="text-sm font-medium text-primary hover:text-primary-light transition-colors">
+                  Ver métodos de pagamento →
+                </Link>
+              </div>
+            </div>
+            
+            <div className="bg-card-bg/50 backdrop-blur-sm border border-border rounded-xl p-6 hover:border-primary/40 transition-all duration-300 hover:transform hover:scale-105 relative">
+              <div className="absolute -top-5 -left-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">3</div>
+              <div className="mb-5 mt-3 flex justify-center">
+                <Target size={50} className="text-primary-light" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-center">Escolha sua aposta</h3>
+              <p className="text-gray-300 text-center mb-4">
+                Navegue pelos torneios e partidas disponíveis de Free Fire. Selecione o evento e o tipo de aposta desejada.
+              </p>
+              <div className="text-center">
+                <Link href="/matches" className="text-sm font-medium text-primary hover:text-primary-light transition-colors">
+                  Ver partidas ao vivo →
+                </Link>
+              </div>
+            </div>
+            
+            <div className="bg-card-bg/50 backdrop-blur-sm border border-border rounded-xl p-6 hover:border-primary/40 transition-all duration-300 hover:transform hover:scale-105 relative">
+              <div className="absolute -top-5 -left-5 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">4</div>
+              <div className="mb-5 mt-3 flex justify-center">
+                <Award size={50} className="text-primary-light" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-center">Acompanhe e ganhe</h3>
+              <p className="text-gray-300 text-center mb-4">
+                Assista às partidas ao vivo, torça pelos seus jogadores favoritos e receba os ganhos diretamente em sua conta.
+              </p>
+              <div className="text-center">
+                <Link href="/bets" className="text-sm font-medium text-primary hover:text-primary-light transition-colors">
+                  Ver minhas apostas →
+                </Link>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-card-bg/60 backdrop-blur-sm border border-primary/30 rounded-xl p-8 max-w-4xl mx-auto">
+            <h3 className="text-2xl font-bold mb-6 text-center">Dicas para iniciantes</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="flex items-start">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                  <span className="text-primary-light font-bold">1</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-2">Diversifique suas apostas</h4>
+                  <p className="text-gray-300 text-sm">
+                    Não coloque todo seu saldo em uma única aposta. Distribua seus riscos entre diferentes partidas e tipos de apostas.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                  <span className="text-primary-light font-bold">2</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-2">Aproveite os bônus</h4>
+                  <p className="text-gray-300 text-sm">
+                    Use os bônus de boas-vindas e promoções para aumentar seu saldo e ter mais oportunidades de ganhar.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                  <span className="text-primary-light font-bold">3</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-2">Jogue com responsabilidade</h4>
+                  <p className="text-gray-300 text-sm">
+                    Estabeleça um orçamento para suas apostas e não ultrapasse esse limite. Aposte sempre de forma consciente.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-center mt-8">
+              <Link 
+                href="/guides/beginners" 
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold inline-block hover:from-purple-700 hover:to-blue-700 transition-colors"
+              >
+                Ver guia completo para iniciantes
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
       
       {/* Estatísticas em destaque */}
       <section className="py-16 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
@@ -522,195 +740,6 @@ export default function Home() {
       <div className="container mx-auto px-4 my-16">
         <SponsorPromoBanner className="mx-auto transform hover:scale-105 transition-transform duration-500" />
       </div>
-
-      {/* Como funciona - Redesenhado completamente */}
-      <section className="py-24 bg-gradient-to-b from-background via-gray-900/50 to-background relative overflow-hidden">
-        {/* Elementos de fundo */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-5"></div>
-          <div className="absolute top-1/3 left-10 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
-          <div className="absolute bottom-1/3 right-10 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-4xl font-bold mb-6">
-              Por que escolher a <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">RPX</span>?
-            </h2>
-            <p className="text-xl text-gray-300 mb-4">
-              Nossa plataforma foi desenvolvida por entusiastas de Free Fire para oferecer a melhor experiência de apostas
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="bg-card-bg border border-gray-800 rounded-xl overflow-hidden group hover:shadow-2xl hover:shadow-purple-900/10 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
-              <div className="h-48 bg-gradient-to-b from-purple-900/40 to-transparent relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/images/feature-tournaments.jpg')] bg-cover bg-center opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-card-bg via-transparent to-transparent"></div>
-                <div className="absolute top-6 left-6 w-16 h-16 bg-purple-900/70 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <span className="text-3xl">🏆</span>
-                </div>
-              </div>
-              
-              <div className="p-6 pt-0 -mt-6 relative z-10">
-                <h3 className="text-2xl font-semibold mb-4 text-white">Torneios Exclusivos</h3>
-                <ul className="space-y-3 text-gray-300 mb-6">
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Eventos semanais com prêmios especiais</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Torneios com influenciadores</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Disputas regionais e nacionais</span>
-                  </li>
-                </ul>
-                
-                <Link 
-                  href="/tournaments" 
-                  className="text-purple-400 font-medium flex items-center hover:text-purple-300"
-                >
-                  Ver próximos torneios
-                  <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-card-bg border border-gray-800 rounded-xl overflow-hidden group hover:shadow-2xl hover:shadow-purple-900/10 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
-              <div className="h-48 bg-gradient-to-b from-blue-900/40 to-transparent relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/images/feature-odds.jpg')] bg-cover bg-center opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-card-bg via-transparent to-transparent"></div>
-                <div className="absolute top-6 left-6 w-16 h-16 bg-blue-900/70 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <span className="text-3xl">💰</span>
-                </div>
-              </div>
-              
-              <div className="p-6 pt-0 -mt-6 relative z-10">
-                <h3 className="text-2xl font-semibold mb-4 text-white">Melhores Odds</h3>
-                <ul className="space-y-3 text-gray-300 mb-6">
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Odds até 20% maiores que a concorrência</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Bônus especiais em apostas acumuladas</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Sistema de boosts para jogadores frequentes</span>
-                  </li>
-                </ul>
-                
-                <Link 
-                  href="/odds" 
-                  className="text-purple-400 font-medium flex items-center hover:text-purple-300"
-                >
-                  Conferir tabela de odds
-                  <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-card-bg border border-gray-800 rounded-xl overflow-hidden group hover:shadow-2xl hover:shadow-purple-900/10 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
-              <div className="h-48 bg-gradient-to-b from-indigo-900/40 to-transparent relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/images/feature-community.jpg')] bg-cover bg-center opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-card-bg via-transparent to-transparent"></div>
-                <div className="absolute top-6 left-6 w-16 h-16 bg-indigo-900/70 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <span className="text-3xl">👥</span>
-                </div>
-              </div>
-              
-              <div className="p-6 pt-0 -mt-6 relative z-10">
-                <h3 className="text-2xl font-semibold mb-4 text-white">Comunidade Ativa</h3>
-                <ul className="space-y-3 text-gray-300 mb-6">
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Fóruns dedicados a estratégias e dicas</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Grupos de discord para jogadores</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Eventos exclusivos para membros</span>
-                  </li>
-                </ul>
-                
-                <Link 
-                  href="/community" 
-                  className="text-purple-400 font-medium flex items-center hover:text-purple-300"
-                >
-                  Junte-se à comunidade
-                  <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-card-bg border border-gray-800 rounded-xl overflow-hidden group hover:shadow-2xl hover:shadow-purple-900/10 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
-              <div className="h-48 bg-gradient-to-b from-pink-900/40 to-transparent relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/images/feature-security.jpg')] bg-cover bg-center opacity-60 group-hover:opacity-80 group-hover:scale-110 transition-all duration-700"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-card-bg via-transparent to-transparent"></div>
-                <div className="absolute top-6 left-6 w-16 h-16 bg-pink-900/70 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <span className="text-3xl">🔒</span>
-                </div>
-              </div>
-              
-              <div className="p-6 pt-0 -mt-6 relative z-10">
-                <h3 className="text-2xl font-semibold mb-4 text-white">Segurança Garantida</h3>
-                <ul className="space-y-3 text-gray-300 mb-6">
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Criptografia de ponta a ponta</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Sistema anti-fraude avançado</span>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="text-purple-400 mr-2">✓</div>
-                    <span>Proteção de dados completa</span>
-                  </li>
-                </ul>
-                
-                <Link 
-                  href="/security" 
-                  className="text-purple-400 font-medium flex items-center hover:text-purple-300"
-                >
-                  Conheça nossos sistemas
-                  <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            </div>
-          </div>
-          
-          {/* Contador de estatísticas */}
-          <div className="mt-20 p-8 bg-gradient-to-r from-purple-900/30 to-blue-900/30 backdrop-blur-sm rounded-xl">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-2">200+</div>
-                <p className="text-gray-400">Partidas diárias</p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-2">99.8%</div>
-                <p className="text-gray-400">Tempo ativo</p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-2">5 min</div>
-                <p className="text-gray-400">Saques rápidos</p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-2">24/7</div>
-                <p className="text-gray-400">Suporte ao jogador</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Depoimentos */}
       <section className="py-20 bg-card-bg/30">

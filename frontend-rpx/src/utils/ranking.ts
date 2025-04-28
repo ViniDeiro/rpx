@@ -55,8 +55,8 @@ export const RANK_CONFIG = {
     '2': { min: 1300, max: 1399 },
     '3': { min: 1400, max: 1499 },
   },
-  legend: { min: 1500, max: 2000 }, // Valor simbólico, na verdade é baseado em posição (TOP 25-100)
-  challenger: { min: 2001, max: Infinity }, // Valor simbólico, na verdade é baseado em posição (TOP 25)
+  legend: { min: 1500, max: 2000 }, // Baseado em posição (TOP 21-100)
+  challenger: { min: 2001, max: Infinity }, // Baseado em posição (TOP 20)
 };
 
 // Informações estéticas para cada rank
@@ -123,7 +123,7 @@ export const RANK_FRAMES: Record<RankTier, Omit<Partial<Rank>, 'division' | 'poi
 export const calculateRank = (points: number, position?: number): Rank => {
   // Verificar primeiro se está nos rankings de topo
   if (position !== undefined) {
-    if (position <= 25) {
+    if (position <= 20) {
       return {
         tier: 'challenger',
         division: null,
@@ -179,9 +179,9 @@ export const calculateRank = (points: number, position?: number): Rank => {
   if (points >= 1400) {
     tier = 'diamond';
     division = '3';
-    nextRankPoints = Infinity;
-    requiredPointsForPromotion = Infinity;
-    nextRank = '';
+    nextRankPoints = 1500;
+    requiredPointsForPromotion = 1500;
+    nextRank = 'Posição TOP 100';
   } else if (points >= 1300) {
     tier = 'diamond';
     division = '2';
@@ -260,7 +260,7 @@ export const calculateRank = (points: number, position?: number): Rank => {
     nextRankPoints = 200;
     requiredPointsForPromotion = 200;
     nextRank = 'Bronze 3';
-  } else {
+  } else if (points >= 1) {
     tier = 'bronze';
     division = '1';
     nextRankPoints = 100;
@@ -271,7 +271,7 @@ export const calculateRank = (points: number, position?: number): Rank => {
   return {
     tier,
     division,
-    name: `${RANK_FRAMES[tier].name}${division ? ' ' + division : ''}`,
+    name: `${RANK_FRAMES[tier].name} ${division}`,
     points,
     nextRankPoints,
     color: RANK_FRAMES[tier].color || '',

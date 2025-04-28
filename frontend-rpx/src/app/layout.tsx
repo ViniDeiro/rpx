@@ -10,7 +10,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/layout';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import SessionProvider from '@/components/providers/SessionProvider';
-import MatchmakingListener from '@/components/matchmaking/MatchmakingListener';
 import { useAuth } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -21,7 +20,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Layout>{children}</Layout>
-      {user && <MatchmakingListener userId={user.id} />}
     </>
   );
 }

@@ -84,7 +84,6 @@ const Crown = ({ size = 24, className }: { size?: number, className?: string }) 
 
 // Função para determinar o rank baseado nos pontos
 const determineRank = (rankPoints: number): string => {
-  if (rankPoints >= 1500) return 'CHALLENGER';
   if (rankPoints >= 1400) return 'DIAMOND 3';
   if (rankPoints >= 1300) return 'DIAMOND 2';
   if (rankPoints >= 1200) return 'DIAMOND 1';
@@ -101,6 +100,15 @@ const determineRank = (rankPoints: number): string => {
   if (rankPoints >= 100) return 'BRONZE 2';
   if (rankPoints >= 1) return 'BRONZE 1';
   return 'UNRANKED';
+};
+
+// Função para determinar rank baseado na posição do ranking (novo)
+const determineRankByPosition = (position: number): string => {
+  if (position <= 20) return 'CHALLENGER';
+  if (position <= 100) return 'LEGEND';
+  
+  // Posições acima de 100 seguem o sistema normal de pontos
+  return 'BASEADO EM PONTOS';
 };
 
 // Função para determinar a cor do rank
@@ -123,7 +131,6 @@ const getRankColor = (rank: string | number): string => {
 // Função para calcular o progresso dentro do rank atual
 const calculateRankProgress = (rankPoints: number): { progress: number, nextRank: string, pointsNeeded: number } => {
   const rankThresholds = [
-    { threshold: 1500, rank: 'CHALLENGER' },
     { threshold: 1400, rank: 'DIAMOND 3' },
     { threshold: 1300, rank: 'DIAMOND 2' },
     { threshold: 1200, rank: 'DIAMOND 1' },
@@ -149,9 +156,9 @@ const calculateRankProgress = (rankPoints: number): { progress: number, nextRank
     }
   }
   
-  // Se for CHALLENGER, não há próximo rank
+  // Se for DIAMOND 3, o próximo é entrar no TOP 100 (Legend)
   if (currentRankIndex === 0) {
-    return { progress: 100, nextRank: 'TOP 25', pointsNeeded: 0 };
+    return { progress: 100, nextRank: 'TOP 100', pointsNeeded: 0 };
   }
   
   const currentRank = rankThresholds[currentRankIndex];
@@ -632,8 +639,24 @@ export default function RankingPage() {
         const playersWithAvatars = formattedPlayers.filter(p => p.avatarUrl);
         console.log(`${playersWithAvatars.length} jogadores têm avatarUrl no ranking final`);
         
-        setPlayers(formattedPlayers);
-        sortPlayers(formattedPlayers, selectedCategory);
+        // Adicionar rank baseado na posição para os primeiros 100 jogadores
+        // e ajustar o rank por pontos para o restante
+        const playersWithRanks = formattedPlayers.sort((a, b) => (b.rankPoints || 0) - (a.rankPoints || 0)).map((player, index) => {
+          // Adicionar posição e determinar rank
+          const position = index + 1;
+          
+          // Definir o rank com base na posição para TOP 100
+          if (position <= 100) {
+            player.rank = determineRankByPosition(position);
+          } else {
+            player.rank = determineRank(player.rankPoints || 0);
+          }
+          
+          return { ...player, position };
+        });
+        
+        setPlayers(playersWithRanks);
+        sortPlayers(playersWithRanks, selectedCategory);
         setIsLoading(false);
       } catch (err) {
         console.error('Erro ao carregar ranking:', err);
@@ -1245,6 +1268,162 @@ export default function RankingPage() {
             {renderPagination()}
           </div>
         )}
+        
+        {/* Informações sobre classificação e premiações */}
+        <div className="mb-8">
+          <div className="bg-card-bg border border-gray-700 rounded-xl p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-bold flex items-center">
+                <Trophy size={24} className="text-amber-400 mr-2" />
+                Ranking Mensal com Premiações
+              </h2>
+              
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+                <Link 
+                  href="/ranking/premios" 
+                  className="bg-gradient-to-r from-amber-700/40 to-amber-900/40 hover:from-amber-700/60 hover:to-amber-900/60 text-amber-300 px-4 py-2 rounded-lg border border-amber-700/30 transition-colors flex items-center text-sm font-medium"
+                >
+                  <DollarSign size={16} className="mr-1" />
+                  Ver Tabela de Prêmios
+                </Link>
+                
+                <Link 
+                  href="/ranking/ranks" 
+                  className="bg-gradient-to-r from-purple-700/40 to-indigo-900/40 hover:from-purple-700/60 hover:to-indigo-900/60 text-purple-300 px-4 py-2 rounded-lg border border-purple-700/30 transition-colors flex items-center text-sm font-medium"
+                >
+                  <Crown size={16} className="mr-1" />
+                  Entender os Rankings
+                </Link>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-purple-900/20 border border-purple-800/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute -top-4 -right-4 w-20 h-20 bg-purple-500/10 rounded-full blur-xl"></div>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2 flex items-center">
+                  <Crown size={18} className="mr-2" />
+                  Top 20: Challenger
+                </h3>
+                <p className="text-sm text-gray-300">
+                  Jogadores com rank Challenger (top 20) recebem premiações exclusivas de até <span className="font-semibold text-amber-300">R$ 16.000</span>
+                </p>
+              </div>
+              
+              <div className="bg-indigo-900/20 border border-indigo-800/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute -top-4 -right-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl"></div>
+                <h3 className="text-lg font-semibold text-indigo-300 mb-2 flex items-center">
+                  <Award size={18} className="mr-2" />
+                  Top 21-100: Legend
+                </h3>
+                <p className="text-sm text-gray-300">
+                  Jogadores entre a 21ª e 100ª posição recebem o rank Legend e prêmios de <span className="font-semibold text-amber-300">R$ 200</span> a <span className="font-semibold text-amber-300">R$ 1.200</span>
+                </p>
+              </div>
+              
+              <div className="bg-blue-900/20 border border-blue-800/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute -top-4 -right-4 w-20 h-20 bg-blue-500/10 rounded-full blur-xl"></div>
+                <h3 className="text-lg font-semibold text-blue-300 mb-2">Premiação Total</h3>
+                <p className="text-sm text-gray-300">
+                  Mais de <span className="font-semibold text-amber-300">R$ 100.000</span> em prêmios distribuídos mensalmente para os 100 melhores jogadores
+                </p>
+              </div>
+            </div>
+            
+            {/* Tabela de premiações do top 10 */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-4 flex items-center">
+                <Award size={20} className="text-amber-400 mr-2" />
+                Top 10 - Premiações
+              </h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top 3 - Destaque especial */}
+                <div className="bg-gradient-to-br from-amber-900/20 to-amber-900/10 rounded-xl p-5 border border-amber-800/30">
+                  <h4 className="text-lg font-bold mb-4 text-amber-300">Top 3 - Campeões do Mês</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="bg-amber-500 text-black font-bold w-8 h-8 rounded-full flex items-center justify-center mr-3">1</div>
+                        <span className="font-semibold">1º lugar</span>
+                      </div>
+                      <div className="text-amber-300 font-bold">R$ 16.000</div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="bg-gray-300 text-black font-bold w-8 h-8 rounded-full flex items-center justify-center mr-3">2</div>
+                        <span className="font-semibold">2º lugar</span>
+                      </div>
+                      <div className="text-amber-300 font-bold">R$ 11.000</div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="bg-amber-700 text-black font-bold w-8 h-8 rounded-full flex items-center justify-center mr-3">3</div>
+                        <span className="font-semibold">3º lugar</span>
+                      </div>
+                      <div className="text-amber-300 font-bold">R$ 8.000</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Top 4-10 */}
+                <div className="bg-gradient-to-br from-indigo-900/20 to-indigo-900/10 rounded-xl p-5 border border-indigo-800/30">
+                  <h4 className="text-lg font-bold mb-4 text-indigo-300">Top 4 a 10</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>4º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 5.000</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>5º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 4.800</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>6º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 4.400</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>7º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 4.000</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>8º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 3.600</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>9º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 3.200</div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded-lg">
+                      <span>10º lugar</span>
+                      <div className="text-indigo-300 font-bold">R$ 3.000</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-amber-900/10 border border-amber-900/20 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-300">
+                    <span className="font-semibold text-amber-300">Nota importante:</span> O pagamento dos prêmios é realizado até o 5º dia útil do mês seguinte, diretamente na conta RPX. 
+                    Para sacar o prêmio, o jogador deve ter realizado pelo menos 20 apostas durante o mês.
+                    <Link href="/ranking/premios" className="text-amber-400 ml-2 hover:underline">
+                      Ver tabela completa →
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

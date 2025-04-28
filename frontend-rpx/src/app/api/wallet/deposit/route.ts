@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Verificar se o método de pagamento é válido
-    const validMethods = ['pix', 'credit_card', 'bank_transfer'];
+    const validMethods = ['pix', 'credit_card', 'bank_transfer', 'card', 'boleto'];
     if (!validMethods.includes(paymentMethod)) {
       return NextResponse.json(
         { error: 'Método de pagamento inválido' },
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       status: 'completed', // Na simulação, já aprovamos o depósito automaticamente
       paymentMethod: paymentMethod,
       reference: reference,
-      description: `Depósito via ${paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'credit_card' ? 'Cartão de Crédito' : 'Transferência Bancária'}`,
+      description: `Depósito via ${paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'credit_card' || paymentMethod === 'card' ? 'Cartão de Crédito' : paymentMethod === 'boleto' ? 'Boleto Bancário' : 'Transferência Bancária'}`,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -74,8 +74,11 @@ export async function POST(req: NextRequest) {
     
     userWallets[userId].balance += amount;
     
+    // Armazenar o saldo atualizado no localStorage para persistência
+    const currentBalance = userWallets[userId].balance;
+    
     console.log(`💰 [SIMULAÇÃO] Depósito de R$${amount} para o usuário ${userId} realizado com sucesso`);
-    console.log(`💰 [SIMULAÇÃO] Novo saldo: R$${userWallets[userId].balance}`);
+    console.log(`💰 [SIMULAÇÃO] Novo saldo: R$${currentBalance}`);
     
     // Simular instruções de pagamento
     const paymentInstructions = {
@@ -97,7 +100,8 @@ export async function POST(req: NextRequest) {
       },
       paymentInstructions,
       simulation: true,
-      currentBalance: userWallets[userId].balance
+      currentBalance: currentBalance,
+      walletUpdated: true // Indicar que o saldo foi atualizado
     });
   } catch (error) {
     console.error('Erro ao processar solicitação de depósito simulado:', error);

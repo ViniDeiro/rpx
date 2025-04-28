@@ -12,7 +12,7 @@ interface ProfileAvatarProps {
 
 export default function ProfileAvatar({ 
   size = 'md',
-  rankTier = 'platinum',
+  rankTier = 'unranked',
   frameUrl,
   showRankFrame = true,
   avatarUrl
@@ -22,10 +22,8 @@ export default function ProfileAvatar({
   // Determinar a URL da moldura - mostrar apenas se tiver um rank explícito
   let finalFrameUrl = frameUrl;
   
-  if (!frameUrl && showRankFrame) {
-    // Forçar platinum para demonstração
-    const frameFileName = 'platinum';
-    const rankFrameUrl = `/images/frames/${frameFileName}.png`;
+  if (!frameUrl && showRankFrame && rankTier !== 'unranked') {
+    const rankFrameUrl = `/images/frames/${rankTier}.png`;
     console.log('Usando moldura de rank:', rankFrameUrl);
     finalFrameUrl = rankFrameUrl;
   }

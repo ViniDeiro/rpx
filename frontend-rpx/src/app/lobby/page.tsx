@@ -17,6 +17,7 @@ import axios from 'axios';
 import MatchmakingStatus from '@/components/matchmaking/MatchmakingStatus';
 import ProfileAvatar from '@/components/profile/ProfileAvatar';
 import { RankTier, RANK_FRAMES } from '@/utils/ranking';
+import MatchmakingListener from '@/components/matchmaking/MatchmakingListener';
 
 // Adicionar os tipos
 
@@ -1973,6 +1974,9 @@ export default function LobbyPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Adicionar o MatchmakingListener controlado pelo estado */}
+      {user && <MatchmakingListener userId={user.id} isActive={isSearchingMatch} />}
     </div>
   );
 } 

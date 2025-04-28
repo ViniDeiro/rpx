@@ -7,16 +7,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface MatchmakingListenerProps {
   userId: string;
+  isActive?: boolean;
 }
 
-export default function MatchmakingListener({ userId }: MatchmakingListenerProps) {
+export default function MatchmakingListener({ userId, isActive = false }: MatchmakingListenerProps) {
   const [matchFound, setMatchFound] = useState(false);
   const [matchId, setMatchId] = useState<string | null>(null);
   const router = useRouter();
 
   // Simular o encontro de partidas aleatoriamente
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isActive) return;
 
     console.log('🎮 Sistema de matchmaking simulado iniciado');
 
@@ -39,11 +40,13 @@ export default function MatchmakingListener({ userId }: MatchmakingListenerProps
     return () => {
       clearTimeout(timer);
     };
-  }, [userId]);
+  }, [userId, isActive]);
 
   const handleCloseModal = () => {
     setMatchFound(false);
     setMatchId(null);
+    
+    if (!isActive) return;
     
     // Após fechar o modal, simular outra partida em 10-20 segundos
     setTimeout(() => {

@@ -159,6 +159,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('Perfil carregado com sucesso:', userData.id);
             console.log('Dados do perfil:', JSON.stringify(userData, null, 2));
             
+            // Verificar se existe um saldo salvo no localStorage para persistência
+            if (typeof window !== 'undefined') {
+              const savedBalance = localStorage.getItem('user_balance');
+              if (savedBalance) {
+                const parsedBalance = parseFloat(savedBalance);
+                if (!isNaN(parsedBalance)) {
+                  console.log(`Restaurando saldo do localStorage: ${parsedBalance}`);
+                  userData.balance = parsedBalance;
+                }
+              }
+            }
+            
             // Pré-carregar a imagem do avatar para evitar problemas de carregamento
             if (userData.avatarUrl) {
               try {
@@ -720,6 +732,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUserBalance = (newBalance: number) => {
     if (user) {
       console.log(`Atualizando saldo do usuário de ${user.balance} para ${newBalance}`);
+      
+      // Salvar saldo no localStorage para persistência
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_balance', newBalance.toString());
+        console.log('Saldo atualizado no localStorage:', newBalance);
+      }
+      
       setUser(prevUser => prevUser ? { ...prevUser, balance: newBalance } : null);
     } else {
       console.error('Tentativa de atualizar saldo sem usuário autenticado');
