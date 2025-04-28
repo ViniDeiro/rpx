@@ -2,13 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Metadata } from 'next';
 import LojaGrid from '@/components/loja/LojaGrid';
-
-export const metadata: Metadata = {
-  title: 'Loja - RPX',
-  description: 'Confira os produtos disponíveis na loja RPX',
-};
 
 export default function LojaPage() {
   return (
