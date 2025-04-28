@@ -25,15 +25,83 @@ interface DatabaseConnection {
 // Cache da conexão
 let cachedConnection: mongoose.Connection | null = null;
 let isConnected = false;
+let connectionLogShown = false;
+let reconnectAttempts = 0;
+let lastConnectionError: Date | null = null;
+let reconnectTimer: NodeJS.Timeout | null = null;
+
+// Limitar logs repetitivos
+const CONNECTION_LOG_INTERVAL = 60000; // 1 minuto
+let lastConnectionLog = 0;
+
+// Função para tentar reconectar automaticamente
+const attemptReconnect = async () => {
+  try {
+    // Limpar timer anterior se existir
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    
+    // Verificar se já estamos conectados
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      reconnectAttempts = 0;
+      isConnected = true;
+      return true;
+    }
+    
+    // Incrementar tentativas
+    reconnectAttempts++;
+    
+    // Log com throttling para evitar spam
+    const now = Date.now();
+    if (now - lastConnectionLog > CONNECTION_LOG_INTERVAL) {
+      console.log(`🔄 Tentativa de reconexão automática #${reconnectAttempts}`);
+      lastConnectionLog = now;
+    }
+    
+    // Limpar conexões anteriores
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
+      try {
+        await mongoose.disconnect();
+      } catch (e) {
+        // Ignorar erros de desconexão
+      }
+    }
+    
+    // Tentar reconectar
+    await connectToDatabase();
+    
+    // Sucesso
+    reconnectAttempts = 0;
+    return true;
+  } catch (error) {
+    // Falha na reconexão
+    lastConnectionError = new Date();
+    
+    // Programar próxima tentativa com backoff exponencial
+    const backoffTime = Math.min(30000, 1000 * Math.pow(1.5, reconnectAttempts));
+    
+    if (reconnectAttempts % 5 === 0) { // Log a cada 5 tentativas
+      console.error(`❌ Falha na reconexão automática (tentativa ${reconnectAttempts}). Próxima tentativa em ${backoffTime/1000}s`);
+    }
+    
+    reconnectTimer = setTimeout(attemptReconnect, backoffTime);
+    return false;
+  }
+};
 
 export async function connectToDatabase(): Promise<DatabaseConnection> {
   try {
     // Se já estamos conectados, retornar a conexão existente
     if (isConnected && mongoose.connection && mongoose.connection.readyState === 1) {
-      console.log('⚙️ Usando conexão MongoDB existente');
-        return { 
-          db: mongoose.connection.db as unknown as Db
-        };
+      if (!connectionLogShown) {
+        console.log('⚙️ Usando conexão MongoDB existente');
+        connectionLogShown = true;
+      }
+      return { 
+        db: mongoose.connection.db as unknown as Db
+      };
     }
 
     console.log('🔄 Estabelecendo nova conexão com MongoDB');
@@ -99,7 +167,20 @@ export async function connectToDatabase(): Promise<DatabaseConnection> {
     });
 
     mongoose.connection.on('error', (err) => {
-      console.error('❌ Erro na conexão MongoDB:', err);
+      // Evitar spam de logs
+      const now = Date.now();
+      if (now - lastConnectionLog > CONNECTION_LOG_INTERVAL) {
+        console.error('❌ Erro na conexão MongoDB:', err.message);
+        lastConnectionLog = now;
+      }
+      
+      // Iniciar processo de reconexão automática se ainda não estiver em andamento
+      if (!reconnectTimer) {
+        reconnectTimer = setTimeout(attemptReconnect, 2000);
+      }
+      
+      // Marcar como desconectado
+      isConnected = false;
       
       // Verificar se é um erro de ReplicaSetNoPrimary e logar informações adicionais
       if (err.message && err.message.includes('ReplicaSetNoPrimary')) {

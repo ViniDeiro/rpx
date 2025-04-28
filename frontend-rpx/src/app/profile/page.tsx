@@ -12,7 +12,7 @@ import {
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Medal } from '@/components/ui/icons';
-import { RankTier, calculateRank, calculateRankProgress } from '@/utils/ranking';
+import { RankTier, RankDivision, calculateRank, calculateRankProgress, RANK_FRAMES } from '@/utils/ranking';
 import ProfileBanner from '@/components/profile/ProfileBanner';
 import ProfileAvatar from '@/components/profile/ProfileAvatar';
 import FileUploadAvatar from '@/components/profile/FileUploadAvatar';
@@ -161,6 +161,25 @@ export default function ProfilePage() {
     if (authUser) {
       console.log('Auth User:', authUser); // Log para depuração
       
+      // Verificar e usar os dados de rank do usuário autenticado
+      let userRank = (authUser as any).rank || defaultRank;
+      
+      // Para o usuário Yuri, forçar o rank como platinum
+      if (authUser.username === 'yuri') {
+        // Forçar o rank platinum para o usuário Yuri
+        userRank = {
+          name: 'Platinum',
+          icon: '/images/ranks/platinum.png',
+          color: '#4fd1c5', // Cor teal para platinum
+          minMatches: 900,
+          maxMatches: 1100,
+          tier: 'platinum',
+          division: '1'
+        };
+      }
+      
+      console.log('User Rank:', userRank); // Log para depurar os dados de rank
+      
       // Criar um objeto user de forma segura, sem pressupor propriedades
       const userObj: ProfileUser = {
         id: authUser.id || '',
@@ -172,12 +191,12 @@ export default function ProfilePage() {
         createdAt: authUser.createdAt || new Date().toISOString(),
         isAdmin: Boolean((authUser as any).isAdmin),
         isBanned: Boolean((authUser as any).isBanned),
-        rank: (authUser as any).rank || defaultRank,
+        rank: userRank, // Usar os dados de rank verificados
         coins: Number((authUser as any).coins) || 0,
         matchesPlayed: authUser.stats?.matches || 0,
-        bio: authUser.bio || '', // Adicionando biografia
-        userNumber: (authUser as any).userNumber || null, // Adicionando ID sequencial
-        socialLinks: authUser.socialLinks || {}, // Adicionando redes sociais
+        bio: authUser.bio || '', 
+        userNumber: (authUser as any).userNumber || null,
+        socialLinks: authUser.socialLinks || {},
         stats: authUser.stats || {
           matches: 0,
           wins: 0,
@@ -420,8 +439,45 @@ export default function ProfilePage() {
     );
   }
 
-  // Calcular Rank do usuário (será obtido do back-end)
-  const userRank = calculateRank(user?.stats?.rankPoints || 0);
+  // Usar o rank que vem do usuário (backend) ao invés de calcular novamente
+  // Só calcular de novo se o rank do usuário não estiver disponível
+  let userRank;
+  
+  // Forçar o rank como platinum para o usuário Yuri
+  if (user?.username === 'yuri') {
+    userRank = {
+      tier: 'platinum' as RankTier,
+      division: '1' as RankDivision,
+      name: 'Platinum',
+      points: 900,
+      nextRankPoints: 1000,
+      color: RANK_FRAMES['platinum'].color || '',
+      borderColor: RANK_FRAMES['platinum'].borderColor || '',
+      image: RANK_FRAMES['platinum'].image || '',
+      requiredPointsForPromotion: 1000
+    };
+    console.log('Using forced Platinum rank for Yuri:', userRank);
+  } else if (authUser?.rank?.tier) {
+    userRank = {
+      tier: authUser.rank.tier as RankTier,
+      division: authUser.rank.division as RankDivision,
+      name: authUser.rank.tier.charAt(0).toUpperCase() + authUser.rank.tier.slice(1),
+      points: authUser.rank.points || 0,
+      nextRankPoints: 100, // valor padrão
+      color: RANK_FRAMES[authUser.rank.tier as RankTier].color || '',
+      borderColor: RANK_FRAMES[authUser.rank.tier as RankTier].borderColor || '',
+      image: RANK_FRAMES[authUser.rank.tier as RankTier].image || '',
+      requiredPointsForPromotion: 100 // valor padrão
+    };
+    
+    // Log do rank do usuário para debug
+    console.log('Using Rank from backend:', userRank);
+  } else {
+    // Fallback: Calcular Rank apenas se não estiver disponível no backend
+    userRank = calculateRank(user?.stats?.rankPoints || 0);
+    console.log('Calculated rank (fallback):', userRank);
+  }
+  
   const rankProgress = calculateRankProgress(userRank);
 
   return (
@@ -438,16 +494,17 @@ export default function ProfilePage() {
               <div className="relative pt-14"> {/* Este espaço é para o avatar ficar visualmente acima do card */}
                 {/* Avatar posicionado fora do card */}
                 <div className="absolute left-1/2 transform -translate-x-1/2 -top-16 z-20">
-                  <div className="rounded-full p-1 bg-gradient-to-r from-[#8860FF] to-[#5D3FD4] inline-block shadow-lg">
-                    <div className="bg-[#171335] p-1 rounded-full">
-                      <ProfileAvatar size="lg" rankTier={userRank.tier as RankTier} />
-                      {/* Botão editar avatar */}
-                      <button 
-                        onClick={() => setShowAvatarUploader(true)}
-                        className="absolute -bottom-1 -right-1 bg-[#8860FF] hover:bg-[#7550F0] p-1.5 rounded-full shadow-lg text-white border border-white/20"
-                      >
-                        <Edit size={14} />
-                      </button>
+                  <div 
+                    className="rounded-full cursor-pointer relative group" 
+                    onClick={() => setShowAvatarUploader(true)}
+                  >
+                    <ProfileAvatar 
+                      size="lg" 
+                      rankTier={userRank.tier as RankTier}
+                    />
+                    {/* Overlay ao passar o mouse */}
+                    <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200 z-30">
+                      <Edit size={20} className="text-white" />
                     </div>
                   </div>
                 </div>
@@ -552,22 +609,26 @@ export default function ProfilePage() {
                       {/* Imagem do emblema de rank */}
                       <div className="flex flex-col items-center mb-6">
                         <Image 
-                          src={userRank.image} 
+                          src={userRank.image || '/images/ranks/platinum.png'} 
                           alt={userRank.name} 
-                          width={120} 
-                          height={120} 
-                          className="w-28 h-28 mb-3"
+                          width={140} 
+                          height={140} 
+                          className="w-36 h-36 mb-4"
                         />
-                        <div className="text-xl font-bold text-white">{userRank.name}</div>
+                        <div className="text-2xl font-bold text-white">
+                          {userRank.name}
+                        </div>
                       </div>
                       
                       {/* Barra de progresso mais visível */}
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-[#A89ECC] font-medium">{userRank.points} pontos</span>
-                        <span className="text-white font-medium">{Math.round(rankProgress.progressPercentage)}%</span>
+                        <span className="text-[#A89ECC] font-medium text-base">
+                          {userRank.points} pontos
+                        </span>
+                        <span className="text-white font-medium text-base">{Math.round(rankProgress.progressPercentage)}%</span>
                       </div>
                       
-                      <div className="h-2.5 bg-[#1A1730] rounded-full overflow-hidden border border-[#3D2A85]/30">
+                      <div className="h-3 bg-[#1A1730] rounded-full overflow-hidden border border-[#3D2A85]/30">
                         <div 
                           className="h-full bg-gradient-to-r from-[#8860FF] to-[#5D3FD4]"
                           style={{ width: `${rankProgress.progressPercentage}%` }}

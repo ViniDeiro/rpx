@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -13,7 +13,7 @@ interface NavLinkProps {
   onClick?: () => void;
 }
 
-export const NavLink: React.FC<NavLinkProps> = ({
+export const NavLink: React.FC<NavLinkProps> = React.memo(({
   href,
   exact = false,
   children,
@@ -22,21 +22,24 @@ export const NavLink: React.FC<NavLinkProps> = ({
   onClick,
 }) => {
   const pathname = usePathname() || '';
-  const isActive = exact 
-    ? pathname === href 
-    : pathname.startsWith(href) && (href !== '/' || pathname === '/');
+  
+  const isActive = useMemo(() => {
+    if (exact) return pathname === href;
+    return pathname.startsWith(href) && (href !== '/' || pathname === '/');
+  }, [pathname, href, exact]);
 
-  const baseClasses = `
+  const baseClasses = useMemo(() => `
     px-4 py-2 rounded-md text-sm font-medium transition-colors relative
     ${isActive ? activeClassName : 'text-foreground hover:text-primary-light hover:bg-card-hover'}
     ${className}
-  `;
+  `, [isActive, activeClassName, className]);
 
   return (
     <Link 
       href={href} 
       className={baseClasses}
       onClick={onClick}
+      prefetch={false}
     >
       {children}
       {isActive && (
@@ -44,4 +47,6 @@ export const NavLink: React.FC<NavLinkProps> = ({
       )}
     </Link>
   );
-}; 
+});
+
+NavLink.displayName = 'NavLink'; 

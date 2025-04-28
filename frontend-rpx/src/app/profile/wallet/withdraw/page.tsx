@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { DollarSign, TrendingDown, ArrowLeft } from 'react-feather';
+import { DollarSign, TrendingDown, ArrowLeft, AlertTriangle } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 // Métodos de saque
 const withdrawalMethods = [
@@ -22,12 +23,13 @@ const withdrawalValues = [
 
 export default function WithdrawPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, updateUserBalance } = useAuth();
   const [amount, setAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
   const [withdrawMethod, setWithdrawMethod] = useState('pix');
   const [pixKey, setPixKey] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const userBalance = user?.balance || 0;
 
@@ -50,34 +52,74 @@ export default function WithdrawPage() {
     }).format(value);
   };
 
-  // Processar saque
+  // Processar saque (simulado)
   const handleWithdraw = async () => {
     if (amount <= 0) {
-      alert('Por favor, selecione um valor válido');
+      setError('Por favor, selecione um valor válido');
       return;
     }
 
     if (amount > userBalance) {
-      alert('Saldo insuficiente para realizar o saque');
+      setError('Saldo insuficiente para realizar o saque');
       return;
     }
 
     if (withdrawMethod === 'pix' && !pixKey) {
-      alert('Por favor, informe sua chave PIX');
+      setError('Por favor, informe sua chave PIX');
       return;
     }
 
+    setError(null);
     setIsProcessing(true);
     
     try {
-      // Simular processamento
+      // Simulação de processamento
+      console.log(`💸 SIMULAÇÃO: Iniciando saque de ${formatCurrency(amount)} via ${withdrawMethod}`);
+      
+      // Simular tempo de processamento
       await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Gerar dados de transação simulada
+      const transactionId = `wd-${Date.now()}-${uuidv4().substring(0, 8)}`;
+      const reference = `WD-${uuidv4().substring(0, 8).toUpperCase()}`;
+      
+      // Criar objeto de transação
+      const simulatedTransaction = {
+        id: transactionId,
+        type: 'withdrawal',
+        amount: amount,
+        status: 'completed',
+        paymentMethod: withdrawMethod,
+        reference: reference,
+        createdAt: new Date(),
+        accountInfo: withdrawMethod === 'pix' ? { pixKey } : {},
+        description: `Saque via ${withdrawMethod === 'pix' ? 'PIX' : 'Transferência Bancária'}`
+      };
+      
+      console.log('✅ Transação simulada:', simulatedTransaction);
+      
+      // Se disponível, atualizar o saldo do usuário no contexto
+      if (typeof updateUserBalance === 'function') {
+        const newBalance = userBalance - amount;
+        updateUserBalance(newBalance);
+        console.log(`💰 Saldo atualizado: ${formatCurrency(newBalance)}`);
+      }
+      
+      // Simular armazenamento no localStorage
+      try {
+        const storedTransactions = localStorage.getItem('rpx_transactions');
+        const transactions = storedTransactions ? JSON.parse(storedTransactions) : [];
+        transactions.push(simulatedTransaction);
+        localStorage.setItem('rpx_transactions', JSON.stringify(transactions));
+      } catch (e) {
+        console.error('Erro ao salvar transação no localStorage:', e);
+      }
       
       // Redirecionar para página de sucesso
       router.push('/profile/wallet/withdraw/success');
-    } catch (error) {
-      console.error('Erro ao processar saque:', error);
-      alert('Ocorreu um erro ao processar seu saque. Tente novamente mais tarde.');
+    } catch (error: any) {
+      console.error('Erro ao simular saque:', error);
+      setError(error.message || 'Ocorreu um erro ao processar seu saque. Tente novamente mais tarde.');
     } finally {
       setIsProcessing(false);
     }
@@ -117,6 +159,13 @@ export default function WithdrawPage() {
                 <span className="font-bold text-xl text-primary">{formatCurrency(userBalance)}</span>
               </div>
             </div>
+
+            {error && (
+              <div className="bg-red-900/30 border border-red-500/30 rounded-md p-4 mb-6 flex items-start">
+                <AlertTriangle className="text-red-400 mr-3 flex-shrink-0 mt-0.5" size={18} />
+                <p className="text-red-200 text-sm">{error}</p>
+              </div>
+            )}
 
             <h2 className="font-bold mb-4">Escolha o valor para saque</h2>
             
@@ -267,17 +316,18 @@ export default function WithdrawPage() {
           </div>
         </div>
 
-        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start">
-            <div className="mr-3 mt-1 text-yellow-400">
+            <div className="mr-3 mt-1 text-blue-400">
               <DollarSign size={20} />
             </div>
             <div>
-              <h3 className="font-medium text-yellow-400">Informações de saque:</h3>
+              <h3 className="font-medium text-blue-400">Informações de saque:</h3>
               <ul className="mt-2 text-sm text-gray-300 space-y-1">
-                <li>• O valor mínimo para saque é de R$ 20,00</li>
-                <li>• Saques são processados em até 3 dias úteis</li>
-                <li>• Verifique se os dados bancários estão corretos</li>
+                <li>• O valor mínimo para saque é de R$ 10,00</li>
+                <li>• Saques via PIX são processados em até 24 horas úteis</li>
+                <li>• Saques via transferência bancária podem levar até 3 dias úteis</li>
+                <li>• Verifique seus dados bancários antes de confirmar o saque</li>
               </ul>
             </div>
           </div>

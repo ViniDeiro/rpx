@@ -56,6 +56,11 @@ type User = {
     rankPoints?: number;
     earnings?: number;
   };
+  rank?: {
+    tier: string;
+    division: string | null;
+    points: number;
+  };
 };
 
 export interface AuthContextType {
@@ -72,6 +77,7 @@ export interface AuthContextType {
   updateCustomization: (type: 'avatar' | 'banner', itemId: string) => Promise<void>;
   updateUserAvatar: (file: File) => Promise<void>; // Nova função para fazer upload de avatar
   refreshUser: () => Promise<void>; // Nova função para atualizar os dados do usuário
+  updateUserBalance: (newBalance: number) => void; // Nova função para atualizar o saldo do usuário localmente
 }
 
 // Criando o contexto
@@ -281,8 +287,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Resposta de login inválida: dados do usuário não encontrados');
       }
       
-      // Salvar o token no localStorage e no estado
-      localStorage.setItem('auth_token', data.token);
+      // Verificar e logar os dados de rank recebidos
+      if (data.user && data.user.rank) {
+        console.log('Dados de rank recebidos:', data.user.rank);
+      } else {
+        console.warn('Dados de rank não encontrados na resposta de login');
+      }
+
+      // Armazenar token no localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_token', data.token);
+      }
+      
+      // Definir token no estado
       setToken(data.token);
       
       // Pré-carregar a imagem do avatar para evitar problemas de carregamento
@@ -699,6 +716,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Função para atualizar o saldo do usuário localmente
+  const updateUserBalance = (newBalance: number) => {
+    if (user) {
+      console.log(`Atualizando saldo do usuário de ${user.balance} para ${newBalance}`);
+      setUser(prevUser => prevUser ? { ...prevUser, balance: newBalance } : null);
+    } else {
+      console.error('Tentativa de atualizar saldo sem usuário autenticado');
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -715,6 +742,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateCustomization,
         updateUserAvatar,
         refreshUser,
+        updateUserBalance,
       }}
     >
       {children}

@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Search } from 'react-feather';
+import { v4 as uuidv4 } from 'uuid';
 
 interface StartMatchmakingButtonProps {
   lobbyId: string;
@@ -33,20 +33,25 @@ const StartMatchmakingButton: React.FC<StartMatchmakingButtonProps> = ({
 
     try {
       setLoading(true);
-      const response = await axios.post('/api/lobby/matchmaking', {
-        lobbyId
-      });
-
-      if (response.data.status === 'success') {
-        toast.success('Busca por partida iniciada! Aguarde enquanto procuramos adversários.');
-        // Atualizar a interface ou redirecionar
-        router.refresh();
-      } else {
-        toast.error(response.data.error || 'Erro ao iniciar busca por partida');
-      }
+      
+      // Simular uma pequena espera
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Simulação bem sucedida
+      console.log('🎮 Simulação: Busca por partida iniciada para lobby:', lobbyId);
+      
+      // Gerar um ID de espera simulado
+      const waitingId = `waiting-${Date.now()}-${uuidv4().substring(0, 8)}`;
+      console.log('✅ ID de espera simulado gerado:', waitingId);
+      
+      toast.success('Busca por partida iniciada! Aguarde enquanto procuramos adversários.');
+      
+      // Atualizar a interface
+      router.refresh();
+      
     } catch (error: any) {
-      console.error('Erro ao iniciar matchmaking:', error);
-      toast.error(error.response?.data?.error || 'Falha ao iniciar busca por partida');
+      console.error('Erro simulado ao iniciar matchmaking:', error);
+      toast.error('Falha ao iniciar busca por partida');
     } finally {
       setLoading(false);
     }

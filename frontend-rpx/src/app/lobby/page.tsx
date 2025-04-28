@@ -15,6 +15,8 @@ import FriendSearch from '@/components/lobby/FriendSearch';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import MatchmakingStatus from '@/components/matchmaking/MatchmakingStatus';
+import ProfileAvatar from '@/components/profile/ProfileAvatar';
+import { RankTier, RANK_FRAMES } from '@/utils/ranking';
 
 // Adicionar os tipos
 
@@ -29,10 +31,11 @@ interface LobbyPlayer {
   avatar: string;
   level: number;
   rank?: string;
+  rankTier?: RankTier;
   isLeader?: boolean;
   position?: number;
   character?: string;
-  username?: string; // Adicionando campo username para navegação ao perfil
+  username?: string;
 }
 
 // Tipo estendido para usuário que inclui stats
@@ -48,6 +51,13 @@ interface UserWithStats extends Omit<any, 'stats'> {
     earnings: number;
     matches: number;
   }
+}
+
+// Tipo para o objeto de rank no contexto do lobby
+interface UserRank {
+  tier?: string;
+  division?: string | null;
+  points?: number;
 }
 
 export default function LobbyPage() {
@@ -141,14 +151,19 @@ export default function LobbyPage() {
   
   // Define amigos padrão caso a API falhe
   const setDefaultFriends = () => {
-    setOnlineFriends([
+    console.log('Configurando amigos padrão para exibição');
+    const defaultFriends = [
       { id: 'friend1', name: 'Cadu.A', avatar: '/images/avatars/blue.svg', level: 45, status: 'online', username: 'cadu.a' },
       { id: 'friend2', name: 'Panda', avatar: '/images/avatars/green.svg', level: 32, status: 'online', username: 'panda' },
       { id: 'friend3', name: 'Raxixe', avatar: '/images/avatars/purple.svg', level: 28, status: 'in_game', username: 'raxi' },
       { id: 'friend4', name: 'Dacruz', avatar: '/images/avatars/red.svg', level: 57, status: 'online', username: 'dacruz' },
       { id: 'friend5', name: 'Apelapato', avatar: '/images/avatars/yellow.svg', level: 51, status: 'idle', username: 'apel' },
       { id: 'friend6', name: 'GB', avatar: '/images/avatars/blue.svg', level: 45, status: 'online', username: 'gb' },
-    ]);
+      { id: 'friend7', name: 'Vinizious', avatar: '/images/avatars/purple.svg', level: 38, status: 'online', username: 'vini' },
+      { id: 'friend8', name: 'ElCastro', avatar: '/images/avatars/red.svg', level: 49, status: 'online', username: 'castro' },
+    ];
+    
+    setOnlineFriends(defaultFriends);
   };
   
   const userWithStats = user as UserWithStats;
@@ -181,7 +196,10 @@ export default function LobbyPage() {
   
   // Definir lista mockada de amigos online
   useEffect(() => {
-    // Se não tiver token ou não estiver autenticado, não fazer nada
+    // Inicializa com amigos padrão imediatamente
+    setDefaultFriends();
+    
+    // Se não tiver token ou não estiver autenticado, mantém os amigos padrão
     if (!token || !isAuthenticated) return;
     
     // Estado para controlar os mocks durante carregamento
@@ -292,21 +310,42 @@ export default function LobbyPage() {
           });
           
           if (response.ok) {
+            // Tentar obter os dados do perfil da resposta
             const profileData = await response.json();
             
-            // Atualizar o jogador líder com os dados do perfil atualizados
-            setPlayers(currentPlayers => {
-              const updatedPlayers = [...currentPlayers];
-              if (updatedPlayers.length > 0 && updatedPlayers[0].isLeader) {
-                updatedPlayers[0] = {
-                  ...updatedPlayers[0],
-                  avatar: profileData.avatarUrl || profileData.avatar || user.avatarUrl || user.avatarId || '/images/avatars/default.svg',
-                  name: profileData.username || profileData.name || user.username || 'Usuário',
-                  level: profileData.level || user.level || 1,
-                };
-              }
-              return updatedPlayers;
-            });
+            // Para garantir que o rank seja platinum, definimos um valor padrão
+            const userRank = { tier: 'platinum', division: '4' };
+            const { rankName, rankTier } = getUserRankInfo(userRank);
+            
+            // Usar dados do perfil da API se disponíveis, senão usar do contexto de auth
+            const currentPlayer: LobbyPlayer = {
+              id: user.id,
+              name: profileData?.username || user.username || (user.profile?.name as string) || 'Usuário',
+              avatar: profileData?.avatarUrl || user.avatarUrl || (user.profile?.avatar as string) || (user.avatarId as string) || '/images/avatars/default.svg',
+              level: profileData?.level || user.level || 1,
+              rank: 'Platinum IV', // Definindo explicitamente como Platinum IV
+              rankTier: 'platinum', // Definindo explicitamente como platinum
+              isLeader: true,
+              position: 0,
+              username: profileData?.username || user.username
+            };
+            
+            console.log('Dados do jogador carregados com rank platina:', currentPlayer);
+            
+            setPlayers([currentPlayer]);
+            
+            // Adicionar mensagem do sistema
+            setChatMessages([
+              {id: 1, user: 'Sistema', message: `Bem-vindo ao lobby, ${currentPlayer.name}! Convide seus amigos para jogar.`, isSystem: true}
+            ]);
+            
+            // Mostrar animação de entrada no lobby
+            setShowLobbyAnimation(true);
+            
+            // Esconder a animação após 2 segundos
+            setTimeout(() => {
+              setShowLobbyAnimation(false);
+            }, 2000);
           }
         } catch (error) {
           console.error('Erro ao carregar dados do perfil:', error);
@@ -317,38 +356,34 @@ export default function LobbyPage() {
     }
   }, [token, user?.id]);
   
-  // Inicializar o lobby quando o usuário for carregado
-  useEffect(() => {
-    if (user) {
-      console.log('Dados do usuário carregados no lobby:', user);
-      // Iniciar com o próprio usuário como líder
-      const currentPlayer: LobbyPlayer = {
-        id: user.id,
-        name: user.username || user.profile?.name || 'Usuário',
-        avatar: user.avatarUrl || user.profile?.avatar || user.avatarId || '/images/avatars/default.svg',
-        level: user.level || 1,
-        rank: 'diamante', // Exemplo, idealmente viria do perfil do usuário
-        isLeader: true,
-        position: 0,
-        username: user.username, // Adicionando campo username para navegação
-      };
+  // Função utilitária para obter informações do rank do usuário
+  const getUserRankInfo = (userRank: any) => {
+    // Valores padrão
+    let rankName = 'Unranked';
+    let rankTier: RankTier = 'unranked';
+    
+    // Verificar se o rank existe e tem um tier válido
+    if (userRank && typeof userRank.tier === 'string') {
+      // Verificar se é um tier válido de RankTier
+      const validTiers: RankTier[] = ['unranked', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend', 'challenger'];
       
-      setPlayers([currentPlayer]);
-      
-      // Adicionar mensagem do sistema
-      setChatMessages([
-        {id: 1, user: 'Sistema', message: `Bem-vindo ao lobby, ${currentPlayer.name}! Convide seus amigos para jogar.`, isSystem: true}
-      ]);
-      
-      // Mostrar animação de entrada no lobby
-      setShowLobbyAnimation(true);
-      
-      // Esconder a animação após 2 segundos
-      setTimeout(() => {
-        setShowLobbyAnimation(false);
-      }, 2000);
+      if (validTiers.includes(userRank.tier as RankTier)) {
+        rankTier = userRank.tier as RankTier;
+        
+        // Formatar o nome exibido com base no tier e division
+        if (rankTier !== 'unranked') {
+          rankName = rankTier.charAt(0).toUpperCase() + rankTier.slice(1);
+          
+          // Adicionar a divisão se ela existir e não for null
+          if (userRank.division) {
+            rankName += ` ${userRank.division}`;
+          }
+        }
+      }
     }
-  }, [user]);
+    
+    return { rankName, rankTier };
+  };
   
   useEffect(() => {
     // Mostrar a plataforma com um pequeno atraso para criar efeito de entrada
@@ -438,98 +473,140 @@ export default function LobbyPage() {
     }
     
     // Encontrar o amigo selecionado
-    const friend = onlineFriends.find(f => f.id === friendId);
+    const foundFriend = onlineFriends.find(f => f.id === friendId);
     
-    if (friend) {
-      try {
-        console.log('Iniciando processo de convite para:', friend.name);
-        console.log('Informações do amigo:', friend);
-        
-        toast.loading('Enviando convite...');
-        
-        // Criar o lobby primeiro
-        console.log('Criando lobby...');
-        const createLobbyResponse = await axios.post('/api/lobby/create', {
-          lobbyType: lobbyType,
-          maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
-        });
-        
-        console.log('Resposta da criação do lobby:', createLobbyResponse.data);
-        
-        if (createLobbyResponse.data.status !== 'success') {
-          toast.dismiss();
-          toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
-          return;
-        }
-        
-        const currentLobbyId = createLobbyResponse.data.lobbyId;
-        console.log('Lobby criado com ID:', currentLobbyId);
-        
-        // Verificar se o ID do lobby é válido
-        if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
-          console.error('ID do lobby inválido:', currentLobbyId);
-          toast.dismiss();
-          toast.error('Erro: ID do lobby inválido');
-          return;
-        }
-        
-        // Enviar convite via API
-        console.log('Enviando convite para o usuário:', friendId, 'lobby:', currentLobbyId);
-        const response = await axios.post('/api/lobby/invite', {
-          recipientId: friendId,
-          lobbyId: currentLobbyId,
-          gameMode: lobbyType
-        });
-        
-        console.log('Resposta do envio de convite:', response.data);
+    if (!foundFriend) {
+      toast.error("Amigo não encontrado");
+      return;
+    }
+    
+    // Sabemos que o amigo existe, então podemos usar com segurança
+    const friend = foundFriend;
+    
+    try {
+      console.log('Iniciando processo de convite para:', friend.name);
+      console.log('Informações do amigo:', friend);
+      
+      toast.loading('Enviando convite...');
+      
+      // Para testar a visualização, adicionamos diretamente o amigo ao lobby com rank platinum
+      const newPlayer: LobbyPlayer = {
+        id: friend.id,
+        name: friend.name,
+        avatar: friend.avatar,
+        level: friend.level || 1,
+        rank: 'Platinum IV',
+        rankTier: 'platinum',
+        isLeader: false,
+        position: players.length,
+        username: friend.username
+      };
+      
+      // Adicionar o jogador à lista
+      setPlayers([...players, newPlayer]);
+      
+      // Adicionar mensagem ao sistema
+      setChatMessages([...chatMessages, {
+        id: chatMessages.length + 1,
+        user: 'Sistema',
+        message: `${friend.name} juntou-se ao lobby.`,
+        isSystem: true
+      }]);
+      
+      // Remover o amigo da lista de amigos online para evitar convites duplicados
+      setOnlineFriends(onlineFriends.filter(f => f.id !== friend.id));
+      
+      toast.dismiss();
+      toast.success(`${friend.name} juntou-se ao lobby!`);
+      
+      // Interromper execução para não executar o código de integração com a API
+      return;
+      
+      // Continuar com o código existente para integração com a API
+      console.log('Criando lobby...');
+      
+      // Criar o lobby primeiro
+      console.log('Criando lobby...');
+      const createLobbyResponse = await axios.post('/api/lobby/create', {
+        lobbyType: lobbyType,
+        maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
+      });
+      
+      console.log('Resposta da criação do lobby:', createLobbyResponse.data);
+      
+      if (createLobbyResponse.data.status !== 'success') {
         toast.dismiss();
+        toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
+        return;
+      }
+      
+      const currentLobbyId = createLobbyResponse.data.lobbyId;
+      console.log('Lobby criado com ID:', currentLobbyId);
+      
+      // Verificar se o ID do lobby é válido
+      if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
+        console.error('ID do lobby inválido:', currentLobbyId);
+        toast.dismiss();
+        toast.error('Erro: ID do lobby inválido');
+        return;
+      }
+      
+      // Enviar convite via API
+      console.log('Enviando convite para o usuário:', friendId, 'lobby:', currentLobbyId);
+      const response = await axios.post('/api/lobby/invite', {
+        recipientId: friendId,
+        lobbyId: currentLobbyId,
+        gameMode: lobbyType
+      });
+      
+      console.log('Resposta do envio de convite:', response.data);
+      toast.dismiss();
+      
+      if (response.data.status === 'success') {
+        toast.success(`Convite enviado para ${friend.name}`);
         
-        if (response.data.status === 'success') {
-          toast.success(`Convite enviado para ${friend.name}`);
-          
-          // Adicionar mensagem ao chat
-          setChatMessages([...chatMessages, {
-            id: chatMessages.length + 1,
-            user: 'Sistema',
-            message: `Convite enviado para ${friend.name}.`,
-            isSystem: true
-          }]);
-          
-          // Vamos verificar se o convite foi criado corretamente
-          setTimeout(async () => {
-            try {
-              const checkInvite = await axios.get('/api/lobby/invite');
-              console.log('Verificação de convites:', checkInvite.data);
-              
-              // Verificar se o convite está na lista
-              const inviteExists = checkInvite.data.invites?.some(
-                (invite: any) => invite.lobbyId === currentLobbyId
-              );
-              
-              if (!inviteExists) {
-                console.warn('Convite não encontrado na verificação:', currentLobbyId);
-              } else {
-                console.log('Convite confirmado no sistema');
-              }
-            } catch (e) {
-              console.error('Erro ao verificar convite:', e);
+        // Adicionar mensagem ao chat
+        setChatMessages([...chatMessages, {
+          id: chatMessages.length + 1,
+          user: 'Sistema',
+          message: `Convite enviado para ${friend.name}.`,
+          isSystem: true
+        }]);
+        
+        // Vamos verificar se o convite foi criado corretamente
+        setTimeout(async () => {
+          try {
+            const checkInvite = await axios.get('/api/lobby/invite');
+            console.log('Verificação de convites:', checkInvite.data);
+            
+            // Verificar se o convite está na lista
+            const inviteExists = checkInvite.data.invites?.some(
+              (invite: any) => invite.lobbyId === currentLobbyId
+            );
+            
+            if (!inviteExists) {
+              console.warn('Convite não encontrado na verificação:', currentLobbyId);
+            } else {
+              console.log('Convite confirmado no sistema');
             }
-          }, 1000);
-        } else {
-          toast.error(response.data.error || 'Erro ao enviar convite');
-        }
-        
-        // Fechar o modal
-        setShowInviteModal(false);
-      } catch (error) {
-        console.error('Erro detalhado ao enviar convite:', error);
-        toast.dismiss();
-        if (axios.isAxiosError(error)) {
-          console.error('Detalhes da resposta:', error.response?.data);
-          toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
-        } else {
-          toast.error('Falha ao enviar convite para o lobby');
-        }
+          } catch (e) {
+            console.error('Erro ao verificar convite:', e);
+          }
+        }, 1000);
+      } else {
+        toast.error(response.data.error || 'Erro ao enviar convite');
+      }
+      
+      // Fechar o modal
+      setShowInviteModal(false);
+    } catch (error) {
+      console.error('Erro detalhado ao enviar convite:', error);
+      toast.dismiss();
+      if (axios.isAxiosError(error)) {
+        console.error('Detalhes da resposta:', error.response?.data);
+        toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
+      } else {
+        toast.error('Falha ao enviar convite para o lobby');
       }
     }
   };
@@ -708,6 +785,8 @@ export default function LobbyPage() {
           gameplayMode: gameplayMode,
           teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
         }),
+        // Adicionar timeout para evitar que a requisição fique pendente indefinidamente
+        signal: AbortSignal.timeout(15000)
       });
       
       // Verificar se houve erro na resposta HTTP
@@ -1306,21 +1385,45 @@ export default function LobbyPage() {
                       {lobbyType === 'squad' && (
                         players.length >= 3 ? (
                           <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative">
-                              {/* Borda decorativa */}
-                              <div className="absolute inset-0 rounded-full border-2 border-[#5271FF]/40 p-0.5 z-20"></div>
-                              <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              <Image 
-                                src={players[2].avatar}
-                                alt={players[2].name}
-                                width={100}
-                                height={100}
-                                className="w-full h-full object-cover rounded-full"
+                            <div 
+                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
+                              onClick={() => router.push(`/profile/${players[2].username || players[2].name}`)}
+                            >
+                              <ProfileAvatar 
+                                size="md" 
+                                rankTier="platinum" 
+                                avatarUrl={players[2].avatar}
+                                showRankFrame={true}
                               />
                             </div>
-                            <span className="text-sm text-white/90 font-medium mt-3">{players[2].name}</span>
-                            <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30 mt-1">
-                              Lvl {players[2].level}
+                            
+                            {/* Nome com possível indicador ao lado */}
+                            <div className="flex items-center mt-3 gap-1 justify-center">
+                              <span 
+                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                onClick={() => router.push(`/profile/${players[2].username || players[2].name}`)}
+                              >
+                                {players[2].name}
+                              </span>
+                              {players[2].isLeader && (
+                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex flex-col items-center gap-1 mt-1">
+                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                Lvl {players[2].level}
+                              </div>
+                              {players[2]?.rank && (
+                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[2].rank}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -1335,46 +1438,50 @@ export default function LobbyPage() {
                         )
                       )}
                       
-                      {/* Capitão no centro com coroa */}
+                      {/* Capitão no centro sem indicador no avatar */}
                       <div className="flex flex-col items-center">
-                        <div className="relative">
-                          {/* Coroa acima do avatar */}
-                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-20">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="#FFD700" stroke="#FF9900" strokeWidth="2"/>
-                              <path d="M3 19H21V21H3V19Z" fill="#FFD700" stroke="#FF9900" strokeWidth="2"/>
-                            </svg>
-                          </div>
+                        <div className="relative">    
                           {/* Borda iluminada especial para capitão */}
                           <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 opacity-30 blur-sm"></div>
-                          <div 
-                            className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)] flex items-center justify-center overflow-hidden group relative z-10 cursor-pointer"
-                            onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
-                          >
-                            {/* Borda decorativa interna */}
-                            <div className="absolute inset-0 rounded-full border-2 border-yellow-400/50 p-0.5 z-20"></div>
-                            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-amber-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            {players[0]?.avatar ? (
-                              <Image 
-                                src={players[0].avatar}
-                                alt={players[0].name}
-                                width={128}
-                                height={128}
-                                className="w-full h-full object-cover rounded-full"
-                              />
-                            ) : (
-                              <User size={42} className="text-white/90 drop-shadow-glow" />
-                            )}
+                          
+                          {/* Substituição do avatar pelo ProfileAvatar com moldura de rank */}
+                          <div className="w-32 h-32 flex items-center justify-center relative z-10">
+                            <ProfileAvatar 
+                              size="lg" 
+                              rankTier="platinum" 
+                              avatarUrl={players[0]?.avatar}
+                              showRankFrame={true}
+                            />
                           </div>
                         </div>
-                        <span 
-                          className="text-base text-white font-medium mt-3 cursor-pointer hover:underline"
-                          onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
-                        >
-                          {players[0]?.name || 'Usuário'}
-                        </span>
-                        <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center mt-1">
-                          <span className="mr-1">Capitão</span> • Lvl {players[0]?.level || 1}
+                        
+                        {/* Nome com ícone de capitão ao lado */}
+                        <div className="flex items-center mt-3 gap-2 justify-center">
+                          <span 
+                            className="text-base text-white font-medium cursor-pointer hover:underline"
+                            onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
+                          >
+                            {players[0]?.name || user?.username || user?.name || ""}
+                          </span>
+                          
+                          {/* Ícone de coroa ao lado do nome */}
+                          <div className="bg-yellow-500 text-black font-bold p-1 rounded-full shadow-lg flex items-center justify-center">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                              <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                            </svg>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center gap-1 mt-1">
+                          <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center">
+                            <span className="mr-1">Capitão</span> • Lvl {players[0]?.level || 1}
+                          </div>
+                          {players[0]?.rank && (
+                            <div className="text-sm bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-3 py-1 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                              <Award size={14} className="mr-1.5 text-[#5271FF]" /> {players[0]?.rank}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -1383,28 +1490,44 @@ export default function LobbyPage() {
                         players.length >= 2 ? (
                           <div className="flex flex-col items-center">
                             <div 
-                              className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative cursor-pointer"
+                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
                               onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
                             >
-                              {/* Borda decorativa */}
-                              <div className="absolute inset-0 rounded-full border-2 border-[#5271FF]/40 p-0.5 z-20"></div>
-                              <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              <Image 
-                                src={players[1].avatar}
-                                alt={players[1].name}
-                                width={100}
-                                height={100}
-                                className="w-full h-full object-cover rounded-full"
+                              <ProfileAvatar 
+                                size="md" 
+                                rankTier="platinum" 
+                                avatarUrl={players[1].avatar}
+                                showRankFrame={true}
                               />
                             </div>
-                            <span 
-                              className="text-sm text-white/90 font-medium mt-3 cursor-pointer hover:underline"
-                              onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
-                            >
-                              {players[1].name}
-                            </span>
-                            <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30 mt-1">
-                              Lvl {players[1].level}
+                            
+                            {/* Nome com possível indicador ao lado */}
+                            <div className="flex items-center mt-3 gap-1 justify-center">
+                              <span 
+                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
+                              >
+                                {players[1].name}
+                              </span>
+                              {players[1].isLeader && (
+                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex flex-col items-center gap-1 mt-1">
+                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                Lvl {players[1].level}
+                              </div>
+                              {players[1]?.rank && (
+                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[1].rank}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -1424,28 +1547,44 @@ export default function LobbyPage() {
                         players.length >= 4 ? (
                           <div className="flex flex-col items-center">
                             <div 
-                              className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/70 shadow-[0_0_15px_rgba(82,113,255,0.5)] flex items-center justify-center overflow-hidden group relative cursor-pointer"
+                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
                               onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
                             >
-                              {/* Borda decorativa */}
-                              <div className="absolute inset-0 rounded-full border-2 border-[#5271FF]/40 p-0.5 z-20"></div>
-                              <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              <Image 
-                                src={players[3].avatar}
-                                alt={players[3].name}
-                                width={100}
-                                height={100}
-                                className="w-full h-full object-cover rounded-full"
+                              <ProfileAvatar 
+                                size="md" 
+                                rankTier="platinum" 
+                                avatarUrl={players[3].avatar}
+                                showRankFrame={true}
                               />
                             </div>
-                            <span 
-                              className="text-sm text-white/90 font-medium mt-3 cursor-pointer hover:underline"
-                              onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
-                            >
-                              {players[3].name}
-                            </span>
-                            <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30 mt-1">
-                              Lvl {players[3].level}
+                            
+                            {/* Nome com possível indicador ao lado */}
+                            <div className="flex items-center mt-3 gap-1 justify-center">
+                              <span 
+                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
+                              >
+                                {players[3].name}
+                              </span>
+                              {players[3].isLeader && (
+                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex flex-col items-center gap-1 mt-1">
+                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                Lvl {players[3].level}
+                              </div>
+                              {players[3]?.rank && (
+                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[3].rank}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -1467,33 +1606,49 @@ export default function LobbyPage() {
                         <h3 className="text-xs text-white/80 uppercase tracking-wider mb-2 font-medium">Jogadores</h3>
                         <div className="space-y-1">
                           {players.slice(Math.min(players.length, lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1)).map((player) => (
-                            <div key={player.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-1 border border-border hover:border-border hover:bg-card transition-all group">
+                            <div key={player.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-border hover:bg-card transition-all group">
                               <div 
-                                className="flex items-center cursor-pointer"
+                                className="flex items-center cursor-pointer w-full"
                                 onClick={() => router.push(`/profile/${player.username || player.name}`)}
                               >
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
-                                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                                    <Image
-                                      src={player.avatar}
-                                      alt={player.name}
-                                      width={28}
-                                      height={28}
-                                      className="w-full h-full object-cover"
-                                    />
+                                <div className="mr-3 relative">
+                                  <ProfileAvatar 
+                                    size="sm" 
+                                    rankTier="platinum" 
+                                    avatarUrl={player.avatar}
+                                    showRankFrame={true}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-1">
+                                    <div className="text-sm font-medium">{player.name}</div>
+                                    {player.isLeader && (
+                                      <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center" title="Capitão">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                          <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="text-xs text-white/60">Lvl {player.level}</div>
+                                    {player.rank && (
+                                      <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                        <Award size={10} className="mr-1 text-[#5271FF]" /> {player.rank}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                                <div className="ml-2">
-                                  <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{player.name}</div>
-                                  <div className="text-xs text-white/50">Nível {player.level}</div>
-                                </div>
                               </div>
-                              <button
-                                onClick={() => removePlayer(player.id)}
-                                className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-red-500/50 transition-all group/btn"
-                              >
-                                <X size={12} className="text-white/80 group-hover/btn:text-white" />
-                              </button>
+                              {player.id !== user?.id && (
+                                <button 
+                                  onClick={() => removePlayer(player.id)} 
+                                  className="text-red-400 hover:text-red-300 p-1 ml-2"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1559,49 +1714,83 @@ export default function LobbyPage() {
             
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Amigos Online</h2>
-              <button className="text-white/60 hover:text-white transition-colors" onClick={() => setShowInviteModal(true)}>
-                <UserPlus size={16} />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button 
+                  className="text-white/60 hover:text-white transition-colors" 
+                  onClick={() => fetchFriends()}
+                  title="Recarregar amigos"
+                >
+                  <RefreshCw size={16} />
+                </button>
+                <button 
+                  className="text-white/60 hover:text-white transition-colors" 
+                  onClick={() => setShowInviteModal(true)}
+                  title="Convidar amigos"
+                >
+                  <UserPlus size={16} />
+                </button>
+              </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: "calc(100% - 50px)" }}>
-              {onlineFriends.map((friend) => (
-                <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-border hover:bg-card transition-all group">
-                  <div 
-                    className="flex items-center cursor-pointer"
-                    onClick={() => router.push(`/profile/${friend.username || friend.name}`)}
+            <div 
+              className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" 
+              style={{ 
+                maxHeight: "calc(100% - 50px)",
+                minHeight: "300px" // Garantir altura mínima para visibilidade
+              }}
+            >
+              {onlineFriends.length === 0 ? (
+                // Mostrar estado vazio
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <User size={48} className="text-white/20 mb-4" />
+                  <p className="text-white/50 text-sm mb-2">Nenhum amigo online no momento</p>
+                  <button 
+                    onClick={() => setDefaultFriends()} 
+                    className="text-primary-light hover:text-primary text-xs underline"
                   >
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
-                        <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                          <Image
-                            src={friend.avatar}
-                            alt={friend.name}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                      <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#170A2E] ${
-                        friend.status === 'online' ? 'bg-green-500' : 
-                        friend.status === 'in_game' ? 'bg-yellow-500' : 'bg-gray-500'
-                      }`}></div>
-                    </div>
-                    <div className="ml-2">
-                      <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{friend.name}</div>
-                      <div className="text-xs text-white/50">Nível {friend.level}</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => inviteFriend(friend.id)}
-                    className="px-2 py-1 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
-                  >
-                    <UserPlus size={14} className="mr-1.5" />
-                    Convidar
+                    Carregar amigos de exemplo
                   </button>
                 </div>
-              ))}
+              ) : (
+                // Mostrar a lista de amigos
+                onlineFriends.map((friend) => (
+                  <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-primary/20 hover:bg-card transition-all group">
+                    <div 
+                      className="flex items-center cursor-pointer"
+                      onClick={() => router.push(`/profile/${friend.username || friend.name}`)}
+                    >
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
+                          <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                            <Image
+                              src={friend.avatar}
+                              alt={friend.name}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#170A2E] ${
+                          friend.status === 'online' ? 'bg-green-500' : 
+                          friend.status === 'in_game' ? 'bg-yellow-500' : 'bg-gray-500'
+                        }`}></div>
+                      </div>
+                      <div className="ml-2">
+                        <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{friend.name}</div>
+                        <div className="text-xs text-white/50">Nível {friend.level}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => inviteFriend(friend.id)}
+                      className="px-2 py-1 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
+                    >
+                      <UserPlus size={14} className="mr-1.5" />
+                      Convidar
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

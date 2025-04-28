@@ -14,6 +14,12 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   avatarUrl: { type: String },
+  userNumber: { type: Number }, // ID sequencial do usuário
+  rank: {
+    tier: { type: String, enum: ['unranked', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend', 'challenger'], default: 'unranked' },
+    division: { type: String, enum: ['1', '2', '3', null], default: null },
+    points: { type: Number, default: 0 }
+  },
   profile: {
     name: String,
     avatar: String,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Clock, Search, X } from 'react-feather';
 import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 
 interface MatchmakingStatusProps {
   waitingId: string;
@@ -41,62 +42,119 @@ const MatchmakingStatus: React.FC<MatchmakingStatusProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Efeito para fazer polling do status do matchmaking
+  // Efeito para simular encontrar uma partida após um tempo aleatório
   useEffect(() => {
     if (!waitingId || !userId) return;
 
-    const checkStatus = async () => {
-      try {
-        const response = await fetch(`/api/matchmaking/status?waitingId=${waitingId}`);
+    // Simular tempo aleatório entre 5 e 15 segundos para encontrar uma partida
+    const matchFoundTimer = setTimeout(() => {
+      // 90% de chance de encontrar uma partida
+      const matchFound = Math.random() < 0.9;
+      
+      if (matchFound) {
+        console.log('🎮 Simulação: Partida encontrada!');
+        setStatus('found');
         
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        const data = await response.json();
+        // Gerar ID único para a partida simulada
+        const matchId = `match-${Date.now()}-${uuidv4().substring(0, 8)}`;
         
-        if (data.matchFound) {
-          // Partida encontrada
-          setStatus('found');
-          console.log('Partida encontrada:', data.match);
-          onMatchFound(data.match);
-        } else {
-          // Ainda procurando
-          setStatus('searching');
-          console.log('Ainda buscando partida. Tempo de espera:', data.waitingTime || waitingTime);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status do matchmaking:', error);
+        // Simular informações do jogador
+        const playerInfo = {
+          id: userId,
+          name: 'Você',
+          avatarUrl: '/images/avatars/default.png'
+        };
+        
+        // Gerar um nome aleatório para o oponente
+        const randomOpponentName = () => {
+          const nomes = ['Gabriel', 'Lucas', 'Pedro', 'Rafael', 'Matheus', 'João', 'Bruno', 'Carlos', 'Felipe', 'Victor'];
+          const sobrenomes = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Costa', 'Pereira', 'Ferreira', 'Rodrigues', 'Almeida', 'Gomes'];
+          return `${nomes[Math.floor(Math.random() * nomes.length)]}${sobrenomes[Math.floor(Math.random() * sobrenomes.length)]}`;
+        };
+        
+        // Gerar avatar aleatório para o oponente
+        const randomAvatar = () => {
+          const avatarId = Math.floor(Math.random() * 12) + 1;
+          return `/images/avatars/avatar${avatarId}.png`;
+        };
+        
+        // Simular informações do oponente
+        const opponentInfo = {
+          id: `opponent-${uuidv4().substring(0, 8)}`,
+          name: randomOpponentName(),
+          avatarUrl: randomAvatar()
+        };
+        
+        // Criar times simulados
+        const team1 = {
+          id: 'team1',
+          name: 'Time 1',
+          players: [{
+            id: userId,
+            name: playerInfo.name,
+            avatar: playerInfo.avatarUrl,
+            isReady: true,
+            isCaptain: true,
+            team: 'team1'
+          }]
+        };
+        
+        const team2 = {
+          id: 'team2',
+          name: 'Time 2',
+          players: [{
+            id: opponentInfo.id,
+            name: opponentInfo.name,
+            avatar: opponentInfo.avatarUrl,
+            isReady: true,
+            isCaptain: true,
+            team: 'team2'
+          }]
+        };
+        
+        // Criar a partida simulada
+        const simulatedMatch = {
+          id: matchId,
+          title: `Partida ${mode.charAt(0).toUpperCase() + mode.slice(1)} #${Math.floor(10000 + Math.random() * 90000)}`,
+          mode,
+          type: '1v1',
+          status: 'waiting_players',
+          teamSize: 1,
+          platform: 'pc',
+          platformMode: 'mixed',
+          gameplayMode: 'normal',
+          entryFee: 10,
+          prize: 18,
+          odd: 1.8,
+          teams: [team1, team2],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          roomId: `RPX${Math.floor(10000 + Math.random() * 90000)}`,
+          roomPassword: `pass${Math.floor(100 + Math.random() * 900)}`
+        };
+        
+        console.log('✅ Partida simulada criada:', simulatedMatch);
+        
+        // Chamar o callback com a partida simulada
+        onMatchFound(simulatedMatch);
+        
+      } else {
+        // Simular erro (10% de chance)
+        console.log('⚠️ Simulação: Erro ao encontrar partida');
         setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Erro ao verificar status');
+        setErrorMessage('Não foi possível encontrar uma partida adequada. Tente novamente mais tarde.');
       }
+    }, 5000 + Math.random() * 10000); // Entre 5 e 15 segundos
+    
+    return () => {
+      clearTimeout(matchFoundTimer);
     };
+  }, [waitingId, userId, mode, onMatchFound]);
 
-    // Verificar imediatamente
-    checkStatus();
-
-    // Configurar polling a cada 5 segundos
-    const interval = setInterval(checkStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [waitingId, userId, onMatchFound]);
-
-  // Função para cancelar a busca
-  const handleCancel = async () => {
-    try {
-      const response = await fetch(`/api/matchmaking/cancel?waitingId=${waitingId}`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        console.error('Erro ao cancelar matchmaking:', await response.text());
-      }
-
-      onCancel();
-    } catch (error) {
-      console.error('Erro ao cancelar matchmaking:', error);
-      onCancel(); // Mesmo com erro, cancelar localmente
-    }
+  // Função para cancelar a busca (simulada)
+  const handleCancel = () => {
+    console.log('🛑 Simulação: Busca por partida cancelada');
+    onCancel();
   };
 
   // Formatar o tempo de espera

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import { connectToDatabase } from '@/lib/mongodb/connect';
+import { v4 as uuidv4 } from 'uuid';
 
 // Interface para entrada de ranking
 interface RankingEntry {
@@ -19,7 +18,85 @@ interface RankingEntry {
   rank: number;
 }
 
-// GET - Obter rankings dos jogadores
+// Função para gerar nomes aleatórios
+const gerarNomeAleatorio = () => {
+  const nomes = ['Gabriel', 'Lucas', 'Pedro', 'Rafael', 'Matheus', 'João', 'Bruno', 'Carlos', 'Felipe', 'Victor', 
+                 'Diego', 'Daniel', 'Guilherme', 'Rodrigo', 'Gustavo', 'André', 'Thiago', 'Marcelo', 'Ricardo', 'Eduardo'];
+  const sobrenomes = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Costa', 'Pereira', 'Ferreira', 'Rodrigues', 'Almeida', 'Gomes',
+                     'Ribeiro', 'Martins', 'Rocha', 'Carvalho', 'Fernandes', 'Melo', 'Barbosa', 'Dias', 'Lima', 'Lopes'];
+  return `${nomes[Math.floor(Math.random() * nomes.length)]}${sobrenomes[Math.floor(Math.random() * sobrenomes.length)]}`;
+};
+
+// Função para gerar avatar aleatório
+const gerarAvatarAleatorio = () => {
+  const avatarId = Math.floor(Math.random() * 12) + 1;
+  return `/images/avatars/avatar${avatarId}.png`;
+};
+
+// Função para gerar dados de ranking aleatórios
+const gerarRankingSimulado = (quantidade: number, tipo: string): RankingEntry[] => {
+  const entries: RankingEntry[] = [];
+  
+  for (let i = 0; i < quantidade; i++) {
+    const wins = Math.floor(Math.random() * 100) + 1;
+    const losses = Math.floor(Math.random() * 50) + 1;
+    const totalMatches = wins + losses;
+    const winRate = Math.round((wins / totalMatches) * 100);
+    const betCount = totalMatches * (Math.floor(Math.random() * 5) + 1);
+    const totalWagered = betCount * 10;
+    const totalWon = totalWagered * (Math.random() * 1.5 + 0.5); // Entre 50% e 200% do valor apostado
+    const biggestWin = totalWon * (Math.random() * 0.3 + 0.1); // Entre 10% e 40% do total ganho
+    
+    // Cálculo de pontuação diferente dependendo do tipo de ranking
+    let score = 0;
+    if (tipo === 'winrate') {
+      score = winRate * (Math.random() * 0.5 + 0.75); // Pontuação baseada no winrate
+    } else if (tipo === 'totalWon') {
+      score = totalWon / 100; // Pontuação baseada nos ganhos
+    } else if (tipo === 'biggestWin') {
+      score = biggestWin / 50; // Pontuação baseada na maior vitória
+    } else {
+      // Pontuação combinada para classificação geral
+      score = (winRate * 0.4) + (totalWon / 500) + (betCount / 30);
+    }
+    
+    entries.push({
+      id: uuidv4(),
+      userId: uuidv4(),
+      username: gerarNomeAleatorio(),
+      avatar: gerarAvatarAleatorio(),
+      score: Math.round(score * 100) / 100,
+      wins: wins,
+      losses: losses,
+      winRate: winRate,
+      betCount: betCount,
+      totalWagered: Math.round(totalWagered),
+      totalWon: Math.round(totalWon),
+      biggestWin: Math.round(biggestWin),
+      rank: i + 1
+    });
+  }
+  
+  // Ordenar com base no tipo de ranking solicitado
+  if (tipo === 'winrate') {
+    entries.sort((a, b) => b.winRate - a.winRate);
+  } else if (tipo === 'totalWon') {
+    entries.sort((a, b) => b.totalWon - a.totalWon);
+  } else if (tipo === 'biggestWin') {
+    entries.sort((a, b) => b.biggestWin - a.biggestWin);
+  } else {
+    entries.sort((a, b) => b.score - a.score);
+  }
+  
+  // Atualizar ranking após ordenação
+  entries.forEach((entry, index) => {
+    entry.rank = index + 1;
+  });
+  
+  return entries;
+};
+
+// GET - Obter rankings dos jogadores (simulado)
 export async function GET(req: NextRequest) {
   try {
     // Obter parâmetros de consulta
@@ -28,148 +105,21 @@ export async function GET(req: NextRequest) {
     const period = url.searchParams.get('period') || 'week'; // all, week, month
     const limit = parseInt(url.searchParams.get('limit') || '100');
     
-    // Conectar ao MongoDB
-    await connectToDatabase();
-    const db = mongoose.connection.db;
+    // Simular um pequeno atraso para parecer mais realista
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    if (!db) {
-      return NextResponse.json(
-        { error: 'Erro de conexão com o banco de dados' },
-        { status: 500 }
-      );
-    }
+    // Gerar ranking simulado
+    const rankingData = gerarRankingSimulado(limit, type);
     
-    // Preparar filtros baseados no período
-    const dateFilter: any = {};
-    const now = new Date();
-    
-    if (period === 'week') {
-      // Última semana
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter.createdAt = { $gte: weekAgo };
-    } else if (period === 'month') {
-      // Último mês
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      dateFilter.createdAt = { $gte: monthAgo };
-    }
-    
-    // Pipeline de agregação para calcular estatísticas relevantes
-    const pipeline = [
-      // Filtrar pelo período, se aplicável
-      ...(Object.keys(dateFilter).length > 0 ? [{ $match: dateFilter }] : []),
-      
-      // Agrupar por usuário
-      {
-        $group: {
-          _id: '$userId',
-          betCount: { $sum: 1 },
-          wins: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
-          losses: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } },
-          totalWagered: { $sum: '$amount' },
-          totalWon: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, '$potentialWin', 0] } },
-          biggestWin: { $max: { $cond: [{ $eq: ['$status', 'won'] }, '$potentialWin', 0] } }
-        }
-      },
-      
-      // Calcular campos adicionais
-      {
-        $project: {
-          _id: 0,
-          userId: '$_id',
-          betCount: 1,
-          wins: 1,
-          losses: 1,
-          totalWagered: 1,
-          totalWon: 1,
-          biggestWin: 1,
-          winRate: {
-            $cond: [
-              { $eq: [{ $add: ['$wins', '$losses'] }, 0] },
-              0,
-              { $multiply: [{ $divide: ['$wins', { $add: ['$wins', '$losses'] }] }, 100] }
-            ]
-          },
-          score: {
-            $cond: {
-              if: { $eq: [{ $add: ['$wins', '$losses'] }, 0] },
-              then: 0,
-              else: {
-                $add: [
-                  { $multiply: [{ $divide: ['$wins', { $add: ['$wins', '$losses'] }] }, 50] },
-                  { $multiply: [{ $ln: { $add: ['$totalWon', 1] } }, 10] },
-                  { $multiply: [{ $ln: { $add: ['$betCount', 1] } }, 5] }
-                ]
-              }
-            }
-          }
-        }
-      },
-      
-      // Ordenar com base no tipo de ranking solicitado
-      {
-        $sort: type === 'winrate' 
-          ? { winRate: -1, betCount: -1 } 
-          : type === 'totalWon' 
-            ? { totalWon: -1 } 
-            : type === 'biggestWin' 
-              ? { biggestWin: -1 }
-              : { score: -1 }
-      },
-      
-      // Limitar quantidade de resultados
-      { $limit: limit }
-    ];
-    
-    // Executar agregação
-    const rankingData = await db.collection('bets').aggregate(pipeline).toArray();
-    
-    // Obter informações dos usuários para completar o ranking
-    const userIds = rankingData.map(entry => entry.userId);
-    
-    // Buscar detalhes dos usuários pelo ID
-    const users = await db.collection('users').find(
-      { _id: { $in: userIds.map(id => new mongoose.Types.ObjectId(id)) } },
-      { projection: { _id: 1, username: 1, 'profile.name': 1, 'profile.avatar': 1 } }
-    ).toArray();
-    
-    // Mapa para acesso rápido às informações do usuário
-    const userMap = users.reduce((map, user) => {
-      map[user._id.toString()] = {
-        username: user.username,
-        name: user.profile?.name || user.username,
-        avatar: user.profile?.avatar
-      };
-      return map;
-    }, {} as Record<string, any>);
-    
-    // Formatar dados do ranking com informações do usuário
-    const formattedRanking: RankingEntry[] = rankingData.map((entry, index) => ({
-      id: entry.userId,
-      userId: entry.userId,
-      username: userMap[entry.userId]?.username || 'Usuário Desconhecido',
-      avatar: userMap[entry.userId]?.avatar,
-      score: Math.round(entry.score * 100) / 100,
-      wins: entry.wins,
-      losses: entry.losses,
-      winRate: Math.round(entry.winRate * 100) / 100,
-      betCount: entry.betCount,
-      totalWagered: entry.totalWagered,
-      totalWon: entry.totalWon,
-      biggestWin: entry.biggestWin,
-      rank: index + 1
-    }));
-    
-    // Retornar dados formatados
+    // Retornar dados simulados
     return NextResponse.json({
-      rankings: formattedRanking,
+      rankings: rankingData,
       type,
       period,
-      updatedAt: now
+      updatedAt: new Date()
     });
   } catch (error) {
-    console.error('Erro ao obter rankings:', error);
+    console.error('Erro ao gerar ranking simulado:', error);
     return NextResponse.json(
       { error: 'Erro ao obter rankings' },
       { status: 500 }

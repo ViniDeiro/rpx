@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DollarSign, CreditCard, ArrowLeft, AlertTriangle } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 // Opções de pagamento
 const paymentMethods = [
@@ -22,7 +23,7 @@ const depositValues = [
 
 export default function DepositPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, updateUserBalance } = useAuth();
   const [amount, setAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('pix');
@@ -48,7 +49,7 @@ export default function DepositPage() {
     }).format(value);
   };
 
-  // Processar depósito
+  // Processar depósito (simulado)
   const handleDeposit = async () => {
     if (amount <= 0) {
       setError('Por favor, selecione um valor válido');
@@ -64,34 +65,53 @@ export default function DepositPage() {
     setError(null);
     
     try {
-      const response = await fetch('/api/wallet/deposit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount,
-          paymentMethod,
-        }),
-      });
+      // Simulação de processamento
+      console.log(`💰 SIMULAÇÃO: Iniciando depósito de ${formatCurrency(amount)} via ${paymentMethod}`);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao processar depósito');
+      // Simular delay de processamento
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Gerar dados de transação simulada
+      const transactionId = `dep-${Date.now()}-${uuidv4().substring(0, 8)}`;
+      const reference = `DEP-${uuidv4().substring(0, 8).toUpperCase()}`;
+      
+      // Criar objeto de transação
+      const simulatedTransaction = {
+        id: transactionId,
+        type: 'deposit',
+        amount: amount,
+        status: 'completed',
+        paymentMethod: paymentMethod,
+        reference: reference,
+        createdAt: new Date(),
+        description: `Depósito via ${paymentMethod === 'pix' ? 'PIX' : 'Cartão de Crédito'}`
+      };
+      
+      console.log('✅ Transação simulada:', simulatedTransaction);
+      
+      // Se disponível, atualizar o saldo do usuário no contexto
+      if (typeof updateUserBalance === 'function') {
+        const currentBalance = user?.balance || 0;
+        const newBalance = currentBalance + amount;
+        updateUserBalance(newBalance);
+        console.log(`💰 Saldo atualizado: ${formatCurrency(newBalance)}`);
       }
       
-      const data = await response.json();
-      
-      // Se tiver URL de redirecionamento, redirecionar para a página do Mercado Pago
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-        return;
+      // Simular armazenamento no localStorage
+      try {
+        const storedTransactions = localStorage.getItem('rpx_transactions');
+        const transactions = storedTransactions ? JSON.parse(storedTransactions) : [];
+        transactions.push(simulatedTransaction);
+        localStorage.setItem('rpx_transactions', JSON.stringify(transactions));
+      } catch (e) {
+        console.error('Erro ao salvar transação no localStorage:', e);
       }
       
-      // Redirecionar para página de sucesso
+      // Redirecionar para página de sucesso após o depósito
       router.push('/profile/wallet/deposit/success');
+      
     } catch (error: any) {
-      console.error('Erro ao processar depósito:', error);
+      console.error('Erro ao simular depósito:', error);
       setError(error.message || 'Ocorreu um erro ao processar seu depósito. Tente novamente mais tarde.');
     } finally {
       setIsProcessing(false);
@@ -248,9 +268,8 @@ export default function DepositPage() {
               <ul className="mt-2 text-sm text-gray-300 space-y-1">
                 <li>• O valor mínimo para depósito é de R$ 10,00</li>
                 <li>• Depósitos via PIX são processados imediatamente</li>
-                <li>• Depósitos com cartão podem levar até 1 hora para serem processados</li>
-                <li>• Você será redirecionado para a página de pagamento após confirmar</li>
-                <li>• Em caso de problemas, entre em contato com o suporte</li>
+                <li>• Depósitos via cartão de crédito podem levar até 24 horas para serem processados</li>
+                <li>• Não realizamos estornos de depósitos</li>
               </ul>
             </div>
           </div>

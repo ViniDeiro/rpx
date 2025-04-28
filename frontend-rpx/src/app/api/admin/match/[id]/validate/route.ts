@@ -13,7 +13,7 @@ const POINTS_BY_MODE = {
 
 // Níveis de ranking e pontos necessários
 const RANKS = [
-  { name: 'Unranked', threshold: 0 },
+  { name: 'Novato', threshold: 0 },
   { name: 'Bronze 1', threshold: 50 },
   { name: 'Bronze 2', threshold: 100 },
   { name: 'Bronze 3', threshold: 200 },
@@ -236,8 +236,9 @@ export async function POST(
       const currentPoints = user.rankPoints || 0;
       const newPoints = currentPoints + pointsEarned;
       
-      // Determinar novo rank com base nos pontos
-      let newRank = 'Unranked';
+      // Determinar o novo ranking
+      let newRank = 'Novato';
+      
       for (let i = RANKS.length - 1; i >= 0; i--) {
         if (newPoints >= RANKS[i].threshold) {
           newRank = RANKS[i].name;

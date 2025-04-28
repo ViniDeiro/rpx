@@ -6,7 +6,7 @@ import { Clock, Users, DollarSign, Tag, Lock, Copy, AlertCircle } from 'react-fe
 // Interface para as props do componente
 interface MatchDetailsProps {
   match: {
-    id: number;
+    id: string | number;
     name: string;
     format: string;
     entry: number;

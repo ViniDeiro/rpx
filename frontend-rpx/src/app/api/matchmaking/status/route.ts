@@ -1,137 +1,166 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb/connect";
-import { ObjectId } from "mongodb";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/mongodb/connect';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
 
-// Interface para o jogador de uma partida
-interface MatchPlayer {
-  userId: string;
-  username: string;
-  avatar?: string;
-  lobbyId?: string;
-  [key: string]: any;
-}
-
-// GET: Verificar o status de matchmaking para o usuário atual
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return new Response(JSON.stringify({ error: "Não autenticado" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
+    
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+    
+    const userId = session.user.id;
+    const searchParams = request.nextUrl.searchParams;
+    const waitingId = searchParams.get('waitingId');
+    const forceCheck = searchParams.get('forceCheck') === 'true';
+    
+    // Conectar ao banco de dados
+    const { db } = await connectToDatabase();
+    
+    // Verificar se há uma partida em andamento para o usuário
+    const activeMatch = await db.collection('matches').findOne({
+      'players.userId': userId,
+      status: 'in_progress'
+    });
+    
+    if (activeMatch) {
+      return NextResponse.json({
+        status: 'in_match',
+        matchId: activeMatch.matchId
       });
     }
+    
+    // Verificar se há uma partida em espera
+    // Só retorna partida em espera se waitingId estiver presente OU forceCheck for true
+    if (waitingId || forceCheck) {
+      // Filtro para encontrar partidas em espera com este usuário
+      const waitingFilter: any = {
+        'players.userId': userId,
+        status: 'waiting'
+      };
+      
+      // Se tiver waitingId específico, usar ele no filtro
+      if (waitingId) {
+        waitingFilter.matchId = waitingId;
+      }
+      
+      // Verificar partidas criadas nos últimos 10 minutos
+      const tenMinutesAgo = new Date();
+      tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
+      waitingFilter.createdAt = { $gte: tenMinutesAgo };
+      
+      const waitingMatch = await db.collection('matches').findOne(waitingFilter);
+      
+      if (waitingMatch) {
+        return NextResponse.json({
+          status: 'waiting',
+          matchId: waitingMatch.matchId,
+          createdAt: waitingMatch.createdAt
+        });
+      }
+    }
+    
+    // Verificar também se há notificações de partida encontrada
+    // Este é um mecanismo de redundância caso a partida não seja encontrada diretamente
+    if (forceCheck) {
+      try {
+        // Definir o limite de tempo novamente para este escopo
+        const recentTimeLimit = new Date();
+        recentTimeLimit.setMinutes(recentTimeLimit.getMinutes() - 10);
+        
+        const recentNotification = await db.collection('notifications').findOne({
+          userId: userId,
+          type: 'matchmaking',
+          'data.type': 'match_found',
+          read: false,
+          createdAt: { $gte: recentTimeLimit }
+        }, {
+          sort: { createdAt: -1 } // Mais recente primeiro
+        });
+        
+        if (recentNotification && recentNotification.data?.matchId) {
+          console.log(`Encontrada notificação de partida: ${recentNotification.data.matchId}`);
+          
+          // Verificar se a partida existe
+          const matchExists = await db.collection('matches').findOne({
+            matchId: recentNotification.data.matchId
+          });
+          
+          if (matchExists) {
+            return NextResponse.json({
+              status: 'waiting',
+              matchId: recentNotification.data.matchId,
+              createdAt: recentNotification.createdAt,
+              fromNotification: true
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error('Erro ao verificar notificações:', notifError);
+        // Continuar mesmo com erro
+      }
+    }
+    
+    // Nenhuma partida encontrada
+    return NextResponse.json({
+      status: 'no_match'
+    });
+    
+  } catch (error) {
+    console.error('Erro ao verificar status de matchmaking:', error);
+    return NextResponse.json(
+      { error: 'Erro ao verificar status de matchmaking' },
+      { status: 500 }
+    );
+  }
+}
 
-    const userId = session.user.id;
+// Endpoint para limpeza manual de partidas antigas (Admin apenas)
+export async function POST(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ status: "unauthenticated" }, { status: 401 });
+    }
+
+    // Verificar se é admin
+    if (!session.user.isAdmin) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
     const { db } = await connectToDatabase();
 
-    // Verificar se o usuário ainda está na fila de matchmaking
-    const queueEntry = await db.collection("matchmaking_queue").findOne({
-      $or: [
-        { userId },
-        { "players.userId": userId }
-      ]
-    });
+    // Definir limite de tempo para limpeza (24 horas)
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
 
-    if (queueEntry) {
-      // Se o usuário está na fila, retornar o status "searching"
-      return new Response(
-        JSON.stringify({
-          status: "searching",
-          queuedAt: queueEntry.createdAt,
-          message: "Procurando partida...",
-          waitingId: queueEntry._id.toString(),
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Se o usuário não está na fila, verificar se está em um match
-    const match = await db.collection("matches").findOne({
-      "players.userId": userId,
-      status: { $in: ["waiting", "ready", "in_progress", "completed"] }
-    });
-
-    if (!match) {
-      // Usuário não está nem na fila nem em um match
-      return new Response(
-        JSON.stringify({
-          status: "idle",
-          message: "Não está em matchmaking",
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Usuário está em um match
-    // Verificar quantos jogadores estão nessa partida
-    const totalPlayers = match.players.length;
-    const expectedPlayers = match.maxPlayers || match.players.length; // Usar maxPlayers se disponível
-    
-    let matchStatus = match.status;
-    let statusMessage = "";
-
-    switch (matchStatus) {
-      case "waiting":
-        statusMessage = `Partida encontrada! Aguardando jogadores... (${totalPlayers}/${expectedPlayers})`;
-        break;
-      case "ready":
-        statusMessage = "Todos os jogadores conectados! Preparando partida...";
-        break;
-      case "in_progress":
-        statusMessage = "Partida em andamento";
-        break;
-      case "completed":
-        statusMessage = "Partida concluída";
-        break;
-      default:
-        statusMessage = "Estado desconhecido";
-    }
-
-    // Obter informações detalhadas dos jogadores para o cliente
-    const players = match.players.map((player: MatchPlayer) => ({
-      userId: player.userId,
-      username: player.username,
-      avatar: player.avatar || "/images/avatars/default.png",
-      lobbyId: player.lobbyId,
-      ready: player.ready || false,
-      team: player.team || null
-    }));
-
-    return new Response(
-      JSON.stringify({
-        status: matchStatus,
-        matchId: match.matchId || match._id.toString(),
-        gameType: match.gameType,
-        message: statusMessage,
-        players,
-        createdAt: match.createdAt,
-        matchDetails: {
-          map: match.map || "random",
-          mode: match.mode || "classic",
-          ranked: match.ranked || false,
-          teams: match.teams || null
-        },
-        matchFound: true
-      }),
+    // Atualizar partidas antigas para status 'abandoned'
+    const result = await db.collection("matches").updateMany(
       {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+        createdAt: { $lt: oneDayAgo },
+        status: { $in: ["waiting", "in_progress"] }
+      },
+      {
+        $set: { status: "abandoned", updatedAt: new Date() }
       }
     );
-  } catch (error) {
-    console.error("Erro ao verificar status de matchmaking:", error);
-    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+
+    return NextResponse.json({
+      success: true,
+      message: `${result.modifiedCount} partidas antigas marcadas como abandonadas`,
     });
+  } catch (error) {
+    console.error("Erro ao limpar partidas antigas:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
   }
 } 

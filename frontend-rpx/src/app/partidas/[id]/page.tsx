@@ -8,7 +8,7 @@ import MatchDetails from '@/components/MatchDetails';
 
 // Interface para uma partida
 interface Match {
-  id: number;
+  id: string;
   name: string;
   format: string;
   entry: number;
@@ -22,77 +22,37 @@ interface Match {
   configuredRoom?: boolean;
 }
 
-// Dados simulados - seriam substituídos por chamadas à API real
-const getMatchData = (id: string): Match => {
-  // Simulação de dados - em um cenário real, isso seria buscado de uma API
-  const matches: Record<string, Match> = {
-    '1': {
-      id: 1,
-      name: 'Partida 1',
-      format: 'Squad (4x4)',
-      entry: 3.00,
-      prize: 6.00,
-      status: 'em_espera',
-      startTime: '2023-05-15T19:30:00',
-      players: 12,
-      maxPlayers: 16,
-      roomId: 'RPX62336',
-      roomPassword: 'pass505',
-      configuredRoom: true
-    },
-    '2': {
-      id: 2,
-      name: 'Partida 2',
-      format: 'Dupla (2x2)',
-      entry: 5.00,
-      prize: 20.00,
-      status: 'em_breve',
-      startTime: '2023-05-15T20:30:00',
-      players: 6,
-      maxPlayers: 10,
-      configuredRoom: false
-    },
-    '3': {
-      id: 3,
-      name: 'Partida 3',
-      format: 'Solo',
-      entry: 2.50,
-      prize: 10.00,
-      status: 'em_andamento',
-      startTime: '2023-05-15T18:00:00',
-      players: 8,
-      maxPlayers: 8,
-      roomId: 'RPX75432',
-      roomPassword: 'pass123',
-      configuredRoom: true
-    },
-    '4': {
-      id: 4,
-      name: 'Partida 4',
-      format: 'Squad (4x4)',
-      entry: 3.00,
-      prize: 6.00,
-      status: 'em_espera',
-      startTime: '2023-05-15T21:30:00',
-      players: 8,
-      maxPlayers: 16,
-      roomId: 'RPX62336',
-      roomPassword: 'pass505',
-      configuredRoom: true
-    }
-  };
-
-  return matches[id] || {
-    id: parseInt(id),
-    name: `Partida não encontrada`,
-    format: '-',
-    entry: 0,
-    prize: 0,
-    status: 'cancelada',
-    startTime: new Date().toISOString(),
-    players: 0,
-    maxPlayers: 0,
-    configuredRoom: false
+// Função para simular dados de partida para qualquer ID
+const simulateMatchData = (id: string): Match => {
+  // Gerar dados simulados com base no ID
+  const matchNumber = id.split('-').pop()?.substring(0, 5) || Math.floor(Math.random() * 90000 + 10000).toString();
+  const formats = ['Solo', 'Dupla (2x2)', 'Squad (4x4)'];
+  const format = formats[Math.floor(Math.random() * formats.length)];
+  const entry = Math.floor(Math.random() * 10) + 1;
+  const prize = entry * 2;
+  const statusOptions = ['em_espera', 'em_andamento', 'em_breve', 'finalizada'];
+  const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+  
+  // Data aleatória nas últimas 24 horas
+  const startTime = new Date();
+  startTime.setHours(startTime.getHours() - Math.floor(Math.random() * 24));
+  
+  const maxPlayers = format === 'Solo' ? 10 : (format === 'Dupla (2x2)' ? 20 : 40);
+  const players = Math.floor(Math.random() * maxPlayers) + 1;
+  
+  return {
+    id: id,
+    name: `Partida #${matchNumber}`,
+    format: format,
+    entry: entry,
+    prize: prize,
+    status: status,
+    startTime: startTime.toISOString(),
+    players: players,
+    maxPlayers: maxPlayers,
+    roomId: `RPX${Math.floor(Math.random() * 90000) + 10000}`,
+    roomPassword: `pass${Math.floor(Math.random() * 900) + 100}`,
+    configuredRoom: Math.random() > 0.3
   };
 };
 
@@ -104,9 +64,8 @@ export default function MatchPage() {
   const [isParticipating, setIsParticipating] = useState(false);
 
   useEffect(() => {
-    // Simulando carregamento de dados da API
-    const loadMatch = () => {
-      setIsLoading(true);
+    // Simular um carregamento
+    const loadingTimer = setTimeout(() => {
       try {
         if (!params || !params.id) {
           router.push('/partidas');
@@ -114,26 +73,32 @@ export default function MatchPage() {
         }
         
         const id = Array.isArray(params.id) ? params.id[0] : params.id;
-        const matchData = getMatchData(id);
+        console.log(`🎮 Simulando dados para partida com ID: ${id}`);
+        
+        // Gerar dados simulados para esta partida
+        const matchData = simulateMatchData(id);
         setMatch(matchData);
         
-        // Simulação - verificar se o usuário está participando
-        // Em um app real, isso viria de um estado global ou API
+        // Simulação - o usuário tem 50% de chance de já estar participando
         setIsParticipating(Math.random() > 0.5);
+        
+        console.log('✅ Dados simulados gerados com sucesso:', matchData);
       } catch (error) {
-        console.error('Erro ao carregar partida:', error);
+        console.error('❌ Erro ao simular partida:', error);
       } finally {
         setIsLoading(false);
       }
+    }, 800); // Simular tempo de carregamento de 800ms
+    
+    return () => {
+      clearTimeout(loadingTimer);
     };
-
-    loadMatch();
   }, [params, router]);
 
   const handleJoinMatch = () => {
     if (!match) return;
     
-    // Simulação - em um app real, isso seria uma API call
+    // Simulação - resposta instantânea
     alert(`Você entrou na partida: ${match.name}`);
     setIsParticipating(true);
   };
@@ -141,7 +106,7 @@ export default function MatchPage() {
   const handleLeaveMatch = () => {
     if (!match) return;
     
-    // Simulação - em um app real, isso seria uma API call
+    // Simulação - resposta instantânea
     alert(`Você saiu da partida: ${match.name}`);
     setIsParticipating(false);
   };
@@ -248,69 +213,76 @@ export default function MatchPage() {
                 <li>2º Lugar: 8 pontos</li>
                 <li>3º Lugar: 6 pontos</li>
               </ul>
-              <p>
-                <strong>Itens proibidos:</strong> Nenhum
-              </p>
             </div>
           </div>
 
-          {/* Jogadores inscritos */}
+          {/* Participantes */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900 flex items-center">
                 <Users size={18} className="mr-2" />
-                Jogadores Inscritos
+                Participantes ({match.players}/{match.maxPlayers})
               </h3>
             </div>
             <div className="px-4 py-5 sm:px-6">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-500">
-                  {match.players} de {match.maxPlayers} jogadores
-                </span>
-                <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                  {Math.round((match.players / match.maxPlayers) * 100)}% cheio
-                </span>
+              <div className="space-y-2">
+                {Array.from({ length: match.players }).map((_, index) => (
+                  <div key={index} className="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full mr-3"></div>
+                    <span className="text-sm font-medium">
+                      {index === 0 && isParticipating ? 'Você' : `Jogador ${index + 1}`}
+                    </span>
+                  </div>
+                ))}
+                
+                {match.players < match.maxPlayers && (
+                  <div className="text-center py-2 text-sm text-gray-500">
+                    Aguardando mais jogadores...
+                  </div>
+                )}
               </div>
-              
-              {/* Barra de progresso */}
-              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                <div 
-                  className="bg-purple-600 h-2.5 rounded-full" 
-                  style={{ width: `${(match.players / match.maxPlayers) * 100}%` }}
-                ></div>
-              </div>
-              
-              {/* Lista de jogadores (simulada) */}
-              {match.players > 0 ? (
-                <ul className="divide-y divide-gray-200">
-                  {Array.from({ length: Math.min(5, match.players) }).map((_, i) => (
-                    <li key={i} className="py-3 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 mr-3">
-                          {String.fromCharCode(65 + i)}
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">Jogador {i+1}</span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {i === 0 ? "Líder" : "Membro"}
-                      </span>
-                    </li>
-                  ))}
-                  
-                  {match.players > 5 && (
-                    <li className="py-3 text-center text-sm text-gray-500">
-                      + {match.players - 5} outros jogadores
-                    </li>
-                  )}
-                </ul>
-              ) : (
-                <p className="text-center text-sm text-gray-500 py-4">
-                  Nenhum jogador inscrito ainda.
-                </p>
-              )}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Informações e status da partida */}
+      <div className="mt-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Informações da Sala</h3>
+        
+        {match.status === 'em_espera' || match.status === 'em_andamento' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="border border-gray-200 rounded bg-white p-3">
+                <p className="text-sm text-gray-500 mb-1">ID da Sala:</p>
+                <p className="font-mono text-lg font-medium">{match.roomId}</p>
+              </div>
+              <div className="border border-gray-200 rounded bg-white p-3">
+                <p className="text-sm text-gray-500 mb-1">Senha:</p>
+                <p className="font-mono text-lg font-medium">{match.roomPassword}</p>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                Lembre-se de entrar na sala 5 minutos antes do início da partida.
+                Verifique se suas configurações estão de acordo com as regras especificadas.
+              </p>
+            </div>
+          </div>
+        ) : match.status === 'em_breve' ? (
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+            <p className="text-sm text-blue-800">
+              As informações da sala de jogo serão disponibilizadas 15 minutos antes do início da partida.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-gray-100 border border-gray-200 p-4 rounded-lg">
+            <p className="text-sm text-gray-700">
+              Esta partida está finalizada. Confira os resultados na aba de classificação.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

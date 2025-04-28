@@ -1,108 +1,111 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModels } from '@/lib/mongodb/models';
-import { authMiddleware, getUserId } from '@/lib/auth/middleware';
-import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
-// GET - Obter histórico de transações do usuário
-export async function GET(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
+// Função para gerar transações simuladas para um usuário
+const generateSimulatedTransactions = (userId: string, count: number = 15) => {
+  const transactions = [];
+  const currentTime = new Date();
   
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
+  for (let i = 0; i < count; i++) {
+    const isDeposit = Math.random() > 0.4; // 60% chance de ser depósito
+    const amount = Math.floor(Math.random() * 500) + 10; // Valores entre 10 e 510
+    
+    // Definir datas aleatórias nos últimos 30 dias
+    const date = new Date(currentTime);
+    date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+    
+    // Gerar ID e referência
+    const id = uuidv4();
+    const prefix = isDeposit ? 'DEP' : 'WD';
+    const reference = `${prefix}-${id.substring(0, 8).toUpperCase()}`;
+    
+    // Definir método de pagamento
+    let paymentMethod: string;
+    if (isDeposit) {
+      const methods = ['pix', 'credit_card', 'bank_transfer'];
+      paymentMethod = methods[Math.floor(Math.random() * methods.length)];
+    } else {
+      const methods = ['pix', 'bank_transfer'];
+      paymentMethod = methods[Math.floor(Math.random() * methods.length)];
+    }
+    
+    // Criar transação
+    transactions.push({
+      id,
+      userId,
+      type: isDeposit ? 'deposit' : 'withdrawal',
+      amount,
+      status: 'completed',
+      paymentMethod,
+      reference,
+      description: isDeposit 
+        ? `Depósito via ${paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'credit_card' ? 'Cartão de Crédito' : 'Transferência Bancária'}`
+        : `Saque via ${paymentMethod === 'pix' ? 'PIX' : 'Transferência Bancária'}`,
+      createdAt: date,
+      updatedAt: date
+    });
   }
   
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult;
-  
+  // Ordenar por data decrescente
+  return transactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+};
+
+// GET - Obter histórico de transações (versão simulada)
+export async function GET(req: NextRequest) {
   try {
-    // Obter ID do usuário da requisição autenticada
-    const userId = getUserId(authenticatedReq);
+    // Simulamos que a requisição já está autenticada
+    const headers = req.headers;
+    const authorization = headers.get('authorization') || '';
+    const userId = authorization.replace('Bearer ', '') || 'user-sim-' + uuidv4().substring(0, 8);
     
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado na requisição' },
-        { status: 400 }
-      );
-    }
-    
-    // Obter parâmetros de consulta
-    const url = new URL(authenticatedReq.url);
+    // Obter parâmetros da consulta
+    const url = new URL(req.url);
+    const limit = parseInt(url.searchParams.get('limit') || '20');
     const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
-    const type = url.searchParams.get('type'); // deposit, withdrawal, match_win, match_entry, etc.
-    const status = url.searchParams.get('status'); // completed, pending, failed
+    const type = url.searchParams.get('type') || 'all'; // 'all', 'deposit', 'withdrawal'
     
-    // Calcular o skip para paginação
-    const skip = (page - 1) * limit;
+    // Simular tempo de processamento
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Preparar filtro de consulta
-    const filter: any = { userId: userId };
+    // Gerar transações simuladas
+    const allTransactions = generateSimulatedTransactions(userId, 50);
     
-    if (type) {
-      filter.type = type;
-    }
+    // Filtrar por tipo, se necessário
+    const filteredTransactions = type === 'all' 
+      ? allTransactions 
+      : allTransactions.filter(t => t.type === type);
     
-    if (status) {
-      filter.status = status;
-    }
+    // Aplicar paginação
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
     
-    // Obter modelos do MongoDB
-    const { User } = await getModels();
+    // Calcular total de páginas
+    const totalCount = filteredTransactions.length;
+    const totalPages = Math.ceil(totalCount / limit);
     
-    // Verificar se o usuário existe
-    const user = await User.findById(userId);
+    console.log(`📊 [SIMULAÇÃO] Consulta de transações para o usuário ${userId}`);
+    console.log(`📊 [SIMULAÇÃO] Filtro: ${type}, Página: ${page}, Limite: ${limit}`);
+    console.log(`📊 [SIMULAÇÃO] Total de transações: ${totalCount}, Total de páginas: ${totalPages}`);
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    // Buscar transações utilizando o modelo Transaction
-    const db = mongoose.connection.db;
-    if (!db) {
-      return NextResponse.json(
-        { error: 'Erro de conexão com o banco de dados' },
-        { status: 500 }
-      );
-    }
-    
-    const transactions = await db.collection('transactions')
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
-    
-    // Contar total de transações para paginação
-    const total = await db.collection('transactions').countDocuments(filter);
-    
-    // Retornar dados
+    // Retornar dados paginados
     return NextResponse.json({
-      transactions: transactions.map((tx: any) => ({
-        id: tx._id.toString(),
-        type: tx.type,
-        amount: tx.amount,
-        status: tx.status,
-        date: tx.createdAt,
-        method: tx.paymentMethod,
-        description: tx.description,
-        reference: tx.reference
-      })),
+      transactions: paginatedTransactions,
       pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
+        totalCount,
+        totalPages,
+        currentPage: page,
+        pageSize: limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      simulation: true,
+      timestamp: new Date()
     });
   } catch (error) {
-    console.error('Erro ao obter histórico de transações:', error);
+    console.error('Erro ao consultar histórico de transações simulado:', error);
     return NextResponse.json(
-      { error: 'Erro ao obter histórico de transações' },
+      { error: 'Erro ao consultar histórico de transações' },
       { status: 500 }
     );
   }

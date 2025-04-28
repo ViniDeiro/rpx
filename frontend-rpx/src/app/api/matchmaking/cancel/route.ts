@@ -19,25 +19,54 @@ export async function POST(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const waitingId = searchParams.get('waitingId');
     
+    console.log(`Tentando cancelar matchmaking para usuário ${userId}, waitingId: ${waitingId || 'não fornecido'}`);
+    
     // Conectar ao banco de dados
     const { db } = await connectToDatabase();
     
+    // Critérios de busca
+    let query: any = { userId: userId.toString() };
+    
+    // Se tiver um ID de espera específico, usar ele como critério principal
+    if (waitingId) {
+      try {
+        // Tentar converter para ObjectId (se for válido)
+        if (ObjectId.isValid(waitingId)) {
+          query = { 
+            $or: [
+              { _id: new ObjectId(waitingId) },
+              { waitingId: waitingId }
+            ]
+          };
+        } else {
+          query = { waitingId: waitingId };
+        }
+      } catch (err) {
+        console.error('Erro ao converter waitingId para ObjectId:', err);
+        // Manter o critério original por userId
+      }
+    }
+    
     // Verificar se o usuário está na fila
-    const queuedPlayer = await db.collection('matchmaking_queue').findOne({
-      userId: userId.toString()
-    });
+    const queuedPlayer = await db.collection('matchmaking_queue').findOne(query);
     
     if (!queuedPlayer) {
+      console.log(`Nenhum registro encontrado para cancelar com a query:`, query);
       return NextResponse.json({
         status: 'error',
         message: 'Você não está na fila de matchmaking'
       }, { status: 404 });
     }
     
-    // Remover o jogador da fila
-    await db.collection('matchmaking_queue').deleteOne({
-      userId: userId.toString()
+    console.log(`Registro encontrado para cancelar:`, {
+      id: queuedPlayer._id.toString(),
+      userId: queuedPlayer.userId
     });
+    
+    // Remover o jogador da fila
+    const result = await db.collection('matchmaking_queue').deleteOne({ _id: queuedPlayer._id });
+    
+    console.log(`Resultado da remoção: ${result.deletedCount} registro(s) removido(s)`);
     
     return NextResponse.json({
       status: 'success',

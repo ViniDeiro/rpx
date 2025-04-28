@@ -149,14 +149,14 @@ export default function WalletPage() {
               </div>
               <div className="flex gap-3">
                 <Link 
-                  href="/wallet/deposit" 
+                  href="/profile/wallet/deposit" 
                   className="bg-white text-purple-800 hover:bg-opacity-90 px-4 py-2 rounded-md font-medium flex items-center justify-center gap-2 flex-1"
                 >
                   <TrendingUp size={18} />
                   Depositar
                 </Link>
                 <Link 
-                  href="/wallet/withdraw" 
+                  href="/profile/wallet/withdraw" 
                   className="bg-white/20 text-white hover:bg-white/30 px-4 py-2 rounded-md font-medium flex items-center justify-center gap-2 flex-1"
                 >
                   <TrendingDown size={18} />
@@ -243,7 +243,7 @@ export default function WalletPage() {
             {/* Rodapé do card */}
             <div className="p-4 border-t border-gray-700 text-center">
               <Link 
-                href="/wallet/transactions" 
+                href="/profile/wallet/transactions" 
                 className="text-primary hover:text-primary-hover text-sm flex items-center justify-center"
               >
                 Ver todas as transações

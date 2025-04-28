@@ -76,239 +76,326 @@ interface PlayerMatch {
 
 // GET: Processar a fila de matchmaking
 export async function GET() {
+  console.log("Endpoint de processo de matchmaking chamado");
+  
   try {
-    const session = await getServerSession(authOptions);
-    
-    // Verificar se é uma chamada autorizada (opcional, dependendo da sua configuração)
-    if (!session?.user?.email) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    // Remover a verificação de sessão para permitir chamadas externas (como do endpoint de status)
+    // Isso é temporário até implementar uma autenticação adequada para este endpoint
     
     const { db } = await connectToDatabase();
+    console.log("Conexão com o banco de dados estabelecida");
     
-    // Obter lobbies na fila de matchmaking - atualizado nome da coleção
-    const queueCollection = db.collection('matchmaking_queue') as unknown as Collection<LobbyDocument>;
+    // Obter lobbies na fila de matchmaking
+    const queueCollection = db.collection('matchmaking_queue');
     
     // Buscar os lobbies e converter para array
     const queuedLobbiesRaw = await queueCollection.find({}).toArray();
 
-    // Ordenar os lobbies por data de criação de forma segura
-    const queuedLobbies = [...queuedLobbiesRaw].sort((a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
-      return dateA - dateB;
+    console.log(`Encontrados ${queuedLobbiesRaw.length} lobbies na fila de matchmaking`);
+    
+    if (queuedLobbiesRaw.length < 2) {
+      console.log("Não há lobbies suficientes para criar partidas. Pelo menos 2 são necessários.");
+      return new Response(JSON.stringify({
+        message: "Não há lobbies suficientes para criar partidas",
+        processed: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Listar os IDs dos usuários na fila para debugging
+    const userIdsInQueue = queuedLobbiesRaw.map(lobby => ({
+      userId: lobby.userId,
+      lobbyId: lobby.lobbyId || lobby._id.toString(),
+      createdAt: lobby.createdAt,
+      mode: lobby.mode || 'default',
+      type: lobby.type || 'solo'
+    }));
+    console.log("Usuários na fila:", JSON.stringify(userIdsInQueue));
+
+    // Simplificar a lógica: basta pegar os dois primeiros lobbies na fila e criar uma partida
+    const lobby1 = queuedLobbiesRaw[0];
+    const lobby2 = queuedLobbiesRaw[1];
+    
+    // Verificar se ambos os lobbies têm usuários válidos
+    if (!lobby1.userId || !lobby2.userId) {
+      console.log("Um dos lobbies não tem usuário válido:", {
+        lobby1UserId: lobby1.userId || "ausente",
+        lobby2UserId: lobby2.userId || "ausente"
+      });
+      return new Response(JSON.stringify({
+        message: "Lobbies inválidos na fila",
+        processed: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Normalizar IDs do lobby
+    const lobby1Id = lobby1.lobbyId || lobby1._id.toString();
+    const lobby2Id = lobby2.lobbyId || lobby2._id.toString();
+    
+    console.log(`Criando match entre lobbies ${lobby1Id} e ${lobby2Id}`);
+    console.log(`Usuários: ${lobby1.userId} e ${lobby2.userId}`);
+    
+    // VERIFICAÇÃO: Checar se lobbies já estão em alguma partida
+    const existingMatch = await db.collection('matches').findOne({
+      lobbies: { $in: [lobby1Id, lobby2Id] },
+      status: { $nin: ['completed', 'canceled'] }
+    });
+    
+    if (existingMatch) {
+      console.log(`Um dos lobbies já está em uma partida ativa. Pulando.`);
+      return new Response(JSON.stringify({
+        message: "Lobbies já em partida",
+        processed: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Criar um novo match - garantir que seja string e não ObjectId
+    const matchObjectId = new ObjectId();
+    const matchId = matchObjectId.toString();
+    
+    console.log(`Criando match com ID: ${matchId} (formato string)`);
+    
+    // Buscar informações dos usuários
+    const userQuery1: any = {
+      $or: [
+        { id: lobby1.userId },
+        { userId: lobby1.userId }
+      ]
+    };
+
+    // Adicionar busca por ObjectId apenas se for válido
+    if (ObjectId.isValid(lobby1.userId)) {
+      userQuery1.$or.push({ _id: new ObjectId(lobby1.userId) });
+    }
+
+    const userQuery2: any = {
+      $or: [
+        { id: lobby2.userId },
+        { userId: lobby2.userId }
+      ]
+    };
+
+    // Adicionar busca por ObjectId apenas se for válido
+    if (ObjectId.isValid(lobby2.userId)) {
+      userQuery2.$or.push({ _id: new ObjectId(lobby2.userId) });
+    }
+
+    const user1 = await db.collection('users').findOne(userQuery1);
+    const user2 = await db.collection('users').findOne(userQuery2);
+    
+    if (!user1 || !user2) {
+      console.log("Não foi possível encontrar informações de um dos usuários");
+      console.log("Usuário 1:", lobby1.userId, user1 ? "encontrado" : "não encontrado");
+      console.log("Usuário 2:", lobby2.userId, user2 ? "encontrado" : "não encontrado");
+      
+      return new Response(JSON.stringify({
+        message: "Usuários não encontrados",
+        processed: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Log das informações dos jogadores para debugging
+    console.log("Criando partida com os jogadores:", {
+      player1: { userId: lobby1.userId, username: user1.username },
+      player2: { userId: lobby2.userId, username: user2.username }
+    });
+    
+    // Criar documento do match garantindo que todos os campos estejam definidos
+    const matchDocument = {
+      _id: new ObjectId(),
+      matchId: matchId, // Assegurar que matchId está definido
+      match_id: matchId, // Adicionar match_id para compatibilidade com índice existente
+      id: matchId, // Adicionar campo id para compatibilidade
+      lobbies: [lobby1Id, lobby2Id],
+      players: [
+        {
+          userId: lobby1.userId,
+          username: user1.username || user1.name || 'Jogador 1',
+          avatar: user1.avatar || user1.avatarUrl || '/images/avatars/default.png',
+          lobbyId: lobby1Id,
+          ready: true, // Jogador já está pronto por padrão
+          team: 'team1'
+        },
+        {
+          userId: lobby2.userId,
+          username: user2.username || user2.name || 'Jogador 2',
+          avatar: user2.avatar || user2.avatarUrl || '/images/avatars/default.png',
+          lobbyId: lobby2Id,
+          ready: true, // Jogador já está pronto por padrão
+          team: 'team2'
+        }
+      ],
+      teams: [
+        {
+          id: 'team1',
+          name: 'Time 1',
+          players: [
+            {
+              userId: lobby1.userId, // Adicionar userId para compatibilidade
+              id: lobby1.userId,
+              name: user1.username || user1.name || 'Jogador 1',
+              username: user1.username || user1.name || 'Jogador 1', // Adicionar username para compatibilidade
+              avatar: user1.avatar || user1.avatarUrl || '/images/avatars/default.png',
+              isReady: true, // Jogador já está pronto por padrão
+              isCaptain: true
+            }
+          ]
+        },
+        {
+          id: 'team2',
+          name: 'Time 2',
+          players: [
+            {
+              userId: lobby2.userId, // Adicionar userId para compatibilidade
+              id: lobby2.userId,
+              name: user2.username || user2.name || 'Jogador 2',
+              username: user2.username || user2.name || 'Jogador 2', // Adicionar username para compatibilidade
+              avatar: user2.avatar || user2.avatarUrl || '/images/avatars/default.png',
+              isReady: true, // Jogador já está pronto por padrão
+              isCaptain: true
+            }
+          ]
+        }
+      ],
+      gameType: lobby1.gameType || lobby1.mode || 'default',
+      status: 'waiting',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    await db.collection('matches').insertOne(matchDocument);
+    console.log("Documento da partida criado:", matchId);
+    
+    // Verificar se o documento da partida foi realmente criado
+    console.log(`Verificando se a partida ${matchId} foi criada com sucesso...`);
+    
+    const matchConfirmation = await db.collection('matches').findOne({
+      $or: [
+        { _id: matchObjectId },
+        { matchId: matchId },
+        { match_id: matchId }
+      ]
     });
 
-    console.log(`Encontrados ${queuedLobbies.length} lobbies na fila de matchmaking`);
-
-    // Agrupar lobbies por tipo de jogo e tamanho da equipe
-    const lobbyGroups: LobbyGroups = {};
-    
-    for (const lobby of queuedLobbies) {
-      // Normalizar propriedades, priorizando determinados campos
-      const gameType = lobby.gameType || lobby.mode || 'default';
-      const teamSize = lobby.teamSize || 1;
-      const platformMode = lobby.platformMode || lobby.platform || 'mixed';
-      const gameplayMode = lobby.gameplayMode || 'normal';
-      const key = `${gameType}-${teamSize}-${platformMode}-${gameplayMode}`;
+    if (!matchConfirmation) {
+      console.error(`ERRO: Match com ID ${matchId} não foi encontrado após a criação.`);
       
-      if (!lobbyGroups[key]) {
-        lobbyGroups[key] = [];
-      }
+      // Tentar encontrar qualquer partida recente como diagnóstico
+      const recentMatches = await db.collection('matches')
+        .find({})
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .toArray();
       
-      lobbyGroups[key].push(lobby);
-    }
-    
-    console.log(`Grupos formados: ${Object.keys(lobbyGroups).join(', ')}`);
-    
-    // Processamento de matchmaking
-    const processedLobbyIds: string[] = [];
-    const matchesCreated: string[] = [];
-
-    // Para cada grupo de lobbies, processar matchmaking
-    for (const key in lobbyGroups) {
-      const lobbies = lobbyGroups[key];
-      console.log(`Processando grupo ${key} com ${lobbies.length} lobbies`);
+      console.log(`Partidas recentes: ${recentMatches.map(m => m._id.toString()).join(', ')}`);
       
-      const [gameType, teamSizeStr, platformMode, gameplayMode] = key.split('-');
-      const teamSize = parseInt(teamSizeStr, 10);
-      
-      // Verificar número mínimo necessário de jogadores baseado no tamanho do time
-      const requiredLobbies = 2; // Precisamos de dois lobbies para formar uma partida
-
-      // Garantir que existam pelo menos 2 lobbies para formar uma partida
-      // Não podemos criar partida com um único jogador/lobby
-      if (lobbies.length < requiredLobbies) {
-        console.log(`Grupo ${key} não tem lobbies suficientes (${lobbies.length}/${requiredLobbies}). Pulando.`);
-        continue;
-      }
-      
-      // Lógica para fazer o matchmaking
-      // Vamos juntar dois lobbies para formar uma partida
-      
-      while (lobbies.length >= requiredLobbies) {
-        const lobby1 = lobbies.shift();
-        const lobby2 = lobbies.shift();
-        
-        if (lobby1 && lobby2) {
-          // Normalizar IDs do lobby (podem ser string ou ObjectId)
-          const lobby1Id = lobby1.lobbyId instanceof ObjectId 
-            ? lobby1.lobbyId.toString() 
-            : lobby1.lobbyId?.toString() || lobby1._id.toString();
-            
-          const lobby2Id = lobby2.lobbyId instanceof ObjectId 
-            ? lobby2.lobbyId.toString() 
-            : lobby2.lobbyId?.toString() || lobby2._id.toString();
-            
-          console.log(`Criando match entre lobbies ${lobby1Id} e ${lobby2Id}`);
-          
-          // VERIFICAÇÃO: Checar se lobbies já estão em alguma partida
-          const existingMatch = await db.collection('matches').findOne({
-            lobbies: { $in: [lobby1Id, lobby2Id] },
-            status: { $nin: ['completed', 'canceled'] }
-          });
-          
-          if (existingMatch) {
-            console.log(`Um dos lobbies já está em uma partida ativa (ID: ${existingMatch.matchId}). Pulando.`);
-            continue;
-          }
-          
-          // Criar um novo match
-          const matchId = new ObjectId().toString();
-          
-          // Obter os jogadores para cada lobby
-          const players1 = lobby1.players || [];
-          const players2 = lobby2.players || [];
-          
-          // Adicionar o usuário da fila se não houver players (uso individual)
-          if (players1.length === 0 && lobby1.userId) {
-            const userInfo = await db.collection('users').findOne({ 
-              $or: [
-                { _id: new ObjectId(lobby1.userId) },
-                { id: lobby1.userId }
-              ]
-            });
-            
-            if (userInfo) {
-              players1.push({
-                userId: lobby1.userId,
-                username: userInfo.username || 'Jogador',
-                avatar: userInfo.avatar || '/images/avatars/default.png'
-              });
-            }
-          }
-          
-          if (players2.length === 0 && lobby2.userId) {
-            const userInfo = await db.collection('users').findOne({ 
-              $or: [
-                { _id: new ObjectId(lobby2.userId) },
-                { id: lobby2.userId }
-              ]
-            });
-            
-            if (userInfo) {
-              players2.push({
-                userId: lobby2.userId,
-                username: userInfo.username || 'Jogador',
-                avatar: userInfo.avatar || '/images/avatars/default.png'
-              });
-            }
-          }
-          
-          // Verificar se os dois lobbies têm jogadores
-          if (players1.length === 0 || players2.length === 0) {
-            console.log('Um dos lobbies não tem jogadores. Pulando criação de partida.');
-            continue;
-          }
-          
-          // Criar documento do match no banco de dados com informações completas
-          await db.collection('matches').insertOne({
-            matchId,
-            lobbies: [lobby1Id, lobby2Id],
-            players: [
-              ...players1.map(p => ({ ...p, lobbyId: lobby1Id })),
-              ...players2.map(p => ({ ...p, lobbyId: lobby2Id }))
-            ],
-            gameType,
-            platformMode,
-            gameplayMode,
-            status: 'waiting_admin',  // Status específico para indicar que aguarda configuração do admin
-            idSala: null,          // Campo para o admin preencher com ID da sala
-            senhaSala: null,       // Campo para o admin preencher com senha da sala
-            salaConfigurada: false, // Indica se o admin já configurou a sala
-            timerStarted: false,   // Indica se o timer de 5 minutos já foi iniciado
-            timerStartedAt: null,  // Timestamp de quando o timer foi iniciado
-            timerDuration: 5 * 60, // Duração do timer em segundos (5 minutos)
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          
-          // Adicionar os lobbies à lista de processados
-          processedLobbyIds.push(lobby1Id, lobby2Id);
-          matchesCreated.push(matchId);
-          
-          console.log(`Match ${matchId} criado com sucesso`);
-          
-          // Notificar usuários sobre o match criado
-          const allPlayers = [...players1, ...players2];
-          for (const player of allPlayers) {
-            await db.collection('notifications').insertOne({
-              userId: player.userId,
-              type: 'match_created',  // Tipo específico para notificação de partida
-              title: 'Partida encontrada!',
-              message: 'Uma partida foi encontrada! Aguarde a configuração da sala pelo administrador.',
-              read: false,
-              data: {
-                matchId,
-                gameType,
-                platformMode,
-                gameplayMode
-              },
-              createdAt: new Date()
-            });
-          }
+      return new Response(JSON.stringify({
+        error: 'Falha ao criar partida',
+        details: 'O documento da partida não foi encontrado após a inserção',
+        debug: {
+          createdId: matchId,
+          recentMatches: recentMatches.map(m => ({
+            id: m._id.toString(),
+            matchId: m.matchId,
+            createdAt: m.createdAt
+          }))
         }
-      }
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     
-    // Remover todos os lobbies processados da fila
-    if (processedLobbyIds.length > 0) {
-      console.log(`Removendo ${processedLobbyIds.length} lobbies da fila`);
+    console.log(`Partida ${matchId} criada com sucesso!`);
+    console.log(`ID no banco: ${matchConfirmation._id.toString()}`);
+    console.log(`matchId no banco: ${matchConfirmation.matchId}`);
+    console.log(`match_id no banco: ${matchConfirmation.match_id || 'não definido'}`);
+    console.log(`Lobby 1: ${lobby1Id}, Lobby 2: ${lobby2Id}`);
+    
+    // Atualizar os IDs caso tenham sido gerados de forma diferente
+    if (matchConfirmation._id.toString() !== matchId) {
+      console.log(`Atualizando matchId e match_id para corresponder ao _id para evitar inconsistências...`);
+      await db.collection('matches').updateOne(
+        { _id: matchConfirmation._id },
+        { 
+          $set: { 
+            matchId: matchConfirmation._id.toString(),
+            match_id: matchConfirmation._id.toString()
+          } 
+        }
+      );
+    }
+
+    // Inserir notificações para cada jogador
+    try {
+      // Player 1
+      await db.collection('notifications').insertOne({
+        userId: user1.userId,
+        type: 'matchmaking',
+        title: 'Partida encontrada!',
+        message: 'Uma partida foi encontrada. Clique para entrar no lobby.',
+        data: {
+          matchId: matchId,
+          type: 'match_found'
+        },
+        read: false,
+        createdAt: new Date()
+      });
       
-      try {
-        // Tentar remover por lobbyId
-        await queueCollection.deleteMany({
-          $or: [
-            { lobbyId: { $in: processedLobbyIds } },
-            { _id: { $in: processedLobbyIds.map(id => {
-              try { 
-                // Converter apenas strings válidas para ObjectId
-                return typeof id === 'string' && ObjectId.isValid(id) ? new ObjectId(id) : id; 
-              } catch (e) { 
-                return id; 
-              }
-            }) as unknown as ObjectId[] } }
-          ]
-        });
-      } catch (deleteError) {
-        console.error('Erro ao remover lobbies da fila:', deleteError);
-      }
+      // Player 2
+      await db.collection('notifications').insertOne({
+        userId: user2.userId,
+        type: 'matchmaking',
+        title: 'Partida encontrada!',
+        message: 'Uma partida foi encontrada. Clique para entrar no lobby.',
+        data: {
+          matchId: matchId,
+          type: 'match_found'
+        },
+        read: false,
+        createdAt: new Date()
+      });
+      
+      console.log("Notificações criadas para ambos os jogadores");
+    } catch (notifError) {
+      console.error("Erro ao criar notificações:", notifError);
+      // Continuar mesmo com erro nas notificações
     }
+
+    // Agora que confirmamos que a partida foi criada e as notificações enviadas,
+    // podemos remover os lobbies da fila
+    const deleteResult = await db.collection('matchmaking_queue').deleteMany({
+      _id: { $in: [lobby1._id, lobby2._id] }
+    });
+
+    console.log(`Match criado com sucesso: ${matchId}. Removidos da fila: ${deleteResult.deletedCount} lobbies`);
     
-    return new Response(JSON.stringify({ 
-      success: true, 
-      processed: processedLobbyIds.length,
-      matches: matchesCreated 
+    return new Response(JSON.stringify({
+      message: 'Processamento de matchmaking concluído com sucesso',
+      processed: 1,
+      matchId,
+      match: matchDocument
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Erro ao processar matchmaking:', error);
-    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), {
+    console.error('Erro no processamento de matchmaking:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Erro interno do servidor',
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -19,6 +19,8 @@ import {
   Award as TrophyIcon
 } from 'react-feather';
 import ProfileComments from '@/components/profile/ProfileComments';
+import { RankTier } from '@/utils/ranking';
+import ProfileAvatar from '@/components/profile/ProfileAvatar';
 
 export default function FriendProfile({ params }: { params: { username: string } }) {
   const router = useRouter();
@@ -64,6 +66,19 @@ export default function FriendProfile({ params }: { params: { username: string }
             // Se for o perfil do próprio usuário, usamos esses dados
             if (selfData.user.username === username) {
               console.log("Perfil próprio encontrado e corresponde ao username da URL");
+
+              // Usar dados simulados de rank sem calcular
+              if (!selfData.user.stats) {
+                selfData.user.stats = {};
+              }
+              
+              // DADOS SIMULADOS: Platinum
+              selfData.user.stats.rankTier = 'platinum';
+              selfData.user.stats.rankName = 'Platinum 2';
+              selfData.user.stats.rankPoints = 1050;
+              selfData.user.stats.nextRank = 'Platinum 3';
+              selfData.user.stats.rankProgress = 50;
+              
               setProfile(selfData.user);
               setFriendStatus('self'); // Indicando que é o perfil do próprio usuário
               setIsLoading(false);
@@ -91,6 +106,19 @@ export default function FriendProfile({ params }: { params: { username: string }
           if (friendProfileResponse.ok) {
             const friendData = await friendProfileResponse.json();
             console.log("Perfil de amigo encontrado usando API específica");
+
+            // Usar dados simulados de rank sem calcular
+            if (!friendData.user.stats) {
+              friendData.user.stats = {};
+            }
+            
+            // DADOS SIMULADOS: Platinum
+            friendData.user.stats.rankTier = 'platinum';
+            friendData.user.stats.rankName = 'Platinum 2';
+            friendData.user.stats.rankPoints = 1050;
+            friendData.user.stats.nextRank = 'Platinum 3';
+            friendData.user.stats.rankProgress = 50;
+            
             setProfile(friendData.user);
             
             // Verificar status de amizade
@@ -120,7 +148,9 @@ export default function FriendProfile({ params }: { params: { username: string }
             
             if (friend) {
               console.log("Amigo encontrado na lista de amigos");
-              setProfile({
+              
+              // Dados do usuário amigo com rank simulado
+              const friendProfile = {
                 id: friend.id,
                 username: friend.username,
                 avatarUrl: friend.avatarUrl,
@@ -129,14 +159,22 @@ export default function FriendProfile({ params }: { params: { username: string }
                   bio: friend.bio || '',
                   xp: friend.xp || 0
                 },
-                stats: friend.stats || {
-                  matches: 0,
-                  wins: 0
+                stats: {
+                  matches: friend.matches || 0,
+                  wins: friend.wins || 0,
+                  // DADOS SIMULADOS: Platinum
+                  rankTier: 'platinum',
+                  rankName: 'Platinum 2',
+                  rankPoints: 1050,
+                  nextRank: 'Platinum 3',
+                  rankProgress: 50
                 },
                 createdAt: friend.since || new Date().toISOString(),
                 achievements: [],
                 recentMatches: []
-              });
+              };
+              
+              setProfile(friendProfile);
               setFriendStatus('friend');
               setIsLoading(false);
               return;
@@ -153,6 +191,8 @@ export default function FriendProfile({ params }: { params: { username: string }
         // Se chegou aqui, nenhuma abordagem funcionou, criamos um perfil temporário
         if (window.confirm('Não foi possível encontrar os dados deste usuário. Deseja visualizar um perfil temporário?')) {
           console.log("Criando perfil temporário");
+          
+          // Perfil temporário com dados de rank simulados
           setProfile({
             id: 'temp-' + Math.random().toString(36).substring(2, 9),
             username: username,
@@ -164,7 +204,13 @@ export default function FriendProfile({ params }: { params: { username: string }
             },
             stats: {
               matches: 0,
-              wins: 0
+              wins: 0,
+              // DADOS SIMULADOS: Platinum
+              rankTier: 'platinum',
+              rankName: 'Platinum 2',
+              rankPoints: 1050,
+              nextRank: 'Platinum 3',
+              rankProgress: 50
             },
             createdAt: new Date().toISOString(),
             achievements: [],
@@ -487,6 +533,66 @@ export default function FriendProfile({ params }: { params: { username: string }
                 <div className="text-2xl font-bold text-[#8860FF]">
                   {profile.stats?.matches ? 
                     Math.round((profile.stats.wins / profile.stats.matches) * 100) : 0}%
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Rank do Jogador - VERSÃO ESTÁTICA SEM CONDICIONAIS */}
+          <div className="bg-[#171335] rounded-lg shadow-md p-6 border border-[#3D2A85]/20">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Shield className="mr-2 text-[#8860FF]" size={20} />
+              Rank do Jogador
+            </h2>
+            
+            <div className="flex flex-col md:flex-row md:items-center">
+              <div className="mb-4 md:mb-0 md:mr-6 flex justify-center">
+                {/* Componente de avatar com moldura de rank fixa */}
+                <ProfileAvatar 
+                  size="lg" 
+                  rankTier="platinum" 
+                  avatarUrl={profile.avatarUrl}
+                />
+              </div>
+              
+              <div className="flex-1">
+                {/* Informações do rank - VALORES FIXOS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-[#232048] p-4 rounded-lg">
+                    <div className="text-sm text-[#A89ECC]">Rank Atual</div>
+                    <div className="text-xl font-bold" style={{ color: '#14b8a6' }}>
+                      Platinum 2
+                    </div>
+                  </div>
+                  
+                  <div className="bg-[#232048] p-4 rounded-lg">
+                    <div className="text-sm text-[#A89ECC]">Pontos de Rank</div>
+                    <div className="text-xl font-bold text-white">1050</div>
+                  </div>
+                  
+                  <div className="bg-[#232048] p-4 rounded-lg">
+                    <div className="text-sm text-[#A89ECC]">Próximo Rank</div>
+                    <div className="text-xl font-bold text-white">
+                      Platinum 3
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Barra de progresso - FIXA */}
+                <div className="bg-[#232048] p-4 rounded-lg">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[#A89ECC]">Progresso para o próximo rank</span>
+                    <span className="text-white">50%</span>
+                  </div>
+                  <div className="w-full bg-[#0D0A2A] rounded-full h-2.5">
+                    <div 
+                      className="h-2.5 rounded-full" 
+                      style={{ 
+                        width: '50%',
+                        background: 'linear-gradient(to right, #14b8a6, #0d9488)'
+                      }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>

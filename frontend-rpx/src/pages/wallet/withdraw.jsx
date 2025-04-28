@@ -19,7 +19,7 @@ const withdrawalValues = [
 
 export default function WithdrawPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, updateUserBalance } = useAuth();
   const [amount, setAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
   const [withdrawMethod, setWithdrawMethod] = useState('pix');
@@ -67,8 +67,32 @@ export default function WithdrawPage() {
     setIsProcessing(true);
     
     try {
-      // Simular processamento
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fazer chamada à API simulada
+      const response = await fetch('/api/wallet/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount,
+          paymentMethod: withdrawMethod,
+          userId: user.id,
+          accountInfo: withdrawMethod === 'pix' 
+            ? { pixKey } 
+            : { bank: 'simulado', agency: '0001', account: '123456' }
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao processar saque');
+      }
+      
+      // Atualizar o saldo do usuário localmente se atualizarUserBalance estiver disponível
+      if (typeof updateUserBalance === 'function' && data.currentBalance !== undefined) {
+        updateUserBalance(data.currentBalance);
+      }
       
       // Redirecionar para página de sucesso
       router.push('/wallet/withdraw/success');
@@ -93,7 +117,9 @@ export default function WithdrawPage() {
   }
 
   if (!isAuthenticated) {
-    router.push('/auth/login?redirect=/wallet/withdraw');
+    if (typeof window !== 'undefined') {
+      router.push('/auth/login?redirect=/profile/wallet/withdraw');
+    }
     return null;
   }
 
@@ -102,7 +128,7 @@ export default function WithdrawPage() {
       <div className="container py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-6 flex items-center">
-            <Link href="/profile" className="mr-4 flex items-center text-muted hover:text-white transition-colors">
+            <Link href="/profile/wallet" className="mr-4 flex items-center text-muted hover:text-white transition-colors">
               <ArrowLeft size={18} className="mr-1" />
               Voltar
             </Link>

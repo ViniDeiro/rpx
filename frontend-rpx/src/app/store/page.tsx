@@ -113,20 +113,30 @@ export default function StorePage() {
   ];
 
   useEffect(() => {
-    // Simulando requisição à API
+    // Buscar produtos reais da API
     const fetchProducts = async () => {
       try {
         setIsLoading(true);
-        // Em produção, descomentar a linha abaixo e remover a simulação
-        // const response = await api.get('/store/products');
-        // setProducts(response.data);
         
-        // Simulando delay da API
-        setTimeout(() => {
-          setProducts(productsData);
-          setFilteredProducts(productsData);
-          setIsLoading(false);
-        }, 1000);
+        // Fazendo a chamada real à API
+        const response = await fetch('/api/store/products');
+        
+        if (!response.ok) {
+          throw new Error('Falha ao buscar produtos da API');
+        }
+        
+        const data = await response.json();
+        
+        // Verificar se os dados estão no formato esperado
+        if (data && data.products) {
+          setProducts(data.products);
+          setFilteredProducts(data.products);
+        } else {
+          console.error('Formato de resposta da API inválido:', data);
+          setError('Formato de resposta da API inválido');
+        }
+        
+        setIsLoading(false);
       } catch (err) {
         console.error('Erro ao carregar produtos da loja:', err);
         setError('Não foi possível carregar os produtos. Tente novamente mais tarde.');
@@ -135,6 +145,13 @@ export default function StorePage() {
     };
 
     fetchProducts();
+    
+    // Comentando dados mockados:
+    // setTimeout(() => {
+    //   setProducts(productsData);
+    //   setFilteredProducts(productsData);
+    //   setIsLoading(false);
+    // }, 1000);
   }, []);
 
   // Filtrar produtos

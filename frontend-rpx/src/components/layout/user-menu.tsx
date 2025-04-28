@@ -147,7 +147,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, status }) => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="py-2 px-3 rounded-lg my-1 hover:bg-indigo-900/50 focus:bg-indigo-900/50">
-            <Link href="/wallet" className="flex cursor-pointer items-center">
+            <Link href="/profile/wallet" className="flex cursor-pointer items-center">
               <CreditCard className="mr-2 h-4 w-4 text-indigo-400" />
               <span>Carteira</span>
             </Link>

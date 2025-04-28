@@ -77,6 +77,13 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   useEffect(() => {
     if (!isOpen || !match?.id) return;
   
+    // Log de debugging
+    console.log("MatchRoomModal - Match data:", match);
+    console.log("MatchRoomModal - Teams:", match.teams);
+    if ('players' in match) {
+      console.log("MatchRoomModal - Players:", (match as any).players);
+    }
+  
     // Configurar o estado inicial do jogador
     setIsReady(match?.teams?.some(team => 
       team.players.some(player => player.id === user?.id && player.isReady)
@@ -85,6 +92,7 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     // Extrair equipes do match
     if (match.teams) {
       setTeams(match.teams);
+      console.log("MatchRoomModal - Teams state updated:", match.teams);
     }
     
     // Definir status inicial
@@ -100,10 +108,12 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
       }
       
         const updatedMatch = await response.json();
+        console.log("MatchRoomModal - Updated match data:", updatedMatch);
         
         // Atualizar estado das equipes
         if (updatedMatch.teams) {
           setTeams(updatedMatch.teams);
+          console.log("MatchRoomModal - Teams state updated from polling:", updatedMatch.teams);
         }
         
         // Atualizar status da partida

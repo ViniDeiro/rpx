@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Character2D from '../2d/Character2D';
+import ProfileAvatar from '../profile/ProfileAvatar';
+import { Award } from 'react-feather';
+import { RankTier } from '@/utils/ranking';
 
 // Definição da interface para o jogador
 interface Player {
@@ -10,6 +13,9 @@ interface Player {
     type: string;
     color: string;
   };
+  rank?: string;
+  rankTier?: RankTier;
+  level?: number;
 }
 
 // Interface para props do componente
@@ -69,22 +75,40 @@ export default function LobbyWithCharacters({
         <div className="bg-gray-100 rounded-lg p-4 w-36 h-36 flex items-center justify-center">
           {player ? (
             <div className="text-center">
-              <Character2D 
-                type={player.character?.type || 'default'} 
-                color={player.character?.color || '#3498db'} 
-                animation={getCharacterAnimation(gameStatus)}
-                size="medium"
-              />
-              
-              <div className="mt-2 flex items-center justify-center gap-2">
-                {player.avatarUrl && (
-                  <img 
-                    src={player.avatarUrl} 
-                    alt={player.username}
-                    className="w-6 h-6 rounded-full object-cover"
+              <div className="relative mb-2">
+                {/* Personagem 2D */}
+                <Character2D 
+                  type={player.character?.type || 'default'} 
+                  color={player.character?.color || '#3498db'} 
+                  animation={getCharacterAnimation(gameStatus)}
+                  size="medium"
+                />
+                
+                {/* Avatar com moldura de rank */}
+                <div className="absolute bottom-0 right-0">
+                  <ProfileAvatar 
+                    size="sm" 
+                    rankTier="platinum" 
+                    avatarUrl={player.avatarUrl}
+                    showRankFrame={true}
                   />
-                )}
+                </div>
+              </div>
+              
+              <div className="mt-2 flex flex-col items-center justify-center gap-1">
                 <p className="font-medium text-sm truncate max-w-[80%]">{player.username}</p>
+                
+                {player.rank && (
+                  <div className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md flex items-center">
+                    <Award size={10} className="mr-1" /> {player.rank}
+                  </div>
+                )}
+                
+                {player.level && (
+                  <div className="text-xs text-gray-500">
+                    Nível {player.level}
+                  </div>
+                )}
               </div>
             </div>
           ) : (

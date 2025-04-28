@@ -21,7 +21,7 @@ const depositValues = [
 
 export default function DepositPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, updateUserBalance } = useAuth();
   const [amount, setAmount] = useState(50); // Valor padrão R$ 50
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [customAmount, setCustomAmount] = useState('');
@@ -56,10 +56,31 @@ export default function DepositPage() {
     setIsProcessing(true);
     
     try {
-      // Simular processamento de pagamento
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fazer chamada à API simulada
+      const response = await fetch('/api/wallet/deposit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount,
+          paymentMethod: paymentMethod,
+          userId: user.id
+        }),
+      });
+
+      const data = await response.json();
       
-      // Redirecionar para página de sucesso (em produção, seria redirecionado para o gateway de pagamento)
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao processar depósito');
+      }
+      
+      // Atualizar o saldo do usuário localmente se atualizarUserBalance estiver disponível
+      if (typeof updateUserBalance === 'function' && data.currentBalance !== undefined) {
+        updateUserBalance(data.currentBalance);
+      }
+      
+      // Redirecionar para página de sucesso
       router.push('/wallet/deposit/success');
     } catch (error) {
       console.error('Erro ao processar depósito:', error);
@@ -82,7 +103,9 @@ export default function DepositPage() {
   }
 
   if (!isAuthenticated) {
-    router.push('/auth/login?redirect=/wallet/deposit');
+    if (typeof window !== 'undefined') {
+      router.push('/auth/login?redirect=/profile/wallet/deposit');
+    }
     return null;
   }
 
@@ -91,7 +114,7 @@ export default function DepositPage() {
       <div className="container py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-6 flex items-center">
-            <Link href="/profile" className="mr-4 flex items-center text-muted hover:text-white transition-colors">
+            <Link href="/profile/wallet" className="mr-4 flex items-center text-muted hover:text-white transition-colors">
               <ArrowLeft size={18} className="mr-1" />
               Voltar
             </Link>

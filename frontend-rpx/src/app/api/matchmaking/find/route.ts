@@ -95,7 +95,14 @@ export async function POST(req: NextRequest) {
       gameplayMode,
       teamSize,
       createdAt: new Date(),
-      status: 'waiting'
+      status: 'waiting',
+      // Campos adicionais necessários para o processamento
+      lobbyId: new ObjectId().toString(), // Criar um ID virtual de lobby para usuários solo
+      players: [{
+        userId: userId,
+        username: session.user.name || 'Jogador',
+        avatar: session.user.image || '/images/avatars/default.png'
+      }]
     });
 
     // Verificar se o resultado contém um ID inserido

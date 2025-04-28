@@ -63,7 +63,7 @@ export const RANK_CONFIG = {
 export const RANK_FRAMES: Record<RankTier, Omit<Partial<Rank>, 'division' | 'points' | 'nextRankPoints' | 'requiredPointsForPromotion'>> = {
   unranked: {
     tier: 'unranked',
-    name: 'Unranked',
+    name: 'Novato',
     color: 'from-gray-300 to-gray-400',
     borderColor: 'border-gray-300',
     image: '/images/ranks/unranked.png'
@@ -157,7 +157,7 @@ export const calculateRank = (points: number, position?: number): Rank => {
     return {
       tier: 'unranked',
       division: null,
-      name: 'Unranked',
+      name: 'Novato',
       points: 0,
       nextRankPoints: 1,
       color: RANK_FRAMES.unranked.color || '',

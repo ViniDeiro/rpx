@@ -1,8 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import { connectToDatabase } from '@/lib/mongodb/connect';
+import { v4 as uuidv4 } from 'uuid';
 
-// GET - Obter todos os usuários cadastrados
+// Função para gerar nomes aleatórios
+const gerarNomeAleatorio = () => {
+  const nomes = ['Gabriel', 'Lucas', 'Pedro', 'Rafael', 'Matheus', 'João', 'Bruno', 'Carlos', 'Felipe', 'Victor', 
+                 'Diego', 'Daniel', 'Guilherme', 'Rodrigo', 'Gustavo', 'André', 'Thiago', 'Marcelo', 'Ricardo', 'Eduardo'];
+  const sobrenomes = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Costa', 'Pereira', 'Ferreira', 'Rodrigues', 'Almeida', 'Gomes',
+                     'Ribeiro', 'Martins', 'Rocha', 'Carvalho', 'Fernandes', 'Melo', 'Barbosa', 'Dias', 'Lima', 'Lopes'];
+  return `${nomes[Math.floor(Math.random() * nomes.length)]}${sobrenomes[Math.floor(Math.random() * sobrenomes.length)]}`;
+};
+
+// Função para gerar avatar aleatório
+const gerarAvatarAleatorio = () => {
+  const avatarId = Math.floor(Math.random() * 12) + 1;
+  return `/images/avatars/avatar${avatarId}.png`;
+};
+
+// Função para gerar dados de usuários simulados
+const gerarUsuariosSimulados = (quantidade: number, includeAvatars: boolean, search?: string): any[] => {
+  const users = [];
+  
+  for (let i = 0; i < quantidade; i++) {
+    const username = gerarNomeAleatorio();
+    
+    // Se houver um termo de busca, verificar se o nome corresponde
+    if (search && !username.toLowerCase().includes(search.toLowerCase())) {
+      // Gerar novo usuário para manter a quantidade solicitada
+      i--;
+      continue;
+    }
+    
+    const user = {
+      _id: uuidv4(),
+      id: uuidv4(),
+      username: username,
+      name: username,
+      email: `${username.toLowerCase()}@exemplo.com`,
+      avatar: gerarAvatarAleatorio(),
+      createdAt: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)), // até 30 dias atrás
+      status: Math.random() > 0.2 ? 'active' : 'offline'
+    };
+    
+    // Adicionar avatarUrl se solicitado
+    if (includeAvatars) {
+      (user as any).avatarUrl = user.avatar;
+    }
+    
+    users.push(user);
+  }
+  
+  return users;
+};
+
+// GET - Obter todos os usuários (simulado)
 export async function GET(req: NextRequest) {
   try {
     // Obter parâmetros de consulta
@@ -11,96 +61,30 @@ export async function GET(req: NextRequest) {
     const search = url.searchParams.get('search') || '';
     const includeAvatars = url.searchParams.get('includeAvatars') === 'true';
     
-    console.log(`Buscando usuários com includeAvatars=${includeAvatars}`);
+    console.log(`Buscando usuários simulados com includeAvatars=${includeAvatars}`);
     
-    // Conectar ao MongoDB
-    await connectToDatabase();
-    const db = mongoose.connection.db;
+    // Simular pequeno atraso para parecer realista
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    if (!db) {
-      return NextResponse.json(
-        { error: 'Erro de conexão com o banco de dados' },
-        { status: 500 }
-      );
-    }
+    // Gerar dados simulados
+    const usuarios = gerarUsuariosSimulados(limit, includeAvatars, search);
     
-    // Preparar filtro de busca
-    const searchFilter: any = {};
-    if (search) {
-      searchFilter.$or = [
-        { username: { $regex: search, $options: 'i' } },
-        { 'profile.name': { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Definir campos a projetar
-    const projectFields: any = {
-      _id: 1,
-      username: 1,
-      'profile.name': 1,
-      'profile.avatar': 1,
-      email: 1,
-      createdAt: 1,
-      status: 1
-    };
-    
-    // Incluir avatarUrl se solicitado
-    if (includeAvatars) {
-      projectFields.avatarUrl = 1;
-    }
-    
-    // Buscar usuários
-    const users = await db.collection('users')
-      .find(searchFilter)
-      .project(projectFields)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .toArray();
-    
-    console.log(`Encontrados ${users.length} usuários`);
-    
-    // Formatar dados para resposta
-    const formattedUsers = users.map(user => {
-      const formatted = {
-        _id: user._id.toString(),
-        id: user._id.toString(),
-        username: user.username,
-        name: user.profile?.name || user.username,
-        avatar: user.profile?.avatar || null,
-        email: user.email,
-        createdAt: user.createdAt,
-        status: user.status || 'active'
-      };
-      
-      // Incluir avatarUrl se estiver disponível e solicitado
-      if (includeAvatars && user.avatarUrl) {
-        // Se avatarUrl for muito grande, cortar para log
-        const avatarPreview = typeof user.avatarUrl === 'string' && user.avatarUrl.length > 50 
-          ? user.avatarUrl.substring(0, 20) + '...' + user.avatarUrl.substring(user.avatarUrl.length - 20)
-          : 'não é string';
-        
-        console.log(`Usuário ${user.username} tem avatarUrl (tamanho: ${typeof user.avatarUrl === 'string' ? user.avatarUrl.length : 'N/A'}, preview: ${avatarPreview})`);
-        
-        (formatted as any).avatarUrl = user.avatarUrl;
-      }
-      
-      return formatted;
-    });
+    console.log(`Gerados ${usuarios.length} usuários simulados`);
     
     // Registrar quantos usuários têm avatarUrl
     if (includeAvatars) {
-      const withAvatars = formattedUsers.filter((user: any) => user.avatarUrl).length;
-      console.log(`${withAvatars} de ${formattedUsers.length} usuários têm avatarUrl`);
+      const withAvatars = usuarios.filter((user: any) => user.avatarUrl).length;
+      console.log(`${withAvatars} de ${usuarios.length} usuários simulados têm avatarUrl`);
     }
     
-    // Retornar dados formatados
+    // Retornar dados simulados
     return NextResponse.json({
-      users: formattedUsers,
-      count: formattedUsers.length,
+      users: usuarios,
+      count: usuarios.length,
       timestamp: new Date()
     });
   } catch (error) {
-    console.error('Erro ao obter usuários:', error);
+    console.error('Erro ao gerar usuários simulados:', error);
     return NextResponse.json(
       { error: 'Erro ao obter usuários' },
       { status: 500 }

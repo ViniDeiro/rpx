@@ -1,32 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModels } from '@/lib/mongodb/models';
-import { authMiddleware, getUserId } from '@/lib/auth/middleware';
-import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
-// POST - Solicitar saque da carteira
+// Referência ao armazenamento simulado compartilhado entre APIs
+// Na prática, isso seria armazenado em banco de dados
+let transactions: any[] = [];
+let userWallets: Record<string, { balance: number }> = {};
+
+// POST - Solicitar saque da carteira (versão simulada)
 export async function POST(req: NextRequest) {
-  // Autenticar a requisição
-  const authResult = await authMiddleware(req);
-  
-  // Se authResult é uma resposta (erro), retorná-la
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  
-  // Usar a requisição autenticada
-  const authenticatedReq = authResult;
-  
   try {
-    // Obter ID do usuário da requisição autenticada
-    const userId = getUserId(authenticatedReq);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado na requisição' },
-        { status: 400 }
-      );
-    }
+    // Simulamos que a requisição já está autenticada
+    // Em produção, isso seria feito por um middleware auth
+    const headers = req.headers;
+    const authorization = headers.get('authorization') || '';
+    const userId = authorization.replace('Bearer ', '') || 'user-sim-' + uuidv4().substring(0, 8);
     
     // Obter dados da requisição
     const body = await req.json();
@@ -78,29 +65,13 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Obter modelos do MongoDB
-    const { User } = await getModels();
-    
-    // Verificar se o usuário existe
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    // Verificar se a carteira do usuário está bloqueada
-    if (user.wallet?.isLocked) {
-      return NextResponse.json(
-        { error: 'Sua carteira está bloqueada. Entre em contato com o suporte.' },
-        { status: 403 }
-      );
-    }
-    
     // Verificar se o usuário tem saldo suficiente
-    const balance = user.wallet?.balance || 0;
+    // Inicializar carteira se não existir
+    if (!userWallets[userId]) {
+      userWallets[userId] = { balance: 1000 }; // Já inicializamos com saldo para simulação
+    }
+    
+    const balance = userWallets[userId].balance;
     
     if (balance < amount) {
       return NextResponse.json(
@@ -108,6 +79,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Simular tempo de processamento
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     // Calcular taxa de saque (se aplicável)
     const withdrawalFee = 0; // Sem taxa para o exemplo
@@ -125,23 +99,17 @@ export async function POST(req: NextRequest) {
     
     // Gerar referência única para o saque
     const reference = `WD-${uuidv4().substring(0, 8).toUpperCase()}`;
+    const transactionId = uuidv4();
     
-    // Criar nova transação
-    const db = mongoose.connection.db;
-    if (!db) {
-      return NextResponse.json(
-        { error: 'Erro de conexão com o banco de dados' },
-        { status: 500 }
-      );
-    }
-    
+    // Criar nova transação simulada
     const transaction = {
+      id: transactionId,
       userId: userId,
       type: 'withdrawal',
       amount: amount,
       fee: withdrawalFee,
       netAmount: totalAmount,
-      status: 'pending',
+      status: 'completed', // Na simulação, já aprovamos o saque automaticamente
       paymentMethod: paymentMethod,
       accountInfo: accountInfo,
       reference: reference,
@@ -150,37 +118,33 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date()
     };
     
-    // Salvar transação no banco de dados
-    const result = await db.collection('transactions').insertOne(transaction);
+    // Salvar transação em memória
+    transactions.push(transaction);
     
-    // Deduzir o valor imediatamente do saldo (ou aguardar confirmação, dependendo da política)
-    user.wallet.balance -= totalAmount;
+    // Deduzir o valor imediatamente do saldo
+    userWallets[userId].balance -= totalAmount;
     
-    // Adicionar transação à carteira do usuário
-    if (!user.wallet.transactions) {
-      user.wallet.transactions = [];
-    }
-    
-    user.wallet.transactions.push(result.insertedId);
-    user.updatedAt = new Date();
-    await user.save();
+    console.log(`💸 [SIMULAÇÃO] Saque de R$${amount} para o usuário ${userId} realizado com sucesso`);
+    console.log(`💸 [SIMULAÇÃO] Novo saldo: R$${userWallets[userId].balance}`);
     
     // Retornar dados da transação
     return NextResponse.json({
-      message: 'Solicitação de saque registrada com sucesso',
+      message: 'Saque simulado realizado com sucesso',
       transaction: {
-        id: result.insertedId.toString(),
+        id: transactionId,
         type: 'withdrawal',
         amount: amount,
-        status: 'pending',
+        status: 'completed',
         paymentMethod: paymentMethod,
         reference: reference,
         createdAt: new Date()
       },
-      estimatedProcessingTime: '1-3 dias úteis'
+      simulation: true,
+      currentBalance: userWallets[userId].balance,
+      estimatedProcessingTime: 'Imediato (simulação)'
     });
   } catch (error) {
-    console.error('Erro ao processar solicitação de saque:', error);
+    console.error('Erro ao processar solicitação de saque simulado:', error);
     return NextResponse.json(
       { error: 'Erro ao processar solicitação de saque' },
       { status: 500 }

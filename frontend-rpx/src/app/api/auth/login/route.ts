@@ -110,9 +110,14 @@ export async function POST(request: Request) {
       email: user.email,
       role: user.role,
       profile: user.profile || {},
-        balance: user.wallet?.balance || 0,
-        createdAt: user.createdAt,
-        avatarUrl: user.avatarUrl || null
+      balance: user.wallet?.balance || 0,
+      createdAt: user.createdAt,
+      avatarUrl: user.avatarUrl || null,
+      rank: user.rank || {
+        tier: 'unranked',
+        division: null,
+        points: 0
+      }
     };
     
     // Retornar dados do usuário e token

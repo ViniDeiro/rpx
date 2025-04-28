@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
         // Criar o objeto da partida
         const matchData = {
           _id: matchId,
+          match_id: matchId.toString(),
+          matchId: matchId.toString(),
           status: 'pending', // pending, active, completed, canceled
           lobbies: [lobby1.lobbyId, lobby2.lobbyId],
           players: [...(lobby1.players || []), ...(lobby2.players || [])],

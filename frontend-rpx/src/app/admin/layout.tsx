@@ -189,6 +189,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { path: '/admin/torneios', label: 'Torneios', icon: <Award size={20} /> },
     { path: '/admin/insignias', label: 'Insígnias', icon: <Shield size={20} /> },
     { path: '/admin/ranks', label: 'Ranks', icon: <Star size={20} /> },
+    { path: '/admin/update-rank', label: 'Atualizar Rank', icon: <Star size={20} /> },
     { path: '/admin/banners', label: 'Banners', icon: <Image size={20} /> },
     { path: '/admin/financeiro', label: 'Financeiro', icon: <DollarSign size={20} /> },
     { path: '/admin/personagens', label: 'Personagens', icon: <Package size={20} /> },

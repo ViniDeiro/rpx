@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, DollarSign } from 'react-feather';
+import { Menu, X, DollarSign, RefreshCw } from 'react-feather';
 import ImagePaths from '@/utils/image-paths';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +18,6 @@ import { useTheme } from 'next-themes';
 import { NavLink } from './nav-link';
 import { MobileMenu } from './mobile-menu';
 import { UserMenu } from './user-menu';
-import { NotificationButton } from '../notifications/NotificationManager';
 
 export const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +25,7 @@ export const Header = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, refreshUser } = useAuth();
   const session = useSession();
   const status = session?.status;
 
@@ -44,13 +43,45 @@ export const Header = () => {
     }
   };
 
+  // Função para forçar atualização do perfil
+  const handleRefreshProfile = async () => {
+    try {
+      await refreshUser();
+      console.log('Perfil atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+    }
+  };
+
+  // Otimizar o evento de scroll usando throttle
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 10);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Pré-carregar links importantes quando o componente montar
+  useEffect(() => {
+    // Pré-carregar páginas principais para navegação mais rápida
+    const prefetchLinks = ['/lobby', '/matches', '/tournaments', '/ranking', '/store'];
+    
+    prefetchLinks.forEach(path => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = path;
+      document.head.appendChild(link);
+    });
   }, []);
 
   const navLinks = [
@@ -97,6 +128,8 @@ export const Header = () => {
                 <Link 
                   key={link.href} 
                   href={link.href}
+                  prefetch={true}
+                  scroll={false} /* Evita recarregar a página completa */
                   className={`
                     px-4 py-2 rounded-md text-sm font-medium transition-colors relative
                     ${isActive
@@ -104,6 +137,9 @@ export const Header = () => {
                       : 'text-foreground hover:text-primary-light hover:bg-card-hover'
                     }
                   `}
+                  onClick={(e) => {
+                    if (isActive) e.preventDefault(); // Evita navegação se já estiver na página
+                  }}
                 >
                   {link.label}
                   {isActive && (
@@ -116,7 +152,6 @@ export const Header = () => {
 
           {/* Autenticação e perfil - Desktop */}
           <div className="hidden md:flex items-center space-x-3">
-            <NotificationButton />
             {isAuthenticated ? (
               <>
                 {/* Componente de saldo */}
@@ -125,7 +160,15 @@ export const Header = () => {
                     R$ {(user?.wallet?.balance || user?.balance || 0).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
-                <UserMenu user={user} status="authenticated" />
+                <UserMenu user={user} status="authenticated">
+                  <button 
+                    onClick={handleRefreshProfile}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <RefreshCw size={16} />
+                    <span>Atualizar Perfil</span>
+                  </button>
+                </UserMenu>
               </>
             ) : (
               <div className="flex items-center space-x-3">

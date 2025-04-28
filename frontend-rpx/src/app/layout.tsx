@@ -10,10 +10,21 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/layout';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import SessionProvider from '@/components/providers/SessionProvider';
-import NotificationBell from '@/components/notifications/NotificationBell';
-import NotificationManager from '@/components/notifications/NotificationManager';
+import MatchmakingListener from '@/components/matchmaking/MatchmakingListener';
+import { useAuth } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
+
+function MainLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  
+  return (
+    <>
+      <Layout>{children}</Layout>
+      {user && <MatchmakingListener userId={user.id} />}
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -39,11 +50,7 @@ export default function RootLayout({
               {isAdminPage ? (
                 children
               ) : (
-                <>
-                  <Layout>{children}</Layout>
-                  <NotificationBell />
-                  <NotificationManager />
-                </>
+                <MainLayout>{children}</MainLayout>
               )}
               <Toaster />
               <ToastContainer 

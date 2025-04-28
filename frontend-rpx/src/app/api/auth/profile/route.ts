@@ -52,7 +52,12 @@ export async function GET(req: NextRequest) {
           balance: user.wallet?.balance || 0
         },
         createdAt: user.createdAt,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        rank: user.rank || {
+          tier: 'unranked',
+          division: null,
+          points: 0
+        }
       }
     });
   } catch (error) {
