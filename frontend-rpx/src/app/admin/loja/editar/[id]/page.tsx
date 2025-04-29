@@ -1,21 +1,11 @@
-import { Metadata } from "next"
+"use client";
+
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import EditarProdutoForm from "@/components/admin/EditarProdutoForm"
 
-export const metadata: Metadata = {
-  title: "Editar Produto | RPX Admin",
-  description: "Painel administrativo para edição de produtos da loja",
-}
-
-// Corrigindo a tipagem para ser compatível com Next.js 15.3.1
-type PageProps = {
-  params: { id: string }
-  searchParams: Record<string, string | string[] | undefined>
-}
-
-export default function EditarProdutoPage({ params }: PageProps) {
+export default function EditarProdutoPage({ params }: { params: { id: string } }) {
   return (
     <div className="container py-8">
       <div className="mb-6">
