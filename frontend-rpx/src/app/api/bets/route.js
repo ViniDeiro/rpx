@@ -1,27 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 import { getModels } from '@/lib/mongodb/models';
 
-// Interface para apostas
-interface Bet {
-  id: string;
-  userId: string;
-  matchId: string;
-  amount: number;
-  odd: number;
-  potentialWin: number;
-  type: string;
-  selection: string | number | boolean;
-  status: 'pending' | 'won' | 'lost' | 'canceled' | 'cashout';
-  createdAt: Date;
-  settledAt?: Date;
-  cashoutAmount?: number;
-}
-
 // GET - Listar apostas do usuário
-export async function GET(req: NextRequest) {
+export async function GET(req) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -55,7 +39,7 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
     
     // Preparar filtro de consulta
-    const filter: any = { userId: userId };
+    const filter = { userId: userId };
     
     if (status) {
       filter.status = status;
@@ -88,7 +72,7 @@ export async function GET(req: NextRequest) {
     const total = await db.collection('bets').countDocuments(filter);
     
     // Processar apostas para resposta
-    const formattedBets: Bet[] = bets.map((bet: any) => ({
+    const formattedBets = bets.map((bet) => ({
       id: bet._id.toString(),
       userId: bet.userId,
       matchId: bet.matchId,
@@ -123,7 +107,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST - Criar nova aposta
-export async function POST(req: NextRequest) {
+export async function POST(req) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -198,9 +182,9 @@ export async function POST(req: NextRequest) {
     }
     
     // Verificar se a partida existe
-    const match = await db.collection('matches').findOne(
-      { _id: new mongoose.Types.ObjectId(matchId) }
-    );
+    const match = await db.collection('matches').findOne({
+      _id: new mongoose.Types.ObjectId(matchId)
+    });
     
     if (!match) {
       return NextResponse.json(
@@ -209,84 +193,42 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Verificar se a partida está disponível para apostas
-    if (match.status !== 'waiting' && match.status !== 'in_progress') {
+    // Verificar se a partida ainda está aceitando apostas
+    if (match.status !== 'upcoming' && match.status !== 'open_for_bets') {
       return NextResponse.json(
-        { error: 'Esta partida não está disponível para apostas' },
+        { error: 'Esta partida não está aceitando apostas no momento' },
         { status: 400 }
       );
     }
     
-    // Obter modelos do MongoDB
-    const { User } = await getModels();
-    
-    // Verificar se o usuário existe
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
+    // Calcular o potencial ganho
+    const potentialWin = amount * odd;
     
     // Verificar se o usuário tem saldo suficiente
-    if (user.wallet?.balance < amount) {
+    const { User } = await getModels();
+    const user = await User.findById(userId);
+    
+    if (!user || user.balance < amount) {
       return NextResponse.json(
         { error: 'Saldo insuficiente para realizar esta aposta' },
         { status: 400 }
       );
     }
     
-    // Calcular potencial ganho
-    const potentialWin = amount * odd;
-    
-    // Criar objeto da aposta
-    const bet = {
-      userId,
-      matchId,
-      amount,
-      odd,
-      potentialWin,
-      type,
-      selection,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
     // Iniciar sessão do MongoDB para transação
     const session = await mongoose.startSession();
     session.startTransaction();
     
     try {
-      // Inserir a aposta no banco de dados
-      const betResult = await db.collection('bets').insertOne(bet);
-      
-      // Deduzir o valor da aposta do saldo do usuário
+      // Deduzir saldo do usuário
       await User.findByIdAndUpdate(
         userId,
-        { $inc: { 'wallet.balance': -amount } },
-        { session }
+        { $inc: { balance: -amount } },
+        { session, new: true }
       );
       
-      // Registrar a transação
-      await db.collection('transactions').insertOne({
-        userId,
-        type: 'bet_placed',
-        amount: -amount,
-        relatedId: betResult.insertedId,
-        description: `Aposta em ${match.title || matchId}`,
-        status: 'completed',
-        createdAt: new Date()
-      }, { session });
-      
-      // Confirmar a transação
-      await session.commitTransaction();
-      
-      // Formatar aposta para resposta
-      const formattedBet = {
-        id: betResult.insertedId.toString(),
+      // Criar nova aposta
+      const newBet = {
         userId,
         matchId,
         amount,
@@ -295,22 +237,60 @@ export async function POST(req: NextRequest) {
         type,
         selection,
         status: 'pending',
-        createdAt: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
-      // Retornar dados da aposta criada
+      // Inserir aposta no banco de dados
+      const result = await db.collection('bets').insertOne(newBet, { session });
+      
+      // Registrar transação
+      await db.collection('transactions').insertOne({
+        userId,
+        type: 'bet',
+        amount: -amount,
+        status: 'completed',
+        description: `Aposta na partida: ${match.title || matchId}`,
+        reference: {
+          type: 'bet',
+          id: result.insertedId.toString()
+        },
+        createdAt: new Date()
+      }, { session });
+      
+      // Adicionar usuário aos apostadores da partida (se ainda não estiver)
+      await db.collection('matches').updateOne(
+        { _id: new mongoose.Types.ObjectId(matchId) },
+        { 
+          $addToSet: { betUsers: userId },
+          $inc: { totalBets: 1, betAmount: amount }
+        },
+        { session }
+      );
+      
+      // Concluir transação
+      await session.commitTransaction();
+      
+      // Retornar resposta de sucesso
       return NextResponse.json({
+        success: true,
         message: 'Aposta realizada com sucesso',
-        bet: formattedBet
-      });
-    } catch (error) {
-      // Reverter a transação em caso de erro
+        bet: {
+          id: result.insertedId.toString(),
+          ...newBet,
+          _id: undefined
+        }
+      }, { status: 201 });
+      
+    } catch (txError) {
+      // Reverter transação em caso de erro
       await session.abortTransaction();
-      throw error;
+      throw txError;
     } finally {
-      // Finalizar a sessão
+      // Finalizar sessão
       session.endSession();
     }
+    
   } catch (error) {
     console.error('Erro ao criar aposta:', error);
     return NextResponse.json(

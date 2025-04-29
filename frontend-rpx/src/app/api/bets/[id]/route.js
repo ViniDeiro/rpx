@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId, isAdmin } from '@/lib/auth/middleware';
 import { getModels } from '@/lib/mongodb/models';
 
 // GET - Obter detalhes de uma aposta específica
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req, { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -111,10 +108,7 @@ export async function GET(
 }
 
 // POST - Realizar cashout de uma aposta
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req, { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -206,8 +200,8 @@ export async function POST(
     session.startTransaction();
     
     try {
-      let updateData: any = {};
-      let transactionData: any = {};
+      let updateData = {};
+      let transactionData = {};
       
       if (action === 'cashout') {
         // Buscar a partida para verificar se ainda aceita cashout
@@ -248,120 +242,230 @@ export async function POST(
         
         // Preparar dados da transação
         transactionData = {
-          userId: bet.userId,
-          type: 'bet_cashout',
+          userId,
+          type: 'cashout',
           amount: cashoutAmount,
-          relatedId: bet._id,
-          description: `Cashout de aposta #${bet._id.toString().substring(0, 6)}`,
           status: 'completed',
+          description: `Cashout da aposta #${betId}`,
+          reference: { type: 'bet', id: betId },
           createdAt: new Date()
         };
-      } else if (action === 'cancel') {
-        // Verificar se é possível cancelar (por exemplo, partida ainda não começou)
-        const match = await db.collection('matches').findOne(
-          { _id: new mongoose.Types.ObjectId(bet.matchId) }
+        
+        // Atualizar saldo do usuário
+        await User.findByIdAndUpdate(
+          userId,
+          { $inc: { balance: cashoutAmount } },
+          { session, new: true }
         );
-        
-        if (!match) {
-          await session.abortTransaction();
-          return NextResponse.json(
-            { error: 'Partida associada não encontrada' },
-            { status: 404 }
-          );
-        }
-        
-        // Só permitir cancelamento se a partida ainda não começou
-        if (match.status !== 'waiting') {
-          await session.abortTransaction();
-          return NextResponse.json(
-            { error: 'Não é possível cancelar apostas em partidas que já começaram' },
-            { status: 400 }
-          );
-        }
-        
-        // Atualizar aposta para status cancelado
+      } else if (action === 'cancel') {
+        // Atualizar aposta para status de cancelada
         updateData = {
-          status: 'canceled',
+          status: 'cancelled',
           settledAt: new Date(),
           updatedAt: new Date()
         };
         
-        // Preparar dados da transação (devolução do valor apostado)
+        // Preparar dados da transação
         transactionData = {
-          userId: bet.userId,
-          type: 'bet_canceled',
-          amount: bet.amount, // Devolve o valor original da aposta
-          relatedId: bet._id,
-          description: `Cancelamento de aposta #${bet._id.toString().substring(0, 6)}`,
+          userId,
+          type: 'refund',
+          amount: bet.amount,
           status: 'completed',
+          description: `Cancelamento da aposta #${betId}`,
+          reference: { type: 'bet', id: betId },
           createdAt: new Date()
         };
-      }
-      
-      // Atualizar a aposta no banco de dados
-      await db.collection('bets').updateOne(
-        { _id: new mongoose.Types.ObjectId(betId) },
-        { $set: updateData }
-      );
-      
-      // Inserir transação e atualizar saldo do usuário
-      await db.collection('transactions').insertOne(transactionData, { session });
-      
-      // Atualizar saldo do usuário
-      await User.findByIdAndUpdate(
-        userId,
-        { $inc: { 'wallet.balance': transactionData.amount } },
-        { session }
-      );
-      
-      // Confirmar a transação
-      await session.commitTransaction();
-      
-      // Buscar aposta atualizada
-      const updatedBet = await db.collection('bets').findOne(
-        { _id: new mongoose.Types.ObjectId(betId) }
-      );
-      
-      if (!updatedBet) {
-        return NextResponse.json(
-          { error: 'Erro ao obter a aposta atualizada' },
-          { status: 500 }
+        
+        // Devolver o valor apostado ao usuário
+        await User.findByIdAndUpdate(
+          userId,
+          { $inc: { balance: bet.amount } },
+          { session, new: true }
         );
       }
       
-      // Formatar aposta para resposta
-      const formattedBet = {
-        id: updatedBet._id.toString(),
-        userId: updatedBet.userId,
-        matchId: updatedBet.matchId,
-        amount: updatedBet.amount,
-        odd: updatedBet.odd,
-        potentialWin: updatedBet.potentialWin,
-        status: updatedBet.status,
-        cashoutAmount: updatedBet.cashoutAmount,
-        settledAt: updatedBet.settledAt
-      };
+      // Atualizar aposta no banco de dados
+      await db.collection('bets').updateOne(
+        { _id: new mongoose.Types.ObjectId(betId) },
+        { $set: updateData },
+        { session }
+      );
       
-      // Retornar dados atualizados
+      // Registrar transação
+      await db.collection('transactions').insertOne(
+        transactionData,
+        { session }
+      );
+      
+      // Concluir transação
+      await session.commitTransaction();
+      
+      // Retornar resposta de sucesso
       return NextResponse.json({
+        success: true,
         message: action === 'cashout' 
-          ? 'Cashout realizado com sucesso' 
+          ? `Cashout realizado com sucesso. Valor: ${updateData.cashoutAmount}` 
           : 'Aposta cancelada com sucesso',
-        bet: formattedBet,
-        amount: transactionData.amount
+        bet: {
+          id: betId,
+          status: updateData.status,
+          cashoutAmount: updateData.cashoutAmount
+        }
       });
-    } catch (error) {
-      // Reverter a transação em caso de erro
+      
+    } catch (txError) {
+      // Reverter transação em caso de erro
       await session.abortTransaction();
-      throw error;
+      throw txError;
     } finally {
-      // Finalizar a sessão
+      // Finalizar sessão
       session.endSession();
     }
+    
   } catch (error) {
-    console.error(`Erro ao realizar operação na aposta:`, error);
+    console.error('Erro ao processar ação na aposta:', error);
     return NextResponse.json(
-      { error: `Erro ao processar a solicitação` },
+      { error: 'Erro ao processar ação na aposta' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Permite que o admin exclua uma aposta
+export async function DELETE(req, { params }) {
+  // Autenticar a requisição
+  const authResult = await authMiddleware(req);
+  
+  // Se authResult é uma resposta (erro), retorná-la
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+  
+  // Usar a requisição autenticada
+  const authenticatedReq = authResult;
+  
+  // Verificar se o usuário é admin
+  if (!isAdmin(authenticatedReq)) {
+    return NextResponse.json(
+      { error: 'Apenas administradores podem excluir apostas' },
+      { status: 403 }
+    );
+  }
+  
+  try {
+    // Obter ID da aposta da URL
+    const betId = params.id;
+    
+    if (!betId) {
+      return NextResponse.json(
+        { error: 'ID da aposta não fornecido' },
+        { status: 400 }
+      );
+    }
+    
+    // Conectar ao MongoDB
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Erro de conexão com o banco de dados' },
+        { status: 500 }
+      );
+    }
+    
+    // Verificar se a aposta existe
+    const bet = await db.collection('bets').findOne({
+      _id: new mongoose.Types.ObjectId(betId)
+    });
+    
+    if (!bet) {
+      return NextResponse.json(
+        { error: 'Aposta não encontrada' },
+        { status: 404 }
+      );
+    }
+    
+    // Iniciar sessão para transação
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      // Se a aposta já foi liquidada, não permitir exclusão
+      if (['won', 'lost', 'cashout', 'settled'].includes(bet.status)) {
+        await session.abortTransaction();
+        return NextResponse.json(
+          { error: 'Não é possível excluir uma aposta já liquidada' },
+          { status: 400 }
+        );
+      }
+      
+      // Se a aposta estiver pendente, devolver o valor ao usuário
+      if (bet.status === 'pending') {
+        const { User } = await getModels();
+        
+        // Devolver o valor apostado
+        await User.findByIdAndUpdate(
+          bet.userId,
+          { $inc: { balance: bet.amount } },
+          { session }
+        );
+        
+        // Registrar transação de reembolso
+        await db.collection('transactions').insertOne({
+          userId: bet.userId,
+          type: 'refund',
+          amount: bet.amount,
+          status: 'completed',
+          description: `Reembolso por exclusão da aposta #${betId}`,
+          reference: { type: 'bet', id: betId },
+          adminAction: true,
+          createdAt: new Date()
+        }, { session });
+      }
+      
+      // Registrar log de auditoria
+      await db.collection('admin_logs').insertOne({
+        action: 'delete_bet',
+        targetId: betId,
+        targetCollection: 'bets',
+        adminId: getUserId(authenticatedReq),
+        details: {
+          betStatus: bet.status,
+          betAmount: bet.amount,
+          userId: bet.userId,
+          matchId: bet.matchId
+        },
+        timestamp: new Date()
+      }, { session });
+      
+      // Excluir a aposta
+      await db.collection('bets').deleteOne({
+        _id: new mongoose.Types.ObjectId(betId)
+      }, { session });
+      
+      // Concluir transação
+      await session.commitTransaction();
+      
+      // Retornar resposta de sucesso
+      return NextResponse.json({
+        success: true,
+        message: 'Aposta excluída com sucesso'
+      });
+      
+    } catch (txError) {
+      // Reverter transação em caso de erro
+      await session.abortTransaction();
+      throw txError;
+    } finally {
+      // Finalizar sessão
+      session.endSession();
+    }
+    
+  } catch (error) {
+    console.error('Erro ao excluir aposta:', error);
+    return NextResponse.json(
+      { error: 'Erro ao excluir aposta' },
       { status: 500 }
     );
   }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId, isAdmin } from '@/lib/auth/middleware';
@@ -8,7 +8,7 @@ import { getModels } from '@/lib/mongodb/models';
  * PUT - Validar resultado de aposta pelo administrador
  * Permite que um administrador valide o resultado de uma aposta após o término da partida
  */
-export async function PUT(req: NextRequest) {
+export async function PUT(req) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -200,16 +200,19 @@ export async function PUT(req: NextRequest) {
       session.endSession();
     }
   } catch (error) {
-    console.error(`Erro ao validar aposta:`, error);
+    console.error('Erro ao validar aposta:', error);
     return NextResponse.json(
-      { error: `Erro ao processar a solicitação` },
+      { error: 'Erro ao validar aposta' },
       { status: 500 }
     );
   }
 }
 
-// GET - Obter apostas pendentes de validação
-export async function GET(req: NextRequest) {
+/**
+ * GET - Listar apostas pendentes de validação
+ * Permite que administradores vejam apostas que precisam de validação
+ */
+export async function GET(req) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -233,11 +236,18 @@ export async function GET(req: NextRequest) {
     // Obter parâmetros de consulta
     const url = new URL(authenticatedReq.url);
     const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
-    const matchId = url.searchParams.get('matchId'); // filtragem opcional por partida
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+    const matchId = url.searchParams.get('matchId');
     
     // Calcular o skip para paginação
     const skip = (page - 1) * limit;
+    
+    // Preparar filtro de consulta
+    const filter = { status: 'pending' };
+    
+    if (matchId) {
+      filter.matchId = matchId;
+    }
     
     // Conectar ao MongoDB
     await connectToDatabase();
@@ -250,13 +260,6 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Preparar filtro de consulta
-    const filter: any = { status: 'pending' };
-    
-    if (matchId) {
-      filter.matchId = matchId;
-    }
-    
     // Buscar apostas pendentes
     const bets = await db.collection('bets')
       .find(filter)
@@ -265,41 +268,40 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .toArray();
     
-    // Contar total de apostas pendentes para paginação
+    // Contar total para paginação
     const total = await db.collection('bets').countDocuments(filter);
     
-    // Obter IDs de partidas para buscar detalhes
+    // Buscar detalhes adicionais das partidas e usuários
     const matchIds = [...new Set(bets.map(bet => bet.matchId))];
+    const userIds = [...new Set(bets.map(bet => bet.userId))];
     
-    // Buscar detalhes das partidas
+    // Buscar partidas em paralelo
     const matches = await db.collection('matches')
       .find({ _id: { $in: matchIds.map(id => new mongoose.Types.ObjectId(id)) } })
       .toArray();
     
-    // Mapear partidas por ID para fácil acesso
-    const matchesMap = matches.reduce((acc, match) => {
-      acc[match._id.toString()] = match;
-      return acc;
-    }, {} as Record<string, any>);
-    
-    // Obter IDs de usuários para buscar detalhes
-    const userIds = [...new Set(bets.map(bet => bet.userId))];
-    
-    // Buscar detalhes dos usuários
+    // Buscar usuários em paralelo
     const users = await db.collection('users')
       .find({ _id: { $in: userIds.map(id => new mongoose.Types.ObjectId(id)) } })
+      .project({ _id: 1, username: 1, email: 1 })
       .toArray();
     
-    // Mapear usuários por ID para fácil acesso
-    const usersMap = users.reduce((acc, user) => {
-      acc[user._id.toString()] = user;
-      return acc;
-    }, {} as Record<string, any>);
+    // Mapear IDs para objetos para facilitar a busca
+    const matchesMap = {};
+    const usersMap = {};
     
-    // Formatar apostas para resposta
+    matches.forEach(match => {
+      matchesMap[match._id.toString()] = match;
+    });
+    
+    users.forEach(user => {
+      usersMap[user._id.toString()] = user;
+    });
+    
+    // Processar apostas para resposta
     const formattedBets = bets.map(bet => {
-      const matchInfo = matchesMap[bet.matchId] || {};
-      const userInfo = usersMap[bet.userId] || {};
+      const matchDetails = matchesMap[bet.matchId] || null;
+      const userDetails = usersMap[bet.userId] || null;
       
       return {
         id: bet._id.toString(),
@@ -312,17 +314,17 @@ export async function GET(req: NextRequest) {
         selection: bet.selection,
         status: bet.status,
         createdAt: bet.createdAt,
-        match: {
-          id: matchInfo._id?.toString(),
-          title: matchInfo.title || 'Partida não encontrada',
-          status: matchInfo.status || 'unknown',
-          teams: matchInfo.teams || []
-        },
-        user: {
-          id: userInfo._id?.toString(),
-          username: userInfo.username || 'Usuário desconhecido',
-          email: userInfo.email
-        }
+        match: matchDetails ? {
+          id: matchDetails._id.toString(),
+          title: matchDetails.title || '',
+          status: matchDetails.status || '',
+          startTime: matchDetails.startTime || null
+        } : null,
+        user: userDetails ? {
+          id: userDetails._id.toString(),
+          username: userDetails.username || '',
+          email: userDetails.email || ''
+        } : null
       };
     });
     

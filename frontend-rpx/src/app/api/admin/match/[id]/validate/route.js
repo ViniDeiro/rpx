@@ -255,120 +255,100 @@ export async function POST(request, { params }) {
         }
       );
       
-      // Registrar atualização de ranking
-      rankUpdates.push({
-        userId: userId,
-        previousPoints: currentPoints,
-        pointsEarned: pointsEarned,
-        newPoints: newPoints,
-        newRank: newRank
-      });
-      
-      // Notificar usuário sobre a vitória
-      await db.collection('notifications').insertOne({
-        userId: userId,
-        type: 'system',
-        title: 'Vitória!',
-        message: `Você venceu a partida e ganhou ${pointsEarned} pontos de ranking!`,
-        read: false,
-        data: {
-          type: 'match_result',
-          matchId: matchId,
+      // Se o rank mudou, enviar notificação
+      if (user.rank !== newRank) {
+        await db.collection('notifications').insertOne({
+          userId: userId,
+          type: 'rank_up',
+          title: 'Você subiu de rank!',
+          message: `Parabéns! Você agora é ${newRank}.`,
+          isRead: false,
+          createdAt: new Date()
+        });
+        
+        rankUpdates.push({
+          userId: userId,
+          oldRank: user.rank || 'Sem Rank',
+          newRank: newRank,
           pointsEarned: pointsEarned
-        },
-        createdAt: new Date()
-      });
+        });
+      }
     }
     
-    // Notificar perdedores
-    const loserUserIds = match.players
-      .map((p) => p.userId)
-      .filter((id) => !winnerUserIds.includes(id));
-    
-    for (const userId of loserUserIds) {
+    // Enviar notificações para todos os apostadores
+    for (const bet of bets) {
+      const isWinner = allWinnerIds.includes(bet.userId);
+      const winDetails = isWinner 
+        ? paymentResults.find(p => p.userId === bet.userId)
+        : null;
+      
       await db.collection('notifications').insertOne({
-        userId: userId,
-        type: 'system',
-        title: 'Resultado da Partida',
-        message: 'Sua partida foi concluída. Infelizmente você não venceu desta vez.',
-        read: false,
-        data: {
-          type: 'match_result',
-          matchId: matchId
-        },
+        userId: bet.userId,
+        type: isWinner ? 'bet_win' : 'bet_loss',
+        title: isWinner ? 'Aposta vencedora!' : 'Aposta perdida',
+        message: isWinner 
+          ? `Você ganhou ${winDetails?.winAmount || 0} moedas na partida ${match.title || matchId}!`
+          : `Sua aposta de ${bet.amount} moedas na partida ${match.title || matchId} foi perdida.`,
+        isRead: false,
         createdAt: new Date()
       });
     }
-
-    // Atualizar status da partida
+    
+    // Atualizar status da partida para validada
     await db.collection('matches').updateOne(
       { _id: new ObjectId(matchId) },
       { 
         $set: { 
-          status: 'completed',
-          winner: {
-            type: winnerType,
-            id: winnerId,
-            userIds: winnerUserIds
+          status: 'validated',
+          result: {
+            winnerId: winnerId,
+            winnerType: winnerType,
+            validatedAt: new Date(),
+            validatedBy: session.user.id,
+            validationNotes: validationNotes || ''
           },
-          validationNotes: validationNotes,
-          completedAt: new Date(),
-          validatedBy: {
-            adminId: session.user.id || session.user.email,
-            timestamp: new Date()
-          },
-          prizePool: prizePool,
-          platformFee: platformFee,
-          totalBetAmount: totalBetAmount,
           updatedAt: new Date()
         }
       }
     );
 
-    // Registrar log de auditoria
+    // Registrar ação de validação em logs de admin
     await db.collection('admin_logs').insertOne({
-      adminId: session.user.id || session.user.email,
-      adminEmail: session.user.email,
-      action: 'match_validate',
-      entity: 'match',
-      entityId: matchId,
+      adminId: session.user.id,
+      action: 'validate_match',
       details: {
-        winner: {
-          type: winnerType,
-          id: winnerId,
-          userIds: winnerUserIds
-        },
-        validationNotes: validationNotes,
-        prizePool: prizePool,
+        matchId: matchId,
+        winnerId: winnerId,
+        winnerType: winnerType,
+        totalBets: bets.length,
+        totalBetAmount: totalBetAmount,
         platformFee: platformFee,
-        totalBetAmount: totalBetAmount
+        prizePool: prizePool,
+        payments: paymentResults,
+        rankUpdates: rankUpdates
       },
-      timestamp: new Date()
+      createdAt: new Date()
     });
 
+    // Retornar resultado da validação
     return NextResponse.json({
       status: 'success',
       message: 'Partida validada com sucesso',
-      matchId: matchId,
-      winner: {
-        type: winnerType,
-        id: winnerId,
-        userIds: winnerUserIds
-      },
-      bets: {
-        total: bets.length,
-        totalAmount: totalBetAmount,
+      data: {
+        matchId: matchId,
+        totalBets: bets.length,
+        totalBetAmount: totalBetAmount,
         platformFee: platformFee,
-        prizePool: prizePool
-      },
-      payments: paymentResults,
-      ranking: rankUpdates
+        prizePool: prizePool,
+        winningBets: winningBets.length,
+        paymentResults: paymentResults,
+        rankUpdates: rankUpdates
+      }
     });
-    
   } catch (error) {
     console.error('Erro ao validar partida:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao validar partida: ' + (error.message || 'Erro desconhecido') },
+      { status: 'error', error: 'Erro ao processar validação da partida' },
       { status: 500 }
     );
   }
