@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 
 // GET - Obter categorias para a loja pública (sem autenticação)
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     console.log('Recebida solicitação pública para GET /api/store/categories');
     
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       }));
     
     return NextResponse.json({ categories: formattedCategories });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao buscar categorias:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar categorias', details: error.message },

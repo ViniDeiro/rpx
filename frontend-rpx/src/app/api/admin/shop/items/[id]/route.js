@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 
 // GET - Obter detalhes de um produto
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request, { params }) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -49,7 +46,7 @@ export async function GET(
         _id: item._id.toString()
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao obter detalhes do produto:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao obter detalhes do produto: ' + (error.message || 'Erro desconhecido') },
@@ -59,10 +56,7 @@ export async function GET(
 }
 
 // PUT - Atualizar um produto
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request, { params }) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -156,7 +150,7 @@ export async function PUT(
       message: 'Produto atualizado com sucesso',
       itemId: itemId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao atualizar produto:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao atualizar produto: ' + (error.message || 'Erro desconhecido') },
@@ -166,10 +160,7 @@ export async function PUT(
 }
 
 // DELETE - Remover um produto
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request, { params }) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -250,7 +241,7 @@ export async function DELETE(
       message: 'Produto removido com sucesso',
       itemId: itemId
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao remover produto:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao remover produto: ' + (error.message || 'Erro desconhecido') },

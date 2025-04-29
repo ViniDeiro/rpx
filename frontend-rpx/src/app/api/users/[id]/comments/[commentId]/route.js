@@ -8,10 +8,7 @@ import { connectToDatabase } from '@/lib/mongodb/connect';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Método DELETE para remover um comentário
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string, commentId: string } }
-) {
+export async function DELETE(request, { params }) {
   try {
     console.log(`Requisição para excluir comentário ${params.commentId}`);
     
@@ -32,7 +29,7 @@ export async function DELETE(
     
     try {
       // Verificar o token
-      const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+      const decodedToken = jwt.verify(token, JWT_SECRET);
       const currentUserId = decodedToken.userId;
       
       // Conectar ao banco de dados
@@ -108,10 +105,7 @@ export async function DELETE(
 }
 
 // Método PATCH para ocultar/mostrar um comentário (moderação)
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string, commentId: string } }
-) {
+export async function PATCH(request, { params }) {
   try {
     console.log(`Requisição para moderar comentário ${params.commentId}`);
     
@@ -132,7 +126,7 @@ export async function PATCH(
     
     try {
       // Verificar o token
-      const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+      const decodedToken = jwt.verify(token, JWT_SECRET);
       const currentUserId = decodedToken.userId;
       
       // Conectar ao banco de dados
@@ -198,15 +192,14 @@ export async function PATCH(
         { 
           $set: { 
             isHidden,
-            updatedAt: new Date()
-          } 
+            moderatedAt: new Date(),
+            moderatedBy: currentUserId
+          }
         }
       );
       
       return NextResponse.json({
-        message: isHidden 
-          ? 'Comentário ocultado com sucesso' 
-          : 'Comentário tornado visível com sucesso'
+        message: `Comentário ${isHidden ? 'ocultado' : 'exibido'} com sucesso`
       });
       
     } catch (tokenError) {

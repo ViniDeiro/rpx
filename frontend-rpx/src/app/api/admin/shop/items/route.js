@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 
 // GET - Listar todos os produtos da loja
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
 
     // Construir query
-    const query: Record<string, any> = {};
+    const query = {};
     if (category) {
       query.category = category;
     }
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         }
       }
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao listar produtos da loja:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao listar produtos: ' + (error.message || 'Erro desconhecido') },
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Adicionar novo produto à loja
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       message: 'Produto adicionado com sucesso',
       itemId: result.insertedId.toString()
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao adicionar produto à loja:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao adicionar produto: ' + (error.message || 'Erro desconhecido') },

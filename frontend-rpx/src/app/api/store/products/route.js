@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 // GET - Obter produtos para a loja pública (sem autenticação)
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     console.log('Recebida solicitação pública para GET /api/store/products');
     
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       const collection = db.collection('products');
       
       // Construir a query base
-      let query: any = { inStock: true }; // Por padrão, só mostrar produtos em estoque
+      let query = { inStock: true }; // Por padrão, só mostrar produtos em estoque
       
       // Adicionar filtros
       if (id) {
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
       console.log(`${products.length} produtos encontrados`);
       
       return NextResponse.json({ products });
-    } catch (dbError: any) {
+    } catch (dbError) {
       console.error('Erro no banco de dados:', dbError);
       throw new Error(`Erro no banco de dados: ${dbError.message}`);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao buscar produtos:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar produtos', details: error.message },

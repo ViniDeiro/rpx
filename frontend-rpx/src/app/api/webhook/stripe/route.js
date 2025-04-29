@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 import Stripe from 'stripe';
@@ -8,7 +8,7 @@ import Stripe from 'stripe';
  * Esta rota processa eventos do Stripe como pagamentos bem-sucedidos,
  * falhas, reembolsos, etc.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     console.log('Webhook Stripe - Recebida notificação');
     
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         signature,
         stripeWebhookSecret
       );
-    } catch (err: any) {
+    } catch (err) {
       console.error(`Webhook Stripe - Erro de assinatura: ${err.message}`);
       return NextResponse.json({ error: `Erro de assinatura: ${err.message}` }, { status: 400 });
     }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 /**
  * Processa pagamentos bem-sucedidos
  */
-async function handlePaymentIntentSucceeded(paymentIntent: any, db: any) {
+async function handlePaymentIntentSucceeded(paymentIntent, db) {
   try {
     // Extrair metadados relevantes, incluindo o ID da transação
     const { transactionId } = paymentIntent.metadata || {};
@@ -160,7 +160,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: any, db: any) {
 /**
  * Processa falhas de pagamento
  */
-async function handlePaymentIntentFailed(paymentIntent: any, db: any) {
+async function handlePaymentIntentFailed(paymentIntent, db) {
   try {
     // Extrair metadados relevantes, incluindo o ID da transação
     const { transactionId } = paymentIntent.metadata || {};
@@ -210,11 +210,11 @@ async function handlePaymentIntentFailed(paymentIntent: any, db: any) {
       userId: new ObjectId(transaction.userId),
       type: 'payment',
       title: 'Falha no pagamento',
-      message: `Houve uma falha no processamento do seu pagamento: ${failureMessage}`,
+      message: `Seu pagamento não foi processado. Motivo: ${failureMessage}`,
       read: false,
       data: {
         transactionId: transaction._id.toString(),
-        errorMessage: failureMessage
+        failureReason: failureMessage
       },
       createdAt: new Date()
     });
@@ -226,7 +226,7 @@ async function handlePaymentIntentFailed(paymentIntent: any, db: any) {
 /**
  * Processa reembolsos
  */
-async function handleChargeRefunded(charge: any, db: any) {
+async function handleChargeRefunded(charge, db) {
   try {
     // Buscar a transação pela ID da cobrança
     const transactions = db.collection('transactions');
@@ -238,7 +238,7 @@ async function handleChargeRefunded(charge: any, db: any) {
     });
     
     if (!transaction) {
-      console.error(`Webhook Stripe - Transação não encontrada para a cobrança: ${charge.id}`);
+      console.error(`Webhook Stripe - Transação não encontrada para cobrança ${charge.id}`);
       return;
     }
     
@@ -249,8 +249,8 @@ async function handleChargeRefunded(charge: any, db: any) {
         $set: { 
           status: 'refunded',
           updatedAt: new Date(),
+          'paymentDetails.refundData': charge.refunds.data,
           'paymentDetails.refundedAt': new Date(),
-          'paymentDetails.refundAmount': charge.amount_refunded / 100, // Stripe usa centavos
           gatewayResponse: charge
         }
       }
@@ -258,25 +258,25 @@ async function handleChargeRefunded(charge: any, db: any) {
     
     console.log(`Webhook Stripe - Transação ${transaction._id} marcada como reembolsada`);
     
-    // Se foi um depósito já processado, reverter o saldo do usuário
+    // Se for um depósito que já foi creditado, reverter o saldo
     if (transaction.type === 'deposit' && transaction.status === 'completed') {
       const users = db.collection('users');
       
-      // Atualizar o saldo do usuário (deduzir o valor reembolsado)
+      // Atualizar o saldo do usuário (subtrair o valor)
       await users.updateOne(
         { _id: new ObjectId(transaction.userId) },
         { $inc: { balance: -transaction.amount } }
       );
       
-      console.log(`Webhook Stripe - Saldo do usuário ${transaction.userId} reduzido em ${transaction.amount} após reembolso`);
+      console.log(`Webhook Stripe - Saldo do usuário ${transaction.userId} revertido em ${transaction.amount}`);
       
       // Criar uma notificação para o usuário
       const notifications = db.collection('notifications');
       await notifications.insertOne({
         userId: new ObjectId(transaction.userId),
         type: 'payment',
-        title: 'Pagamento reembolsado',
-        message: `Seu depósito de R$ ${transaction.amount.toFixed(2)} foi reembolsado.`,
+        title: 'Reembolso processado',
+        message: `Seu pagamento de R$ ${transaction.amount.toFixed(2)} foi reembolsado.`,
         read: false,
         data: {
           transactionId: transaction._id.toString(),
