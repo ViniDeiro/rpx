@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
@@ -35,10 +35,7 @@ const RANKS = [
 ];
 
 // POST - Validar resultado da partida
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request, { params }) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -101,15 +98,15 @@ export async function POST(
     }).toArray();
 
     // Determinar os usuários vencedores
-    let winnerUserIds: string[] = [];
+    let winnerUserIds = [];
     
     if (winnerType === 'user') {
       winnerUserIds = [winnerId];
     } else if (winnerType === 'lobby') {
       // Buscar todos os membros do lobby vencedor
-      const winnerLobby = match.teams.find((team: any) => team.lobbyId === winnerId);
+      const winnerLobby = match.teams.find((team) => team.lobbyId === winnerId);
       if (winnerLobby && winnerLobby.players) {
-        winnerUserIds = winnerLobby.players.map((player: any) => player.userId);
+        winnerUserIds = winnerLobby.players.map((player) => player.userId);
       }
     }
 
@@ -121,7 +118,7 @@ export async function POST(
     }
 
     // Calcular o valor total das apostas
-    const totalBetAmount = bets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
+    const totalBetAmount = bets.reduce((sum, bet) => sum + bet.amount, 0);
     
     // Taxa da plataforma (10%)
     const platformFee = totalBetAmount * 0.1;
@@ -130,11 +127,11 @@ export async function POST(
     const prizePool = totalBetAmount - platformFee;
     
     // Calcular quanto cada vencedor irá receber
-    const winningBets = bets.filter((bet: any) => winnerUserIds.includes(bet.userId));
-    const totalWinningBetsAmount = winningBets.reduce((sum: number, bet: any) => sum + bet.amount, 0);
+    const winningBets = bets.filter((bet) => winnerUserIds.includes(bet.userId));
+    const totalWinningBetsAmount = winningBets.reduce((sum, bet) => sum + bet.amount, 0);
     
     // Array para armazenar todos os IDs de usuários premiados
-    const allWinnerIds: string[] = [];
+    const allWinnerIds = [];
     
     // Processar pagamentos e atualizar apostas
     const paymentResults = [];
@@ -220,7 +217,7 @@ export async function POST(
 
     // Atualizar pontos de ranking para os vencedores
     const gameMode = match.gameMode || 'casual';
-    const pointsEarned = POINTS_BY_MODE[gameMode as keyof typeof POINTS_BY_MODE] || POINTS_BY_MODE.casual;
+    const pointsEarned = POINTS_BY_MODE[gameMode] || POINTS_BY_MODE.casual;
     
     const rankUpdates = [];
     
@@ -285,8 +282,8 @@ export async function POST(
     
     // Notificar perdedores
     const loserUserIds = match.players
-      .map((p: any) => p.userId)
-      .filter((id: string) => !winnerUserIds.includes(id));
+      .map((p) => p.userId)
+      .filter((id) => !winnerUserIds.includes(id));
     
     for (const userId of loserUserIds) {
       await db.collection('notifications').insertOne({
@@ -368,7 +365,7 @@ export async function POST(
       ranking: rankUpdates
     });
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao validar partida:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao validar partida: ' + (error.message || 'Erro desconhecido') },
