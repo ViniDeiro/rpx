@@ -38,11 +38,13 @@ export async function POST(request) {
 
     // Remove o amigo da lista do usuário atual
     await User.findByIdAndUpdate(session.user.id, {
-      $pull: { friends);
+      $pull: { friends }
+    });
 
     // Remove o usuário atual da lista de amigos do amigo
     await User.findByIdAndUpdate(friendId, {
-      $pull: { friends);
+      $pull: { friends }
+    });
 
     return NextResponse.json({ message: 'Amigo removido com sucesso' });
   } catch (error) {

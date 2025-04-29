@@ -8,11 +8,11 @@ import { ObjectId } from 'mongodb';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // GET solicitações de amizade
@@ -20,7 +20,7 @@ export async function GET() {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -39,24 +39,24 @@ export async function GET() {
     
     // Obter solicitações pendentes para o usuário
     const requests = await db.collection('friendrequests').find({
-      recipient ObjectId(userId),
+      recipient: ObjectId(userId),
       status: 'pending'
     }).toArray();
     
     // Buscar dados dos usuários que enviaram as solicitações
-    const userIds = data: requests.map((request) => request.sender);
+    const userIds = requests.map((request) => request.sender);
     const users = await db.collection('users').find({
-      _id: { $in }
+      _id: { $in: userIds }
     }).toArray();
     
     // Juntar dados da solicitação com dados do usuário
-    const requestsWithUserData = data: requests.map((request) => {
+    const requestsWithUserData = requests.map((request) => {
       const sender = users.find((user) => 
         user._id ? user._id.toString() : "" === request.sender ? request.sender.toString() : ""
       );
       return {
         ...request,
-        sender: { username: 'Usuário desconhecido' }
+        sender: sender || { username: 'Usuário desconhecido' }
       };
     });
     
@@ -127,9 +127,9 @@ export async function POST(request) {
     
     // Verificar se já são amigos
     const existingFriendship = await db.collection('friends').findOne({
-      $or
-        { user1 ObjectId(userId), user2 ObjectId(recipientId) },
-        { user1 ObjectId(recipientId), user2 ObjectId(userId) }
+      $or: [
+        { user1: ObjectId(userId), user2: ObjectId(recipientId) },
+        { user1: ObjectId(recipientId), user2: ObjectId(userId) }
       ]
     });
     
@@ -142,8 +142,8 @@ export async function POST(request) {
     
     // Verificar se já existe uma solicitação pendente
     const existingRequest = await db.collection('friendrequests').findOne({
-      sender ObjectId(userId),
-      recipient ObjectId(recipientId),
+      sender: ObjectId(userId),
+      recipient: ObjectId(recipientId),
       status: 'pending'
     });
     
@@ -156,8 +156,8 @@ export async function POST(request) {
     
     // Verificar se já existe uma solicitação pendente inversa (o outro usuário já enviou para você)
     const inverseRequest = await db.collection('friendrequests').findOne({
-      sender ObjectId(recipientId),
-      recipient ObjectId(userId),
+      sender: ObjectId(recipientId),
+      recipient: ObjectId(userId),
       status: 'pending'
     });
     
@@ -170,8 +170,8 @@ export async function POST(request) {
     
     // Criar nova solicitação
     const newRequest = {
-      sender ObjectId(userId),
-      recipient ObjectId(recipientId),
+      sender: ObjectId(userId),
+      recipient: ObjectId(recipientId),
       status: 'pending',
       createdAt: new Date()
     };
@@ -180,7 +180,8 @@ export async function POST(request) {
     
     return NextResponse.json({
       status: 'success',
-      request);
+      request: result
+    });
   } catch (error) {
     console.error('Erro ao criar solicitação de amizade:', error);
     return NextResponse.json({
@@ -195,7 +196,7 @@ export async function PUT(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error

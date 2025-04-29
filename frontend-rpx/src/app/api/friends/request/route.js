@@ -43,7 +43,8 @@ export async function POST(request) {
     // Adiciona a solicitação
     await User.findByIdAndUpdate(targetUserId, {
       $push: {
-        friendRequests,
+        friendRequests: {
+          userId: session.user.id,
           requestedAt: new Date()
         }
       }
@@ -52,7 +53,8 @@ export async function POST(request) {
     // Adiciona aos pedidos enviados do usuário atual
     await User.findByIdAndUpdate(session.user.id, {
       $push: {
-        sentFriendRequests,
+        sentFriendRequests: {
+          userId: targetUserId,
           requestedAt: new Date()
         }
       }

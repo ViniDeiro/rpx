@@ -38,11 +38,13 @@ export async function POST(request) {
 
     // Remove a solicitação pendente do usuário atual
     await User.findByIdAndUpdate(session.user.id, {
-      $pull: { friendRequests);
+      $pull: { friendRequests }
+    });
 
     // Remove dos pedidos enviados do solicitante
     await User.findByIdAndUpdate(requesterId, {
-      $pull: { sentFriendRequests);
+      $pull: { sentFriendRequests }
+    });
 
     return NextResponse.json({ message: 'Solicitação de amizade rejeitada com sucesso' });
   } catch (error) {

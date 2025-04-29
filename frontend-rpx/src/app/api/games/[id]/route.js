@@ -27,7 +27,8 @@ export async function GET(request, { params }) {
     if (!game) {
       return NextResponse.json(
         { error: 'Jogo não encontrado' },
-        { status);
+        { status: 404 }
+      );
     }
     
     return NextResponse.json({
@@ -38,6 +39,7 @@ export async function GET(request, { params }) {
     console.error('Erro ao buscar detalhes do jogo:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar detalhes do jogo' },
-      { status);
+      { status: 500 }
+    );
   }
 } 
