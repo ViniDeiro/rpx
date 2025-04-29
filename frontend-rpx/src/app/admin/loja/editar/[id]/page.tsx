@@ -9,13 +9,13 @@ export const metadata: Metadata = {
   description: "Painel administrativo para edição de produtos da loja",
 }
 
-interface EditarProdutoPageProps {
-  params: {
-    id: string
-  }
+// Corrigindo a tipagem para ser compatível com Next.js 15.3.1
+type PageProps = {
+  params: { id: string }
+  searchParams: Record<string, string | string[] | undefined>
 }
 
-export default function EditarProdutoPage({ params }: EditarProdutoPageProps) {
+export default function EditarProdutoPage({ params }: PageProps) {
   return (
     <div className="container py-8">
       <div className="mb-6">
