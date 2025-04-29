@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   // Configuração de compatibilidade com App Router (src/app) e Pages Router (pages)
   experimental: {
     // Removendo a opção appDir que está depreciada no Next.js 14

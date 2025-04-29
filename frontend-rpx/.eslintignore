@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+public
+scripts
+pages/_app.js
+pages/_document.js
+src/types
+*.d.ts 
