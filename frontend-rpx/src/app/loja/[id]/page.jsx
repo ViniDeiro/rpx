@@ -7,28 +7,10 @@ import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  imageUrl: string;
-  inStock: boolean;
-  featured: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-export default function DetalheProdutoPage({ params }: { params: { id: string } }) {
-  const [produto, setProduto] = useState<Product | null>(null);
+export default function DetalheProdutoPage({ params }) {
+  const [produto, setProduto] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -71,7 +53,7 @@ export default function DetalheProdutoPage({ params }: { params: { id: string } 
     
     // Buscar carrinho atual do localStorage
     const savedCart = localStorage.getItem('rpx-cart');
-    let cartItems: CartItem[] = [];
+    let cartItems = [];
     
     if (savedCart) {
       try {

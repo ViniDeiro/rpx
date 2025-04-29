@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import EditarProdutoForm from "@/components/admin/EditarProdutoForm"
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import EditarProdutoForm from "@/components/admin/EditarProdutoForm";
 
-export default function EditarProdutoPage({ params }: { params: { id: string } }) {
+export default function EditarProdutoPage({ params }) {
   return (
     <div className="container py-8">
       <div className="mb-6">
@@ -23,5 +23,5 @@ export default function EditarProdutoPage({ params }: { params: { id: string } }
       
       <EditarProdutoForm produtoId={params.id} />
     </div>
-  )
+  );
 } 

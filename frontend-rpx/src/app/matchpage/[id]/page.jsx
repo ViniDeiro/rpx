@@ -7,11 +7,11 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import MatchRoomCard from '@/components/match/MatchRoomCard';
 import axios from 'axios';
 
-export default function MatchPage({ params }: { params: { id: string } }) {
+export default function MatchPage({ params }) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [match, setMatch] = useState<any>(null);
+  const [match, setMatch] = useState(null);
   const [error, setError] = useState('');
 
   // Função para buscar os dados da partida
@@ -27,7 +27,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
         router.push(`/game/${params.id}`);
         return;
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao buscar dados da partida:', err);
       setError(err.response?.data?.message || 'Não foi possível carregar os dados da partida');
       toast({
@@ -51,7 +51,7 @@ export default function MatchPage({ params }: { params: { id: string } }) {
         variant: 'default',
       });
       await fetchMatchData();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao confirmar entrada:', err);
       toast({
         title: 'Erro',
