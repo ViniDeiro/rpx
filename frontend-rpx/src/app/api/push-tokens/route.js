@@ -1,24 +1,12 @@
-import { request, NextResponse } from 'next/server';
-import admin from 'firebase-admin';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import admin, { initializeFirebaseAdmin } from '@/lib/firebase/admin';
 
-// Inicializar Firebase Admin se ainda não estiver inicializado
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential.credential.cert({
-        projectId.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error) {
-    console.error('Erro ao inicializar Firebase Admin:', error);
-  }
-}
+// Inicializar o Firebase Admin SDK
+const firebaseAdmin = initializeFirebaseAdmin();
 
 // Definindo interface para o usuário com role
 
@@ -35,7 +23,7 @@ if (!admin.apps.length) {
 export async function POST(req) {
   try {
     // Verificar autenticação do usuário
-    const session = await getServerSession(authOptions) as Session | null;
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -73,29 +61,29 @@ export async function POST(req) {
     // Criar documento para o token se não existir
     const result = await db.collection('pushTokens').updateOne(
       { token, userId },
-      { 
-        $set, 
-          updatedAt: new Date() 
+      {
+        $set: {
+          updatedAt: new Date()
         },
-        $setOnInsert: { 
-          createdAt: new Date() 
+        $setOnInsert: {
+          createdAt: new Date()
         }
       },
-      { upsert }
+      { upsert: true }
     );
 
     // Registrar no Firestore também para redundância
-    await admin.firestore().collection('pushTokens').doc(token).set({
+    await firebaseAdmin.firestore().collection('pushTokens').doc(token).set({
       token,
-      userId,
-      updatedAt.firestore.FieldValue.serverTimestamp(),
-      createdAt.upsertedCount > 0 
-        ? admin.firestore.FieldValue.serverTimestamp() 
-        .firestore.FieldValue.serverTimestamp()
-    }, { merge });
+      userId: userId,
+      updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+      createdAt: result.upsertedCount > 0 
+        ? firebaseAdmin.firestore.FieldValue.serverTimestamp() 
+        : firebaseAdmin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Token registrado com sucesso'
     });
   } catch (error) {
@@ -110,7 +98,7 @@ export async function POST(req) {
 export async function DELETE(req) {
   try {
     // Verificar autenticação do usuário
-    const session = await getServerSession(authOptions) as Session | null;
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -150,10 +138,10 @@ export async function DELETE(req) {
     await db.collection('pushTokens').deleteOne({ token, userId });
 
     // Remover token do Firestore
-    await admin.firestore().collection('pushTokens').doc(token).delete();
+    await firebaseAdmin.firestore().collection('pushTokens').doc(token).delete();
 
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Token removido com sucesso'
     });
   } catch (error) {

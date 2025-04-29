@@ -8,11 +8,11 @@ import { ObjectId } from 'mongodb';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // GET contagem de notificações não lidas
@@ -20,7 +20,7 @@ export async function GET() {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -31,8 +31,8 @@ export async function GET() {
     
     // Contar notificações não lidas
     const notifications = await db.collection('notifications').find({
-      userId ObjectId(userId),
-      read
+      userId: new ObjectId(userId),
+      read: false
     }).toArray();
     
     const count = notifications.length;

@@ -29,7 +29,7 @@ export async function POST(request) {
     
     // Verifica se são amigos
     const areFriends = currentUser.friends.some(
-      (f) => f.userId ? f.userId.toString() : "" === friendId
+      (f) => (f.userId ? f.userId ? f.userId.toString() : "" : "") === friendId
     );
     
     if (!areFriends) {
@@ -38,12 +38,12 @@ export async function POST(request) {
 
     // Remove o amigo da lista do usuário atual
     await User.findByIdAndUpdate(session.user.id, {
-      $pull: { friends }
+      $pull: { friends: { userId: friendId } }
     });
 
     // Remove o usuário atual da lista de amigos do amigo
     await User.findByIdAndUpdate(friendId, {
-      $pull: { friends }
+      $pull: { friends: { userId: session.user.id } }
     });
 
     return NextResponse.json({ message: 'Amigo removido com sucesso' });

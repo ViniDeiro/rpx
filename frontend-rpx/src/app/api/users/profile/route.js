@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { getModels } from '@/lib/mongodb/models';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import mongoose from 'mongoose';
 
@@ -32,53 +31,47 @@ export async function GET() {
       const decodedToken = jwt.verify(token, JWT_SECRET);
       console.log('Token verificado com sucesso');
       
-      // Conectar ao banco de dados
-      console.log('Conectando ao MongoDB...');
-      await connectToDatabase();
-      console.log('Conexão com MongoDB estabelecida');
-      
-      // Buscar usuário pelo ID diretamente usando a conexão do MongoDB
-      console.log(`Buscando usuário com ID: ${decodedToken.userId}`);
-      let userId;
-      try {
-        userId = new mongoose.Types.ObjectId(decodedToken.userId);
-      } catch (e) {
-        console.error('ID de usuário inválido:', e);
+      // Obter o ID do usuário do token
+      const userId = decodedToken.userId || decodedToken.id;
+      if (!userId) {
+        console.error('ID do usuário não encontrado no token');
         return NextResponse.json(
-          { error: 'ID de usuário inválido' },
+          { error: 'ID do usuário não encontrado no token' },
           { status: 400 });
       }
       
-      // Acessar a coleção users diretamente para garantir que todos os campos sejam recuperados
+      console.log(`Buscando perfil do usuário com ID: ${userId}`);
+      
+      // Conectar ao banco de dados
+      await connectToDatabase();
       const db = mongoose.connection.db;
+      
       if (!db) {
         console.error('Falha ao obter instância do banco de dados');
         return NextResponse.json(
           { error: 'Erro de conexão com o banco de dados' },
           { status: 500 });
       }
-      const user = await db.collection('users').findOne({ _id: userId });
+      
+      // Buscar usuário pelo ID
+      const user = await db.collection('users').findOne(
+        { _id: new mongoose.Types.ObjectId(userId) }
+      );
       
       if (!user) {
         console.log('Usuário não encontrado no banco de dados');
         return NextResponse.json(
           { error: 'Usuário não encontrado' },
-          { status: 404 });
+          { status: 400 });
       }
       
-      console.log(`Usuário encontrado: ${user.username}`);
-      // Mostrar campos disponíveis no usuário para debug
-      console.log('Campos disponíveis no usuário:', Object.keys(user));
-      console.log('avatarUrl presente:', user.hasOwnProperty('avatarUrl'));
-      console.log('Valor do avatarUrl:', user.avatarUrl ? 'Presente (comença com: ' + user.avatarUrl.substring(0, 30) + '...)' : 'vazio');
-      
-      // Preparar dados do usuário para resposta
+      // Preparar dados formatados para retorno
       const userData = {
-        id: user._id,
+        id: user._id.toString(),
         username: user.username,
         email: user.email,
         phone: user.phone,
-        cpf: user.cpf, 
+        cpf: user.cpf,
         birthdate: user.birthdate,
         role: user.role,
         userNumber: user.userNumber || null,
@@ -95,16 +88,14 @@ export async function GET() {
       
       // Logar se o avatar existe
       if (user.avatarUrl) {
-        console.log('Avatar do usuário encontrado, tamanho:', Math.round(user.avatarUrl.length / 1024), 'KB');
+        console.log('Avatar encontrado para o usuário');
       } else {
-        console.log('Usuário não possui avatar');
+        console.log('Usuário sem avatar configurado');
       }
       
-      console.log('Retornando dados do perfil do usuário');
-      return NextResponse.json({
-        message: 'Perfil do usuário obtido com sucesso',
-        user: userData
-      });
+      console.log('Perfil do usuário obtido com sucesso');
+      return NextResponse.json(userData);
+      
     } catch (tokenError) {
       console.error('Erro ao verificar token:', tokenError);
       return NextResponse.json(
@@ -144,118 +135,114 @@ export async function PUT(request) {
       const decodedToken = jwt.verify(token, JWT_SECRET);
       console.log('Token verificado com sucesso');
       
-      // Obter os dados do body
+      // Obter os dados da requisição
       const userData = await request.json();
-      console.log('Dados recebidos para atualização:', userData);
-      
-      // Conectar ao banco de dados
-      console.log('Conectando ao MongoDB...');
-      await connectToDatabase();
-      console.log('Conexão com MongoDB estabelecida');
+      console.log('Dados do usuário recebidos:', Object.keys(userData).join(', '));
       
       // Buscar usuário pelo ID diretamente usando a conexão do MongoDB
-      console.log(`Buscando usuário com ID: ${decodedToken.userId || decodedToken.id}`);
-      let userId;
+      const userId = decodedToken.userId || decodedToken.id;
+      console.log(`Buscando usuário com ID: ${userId}`);
+      
       try {
-        userId = new mongoose.Types.ObjectId(decodedToken.userId || decodedToken.id);
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        
+        // Acessar a coleção users diretamente para atualizar o usuário
+        const db = mongoose.connection.db;
+        if (!db) {
+          console.error('Falha ao obter instância do banco de dados');
+          return NextResponse.json(
+            { error: 'Erro de conexão com o banco de dados' },
+            { status: 500 });
+        }
+
+        // Construir o objeto de atualização, removendo campos que não devem ser atualizados
+        const updateData = {};
+        
+        // Lista de campos permitidos para atualização
+        const allowedFields = ['username', 'email', 'phone', 'cpf', 'birthdate', 'bio'];
+        
+        for (const field of allowedFields) {
+          if (userData[field] !== undefined) {
+            updateData[field] = userData[field];
+          }
+        }
+        
+        // Tratamento especial para o campo profile
+        if (userData.profile) {
+          updateData.profile = userData.profile;
+        }
+        
+        // Tratamento para redes sociais
+        if (userData.socialLinks) {
+          updateData.socialLinks = userData.socialLinks;
+        }
+        
+        // Adicionar timestamp de atualização
+        updateData.updatedAt = new Date();
+        
+        console.log('Dados a serem atualizados:', updateData);
+        
+        // Atualizar o usuário no banco de dados
+        const result = await db.collection('users').updateOne(
+          { _id: userObjectId },
+          { $set: updateData }
+        );
+        
+        if (result.matchedCount === 0) {
+          console.log('Usuário não encontrado no banco de dados');
+          return NextResponse.json(
+            { error: 'Usuário não encontrado' },
+            { status: 404 });
+        }
+        
+        if (result.modifiedCount === 0) {
+          console.log('Nenhum dado foi alterado');
+          return NextResponse.json(
+            { message: 'Nenhum dado foi alterado' },
+            { status: 200 });
+        }
+        
+        // Buscar o usuário atualizado
+        const updatedUser = await db.collection('users').findOne({ _id: userObjectId });
+        
+        if (!updatedUser) {
+          console.log('Erro ao recuperar usuário atualizado');
+          return NextResponse.json(
+            { error: 'Erro ao recuperar usuário atualizado' },
+            { status: 500 });
+        }
+        
+        // Preparar dados do usuário para resposta
+        const responseData = {
+          id: updatedUser._id.toString(),
+          username: updatedUser.username,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          cpf: updatedUser.cpf, 
+          birthdate: updatedUser.birthdate,
+          role: updatedUser.role,
+          userNumber: updatedUser.userNumber || null,
+          avatarUrl: updatedUser.avatarUrl || null,
+          bio: updatedUser.bio || '',
+          socialLinks: updatedUser.socialLinks || {},
+          profile: updatedUser.profile || {},
+          balance: updatedUser.wallet?.balance || 0,
+          stats: updatedUser.stats || {},
+          wallet: updatedUser.wallet || { balance: 0 },
+          createdAt: updatedUser.createdAt
+        };
+        
+        console.log('Perfil do usuário atualizado com sucesso');
+        return NextResponse.json({
+          message: 'Perfil do usuário atualizado com sucesso',
+          user: responseData
+        });
       } catch (e) {
         console.error('ID de usuário inválido:', e);
         return NextResponse.json(
           { error: 'ID de usuário inválido' },
           { status: 400 });
       }
-      
-      // Acessar a coleção users diretamente para atualizar o usuário
-      const db = mongoose.connection.db;
-      if (!db) {
-        console.error('Falha ao obter instância do banco de dados');
-        return NextResponse.json(
-          { error: 'Erro de conexão com o banco de dados' },
-          { status: 500 });
-      }
-
-      // Construir o objeto de atualização, removendo campos que não devem ser atualizados
-      const updateData = {};
-      
-      // Lista de campos permitidos para atualização
-      const allowedFields = ['username', 'email', 'phone', 'cpf', 'birthdate', 'bio'];
-      
-      for (const field of allowedFields) {
-        if (userData[field] !== undefined) {
-          updateData[field] = userData[field];
-        }
-      }
-      
-      // Tratamento especial para o campo profile
-      if (userData.profile) {
-        updateData.profile = userData.profile;
-      }
-      
-      // Tratamento para redes sociais
-      if (userData.socialLinks) {
-        updateData.socialLinks = userData.socialLinks;
-      }
-      
-      // Adicionar timestamp de atualização
-      updateData.updatedAt = new Date();
-      
-      console.log('Dados a serem atualizados:', updateData);
-      
-      // Atualizar o usuário no banco de dados
-      const result = await db.collection('users').updateOne(
-        { _id: userId },
-        { $set: updateData }
-      );
-      
-      if (result.matchedCount === 0) {
-        console.log('Usuário não encontrado no banco de dados');
-        return NextResponse.json(
-          { error: 'Usuário não encontrado' },
-          { status: 404 });
-      }
-      
-      if (result.modifiedCount === 0) {
-        console.log('Nenhum dado foi alterado');
-        return NextResponse.json(
-          { message: 'Nenhum dado foi alterado' },
-          { status: 200 });
-      }
-      
-      // Buscar o usuário atualizado
-      const updatedUser = await db.collection('users').findOne({ _id: userId });
-      
-      if (!updatedUser) {
-        console.log('Erro ao recuperar usuário atualizado');
-        return NextResponse.json(
-          { error: 'Erro ao recuperar usuário atualizado' },
-          { status: 500 });
-      }
-      
-      // Preparar dados do usuário para resposta
-      const responseData = {
-        id: updatedUser._id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        cpf: updatedUser.cpf, 
-        birthdate: updatedUser.birthdate,
-        role: updatedUser.role,
-        userNumber: updatedUser.userNumber || null,
-        avatarUrl: updatedUser.avatarUrl || null,
-        bio: updatedUser.bio || '',
-        socialLinks: updatedUser.socialLinks || {},
-        profile: updatedUser.profile || {},
-        balance: updatedUser.wallet?.balance || 0,
-        stats: updatedUser.stats || {},
-        wallet: updatedUser.wallet || { balance: 0 },
-        createdAt: updatedUser.createdAt
-      };
-      
-      console.log('Perfil do usuário atualizado com sucesso');
-      return NextResponse.json({
-        message: 'Perfil do usuário atualizado com sucesso',
-        user: responseData
-      });
     } catch (tokenError) {
       console.error('Erro ao verificar token:', tokenError);
       return NextResponse.json(

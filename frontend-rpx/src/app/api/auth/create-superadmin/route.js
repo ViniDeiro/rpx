@@ -69,7 +69,7 @@ export async function POST(request) {
     
     return NextResponse.json({
       message: 'Administrador criado com sucesso',
-      userId: result.insertedId.toString()
+      userId: result.insertedId ? result.insertedId.toString() : ""
     }, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar superadmin:', error);

@@ -1,40 +1,24 @@
-import { request, NextResponse } from 'next/server';
-import admin from 'firebase-admin';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import admin, { initializeFirebaseAdmin } from '@/lib/firebase/admin';
 
-// Interface para as opções de mensagem do Firebase
-;
-  data?: {
-    [key;
-  };
-  webpush?: {
-    notification: {
-      icon?;
-      badge?;
-      vibrate?;
-      actions?;
-      data?;
-      requireInteraction?;
-    };
-  };
-}
+/**
+ * Opções de mensagem do Firebase
+ * @typedef {Object} MessageOptions
+ * @property {Object} [data] - Dados adicionais da mensagem
+ * @property {Object} [webpush] - Configurações específicas para webpush
+ * @property {Object} [webpush.notification] - Configurações da notificação
+ * @property {string} [webpush.notification.icon] - Ícone da notificação
+ * @property {string} [webpush.notification.badge] - Badge da notificação
+ * @property {number[]} [webpush.notification.vibrate] - Padrão de vibração
+ * @property {Array} [webpush.notification.actions] - Ações da notificação
+ * @property {Object} [webpush.notification.data] - Dados adicionais
+ * @property {boolean} [webpush.notification.requireInteraction] - Requer interação
+ */
 
-// Inicializar Firebase Admin se ainda não estiver inicializado
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential.credential.cert({
-        projectId.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-    console.log('Firebase Admin inicializado com sucesso');
-  } catch (error) {
-    console.error('Erro ao inicializar Firebase Admin:', error);
-  }
-}
+// Inicializar o Firebase Admin SDK
+const firebaseAdmin = initializeFirebaseAdmin();
 
 /**
  * API para envio de notificações push
@@ -57,7 +41,7 @@ export async function POST(req) {
     const { token, notification, userId, topic } = body;
 
     // Validar dados
-    if (!notification: (!token && !userId && !topic)) {
+    if (!notification || (!token && !userId && !topic)) {
       return NextResponse.json(
         { error: 'Dados incompletos' },
         { status: 400 });
@@ -67,26 +51,26 @@ export async function POST(req) {
 
     // Enviar para um token específico
     if (token) {
-      result = await admin.messaging().send({
+      result = await firebaseAdmin.messaging().send({
         token,
         notification,
         webpush: {
           notification: {
-            icon.icon: '/icons/logo192.png',
+            icon: '/icons/logo192.png',
             badge: '/icons/badge.png',
-            vibrate100, 50, 100],
-            actions.actions: [],
-            data.data: {},
-            requireInteraction,
+            vibrate: [100, 50, 100],
+            actions: [],
+            data: {},
+            requireInteraction: true
           },
         },
-        data.data: {},
-      } as any);
+        data: {}
+      });
     } 
     // Enviar para um usuário específico (buscar tokens no banco)
     else if (userId) {
       // Buscar tokens no banco
-      const userTokens = await admin.firestore().collection('pushTokens')
+      const userTokens = await firebaseAdmin.firestore().collection('pushTokens')
         .where('userId', '==', userId)
         .get();
       
@@ -96,45 +80,45 @@ export async function POST(req) {
           { status: 400 });
       }
 
-      const tokens = userTokens.data: docs.map(doc => doc.data().token);
+      const tokens = userTokens.docs.map(doc => doc.data().token);
       
       // Enviar para múltiplos tokens
-      result = await admin.messaging().sendEachForMulticast({
+      result = await firebaseAdmin.messaging().sendEachForMulticast({
         tokens,
         notification,
         webpush: {
           notification: {
-            icon.icon: '/icons/logo192.png',
+            icon: '/icons/logo192.png',
             badge: '/icons/badge.png',
-            vibrate100, 50, 100],
-            actions.actions: [],
-            data.data: {},
-            requireInteraction,
+            vibrate: [100, 50, 100],
+            actions: [],
+            data: {},
+            requireInteraction: true
           },
         },
-        data.data: {},
-      } as any);
+        data: {}
+      });
     }
     // Enviar para um tópico
     else if (topic) {
-      result = await admin.messaging().sendToTopic(topic, {
+      result = await firebaseAdmin.messaging().sendToTopic(topic, {
         notification,
         webpush: {
           notification: {
-            icon.icon: '/icons/logo192.png',
+            icon: '/icons/logo192.png',
             badge: '/icons/badge.png',
-            vibrate100, 50, 100],
-            actions.actions: [],
-            data.data: {},
-            requireInteraction,
+            vibrate: [100, 50, 100],
+            actions: [],
+            data: {},
+            requireInteraction: true
           },
         },
-        data.data: {},
-      } as any);
+        data: {}
+      });
     }
 
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Notificação enviada com sucesso',
       result
     });

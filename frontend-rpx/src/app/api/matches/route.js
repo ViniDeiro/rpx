@@ -12,7 +12,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Erro ao buscar partidas:', error);
     return NextResponse.json(
-      { error: 'Falha ao carregar as salas', details(error) },
+      { error: 'Falha ao carregar as salas', details: error.message },
       { status: 400 });
   }
 }
@@ -39,18 +39,18 @@ export async function POST(request) {
     const mockId = `match-${Date.now()}`;
     return NextResponse.json({
       message: 'Partida criada com sucesso',
-      matchId,
-      match,
+      matchId: mockId,
+      match: {
         status: 'open',
         createdAt: new Date().toISOString(),
-        createdBy
+        createdBy: userId
       }
     });
     
   } catch (error) {
     console.error('Erro ao criar partida:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor', details(error) },
+      { error: 'Erro interno do servidor', details: error.message },
       { status: 400 });
   }
 }
@@ -68,7 +68,7 @@ function generateMockMatches() {
       const mode = modes[Math.floor(Math.random() * modes.length)];
       const platform = platforms[Math.floor(Math.random() * platforms.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const teamSize = mode === 'solo' ? 1  === 'duo' ? 2 : 4;
+      const teamSize = mode === 'solo' ? 1 : mode === 'duo' ? 2 : 4;
       const createdDate = new Date(Date.now() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000));
       
       return {
@@ -77,47 +77,47 @@ function generateMockMatches() {
         mode,
         teamSize,
         platform,
-        entryFee5, 10, 20, 50, 100][Math.floor(Math.random() * 5)],
+        entryFee: [5, 10, 20, 50, 100][Math.floor(Math.random() * 5)],
         status,
         type: 'casual',
-        createdAt.toISOString(),
+        createdAt: createdDate.toISOString(),
         createdBy: 'user1',
-        prize,
-        totalPlayers * 2,
-        playersJoined.floor(Math.random() * teamSize * 2),
-        teams
+        prize: teamSize * 2,
+        totalPlayers: teamSize * 2,
+        playersJoined: Math.floor(Math.random() * teamSize * 2),
+        teams: [
           {
             id: `team1-${index}`,
             name: 'Time 1',
-            players
+            players: [
               {
                 id: 'user1',
                 name: 'Jogador 1',
-                isReady,
-                isCaptain
+                isReady: true,
+                isCaptain: true
               },
               {
                 id: 'user2',
                 name: 'Jogador 2',
-                isReady,
-                isCaptain
+                isReady: false,
+                isCaptain: false
               }
             ]
           },
           {
             id: `team2-${index}`,
             name: 'Time 2',
-            players !== 'open' ? [
+            players: status !== 'open' ? [
               {
                 id: 'user3',
                 name: 'Jogador 3',
-                isReady === 'in_progress',
-                isCaptain
+                isReady: status === 'in_progress',
+                isCaptain: true
               }
-            ] 
+            ] : []
           }
         ],
-        startTime Date(Date.now() + 3600000).toISOString()
+        startTime: new Date(Date.now() + 3600000).toISOString()
       };
     });
     

@@ -37,7 +37,7 @@ export async function GET(request) {
       status: 'success',
       data: categories.map(category => ({
         ...category,
-        id: category._id.toString()
+        id: category._id ? category._id.toString() : ""
       }))
     });
   } catch (error) {

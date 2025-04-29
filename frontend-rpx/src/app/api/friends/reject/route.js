@@ -29,7 +29,7 @@ export async function POST(request) {
     
     // Verifica se existe a solicitação pendente
     const pendingRequest = currentUser.friendRequests.find(
-      (request) => request.userId ? request.userId.toString() : "" === requesterId
+      (request) => (request.userId ? request.userId ? request.userId.toString() : "" : "") === requesterId
     );
     
     if (!pendingRequest) {
@@ -38,12 +38,12 @@ export async function POST(request) {
 
     // Remove a solicitação pendente do usuário atual
     await User.findByIdAndUpdate(session.user.id, {
-      $pull: { friendRequests }
+      $pull: { friendRequests: { userId: requesterId } }
     });
 
     // Remove dos pedidos enviados do solicitante
     await User.findByIdAndUpdate(requesterId, {
-      $pull: { sentFriendRequests }
+      $pull: { sentFriendRequests: { userId: session.user.id } }
     });
 
     return NextResponse.json({ message: 'Solicitação de amizade rejeitada com sucesso' });

@@ -5,13 +5,13 @@ import { isAuthenticated } from '@/lib/auth/verify';
 
 export async function POST(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
-        { status: 'error', error: 'Não autorizado' },
+        { status: 'error', error: error || 'Não autorizado' },
         { status: 400 });
     }
 
@@ -45,7 +45,7 @@ export async function POST(
 
     // Buscar o lobby
     const lobby = await db.collection('lobbies').findOne({
-      _id
+      _id: lobbyObjectId
     });
 
     if (!lobby) {
@@ -55,7 +55,7 @@ export async function POST(
     }
 
     // Verificar se o usuário é membro do lobby
-    const isMember = lobby.members.some((memberId | string) => 
+    const isMember = lobby.members.some((memberId) => 
       memberId.toString() === userId.toString()
     );
     
@@ -70,20 +70,20 @@ export async function POST(
       // Adicionar usuário à lista de prontos se ainda não estiver
       await db.collection('lobbies').updateOne(
         { 
-          _id,
-          readyMembers: { $nin ObjectId(userId)] }
+          _id: lobbyObjectId,
+          readyMembers: { $nin: [new ObjectId(userId)] }
         },
         { 
-          $push: { readyMembers ObjectId(userId) },
+          $push: { readyMembers: new ObjectId(userId) },
           $set: { updatedAt: new Date() }
         }
       );
     } else {
       // Remover usuário da lista de prontos
       await db.collection('lobbies').updateOne(
-        { _id },
+        { _id: lobbyObjectId },
         { 
-          $pull: { readyMembers ObjectId(userId) },
+          $pull: { readyMembers: new ObjectId(userId) },
           $set: { updatedAt: new Date() }
         }
       );
@@ -91,7 +91,7 @@ export async function POST(
 
     return NextResponse.json({
       status: 'success',
-      message ? 'Marcado como pronto' : 'Marcado como não pronto'
+      message: isReady ? 'Marcado como pronto' : 'Marcado como não pronto'
     });
     
   } catch (error) {

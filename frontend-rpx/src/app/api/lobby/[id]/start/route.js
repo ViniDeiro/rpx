@@ -5,13 +5,13 @@ import { isAuthenticated } from '@/lib/auth/verify';
 
 export async function POST(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
-        { status: 'error', error: 'Não autorizado' },
+        { status: 'error', error: error || 'Não autorizado' },
         { status: 400 });
     }
 
@@ -41,7 +41,7 @@ export async function POST(
 
     // Buscar o lobby
     const lobby = await db.collection('lobbies').findOne({
-      _id
+      _id: lobbyObjectId
     });
 
     if (!lobby) {
@@ -51,7 +51,7 @@ export async function POST(
     }
 
     // Verificar se o usuário é o dono do lobby
-    const isOwner = lobby.owner ? lobby.owner.toString() : "" === userId.toString();
+    const isOwner = lobby.owner ? lobby.owner.toString() === userId.toString() : false;
     
     if (!isOwner) {
       return NextResponse.json(
@@ -61,21 +61,30 @@ export async function POST(
 
     // Verificar se todos os jogadores estão prontos
     const membersCount = lobby.members.length;
-    const readyMembersCount = lobby.readyMembers?.length: 0;
+    const readyMembersCount = lobby.readyMembers?.length || 0;
     
     // Em lobbies solo, o proprietário não precisa marcar "pronto"
     const isSoloLobby = lobby.lobbyType === 'solo' && membersCount === 1;
     
-    if (!isSoloLobby && readyMembersCount  
-        typeof memberId === 'string' ? new ObjectId(memberId) 
+    if (!isSoloLobby && readyMembersCount < membersCount) {
+      return NextResponse.json(
+        { status: 'error', error: 'Todos os jogadores devem estar prontos para iniciar o jogo' },
+        { status: 400 });
+    }
+
+    // Criar uma nova partida no banco de dados
+    const matchData = {
+      lobbyId: lobbyObjectId,
+      players: lobby.members.map(memberId => 
+        typeof memberId === 'string' ? new ObjectId(memberId) : memberId
       ),
-      confirmedPlayers, // Inicialmente ninguém confirmou
-      gameMode.gameMode: 'normal',
+      confirmedPlayers: [], // Inicialmente ninguém confirmou
+      gameMode: lobby.gameMode || 'normal',
       createdAt: new Date(),
-      startedAt,
-      finishedAt,
-      winner,
-      settings.settings: {}
+      startedAt: new Date(),
+      finishedAt: null,
+      winner: null,
+      settings: lobby.settings || {}
     };
 
     const result = await db.collection('matches').insertOne(matchData);
@@ -88,31 +97,31 @@ export async function POST(
 
     // Atualizar status do lobby para "em jogo"
     await db.collection('lobbies').updateOne(
-      { _id },
+      { _id: lobbyObjectId },
       { 
         $set: { 
           status: 'in_game',
-          matchId.insertedId,
+          matchId: result.insertedId,
           updatedAt: new Date()
         }
       }
     );
 
     // Notificar todos os membros do lobby
-    const memberIds = lobby.data: members.map((id | string) => id.toString());
+    const memberIds = lobby.members.map(id => typeof id === 'object' ? id.toString() : id);
     
     // Criar notificações para cada membro
-    const notifications = data: memberIds.map(memberId => ({
-      userId,
+    const notifications = memberIds.map(memberId => ({
+      userId: memberId,
       type: 'match_start',
       title: 'Partida Iniciada',
       message: `A partida de ${lobby.lobbyType} foi iniciada!`,
       data: {
-        matchId.insertedId ? matchId.insertedId.toString() : "",
-        lobbyId,
-        gameType.lobbyType
+        matchId: result.insertedId ? result.insertedId.toString() : "",
+        lobbyId: lobbyId,
+        gameType: lobby.lobbyType
       },
-      read,
+      read: false,
       createdAt: new Date()
     }));
 
@@ -124,7 +133,7 @@ export async function POST(
     return NextResponse.json({
       status: 'success',
       message: 'Partida iniciada com sucesso',
-      matchId.insertedId ? matchId.insertedId.toString() : ""
+      matchId: result.insertedId ? result.insertedId.toString() : ""
     });
     
   } catch (error) {

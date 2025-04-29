@@ -39,7 +39,7 @@ export async function GET(request) {
     // Formatar resposta
     const formattedItems = items.map(item => ({
       ...item,
-      _id: item._id.toString()
+      _id: item._id ? item._id.toString() : ""
     }));
     
     return NextResponse.json({
@@ -120,7 +120,7 @@ export async function POST(request) {
     await db.collection('admin_logs').insertOne({
       adminId: session.user.id,
       action: 'create_shop_item',
-      itemId: result.insertedId.toString(),
+      itemId: result.insertedId ? result.insertedId.toString() : "",
       details: newItem,
       timestamp: new Date()
     });
@@ -129,7 +129,7 @@ export async function POST(request) {
       status: 'success',
       message: 'Item criado com sucesso',
       item: {
-        _id: result.insertedId.toString(),
+        _id: result.insertedId ? result.insertedId.toString() : "",
         ...newItem
       }
     }, { status: 201 });

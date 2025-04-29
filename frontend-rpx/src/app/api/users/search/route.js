@@ -63,21 +63,21 @@ export async function GET(req) {
     
     // Mapear os resultados para incluir status da amizade
     const users = foundUsers.map(user => {
-      const userIdStr = user._id.toString();
+      const userIdStr = user._id ? user._id.toString() : "";
       
       // Verificar se já são amigos
       const isFriend = currentUser.friends?.some(
-        (friend) => friend.userId.toString() === userIdStr
+        (friend) => friend.userId ? friend.userId.toString() : "" === userIdStr
       );
       
       // Verificar se existe solicitação enviada
       const hasSentRequest = currentUser.sentFriendRequests?.some(
-        (request) => request.userId.toString() === userIdStr
+        (request) => request.userId ? request.userId.toString() : "" === userIdStr
       );
       
       // Verificar se existe solicitação recebida
       const hasReceivedRequest = currentUser.friendRequests?.some(
-        (request) => request.userId.toString() === userIdStr
+        (request) => request.userId ? request.userId.toString() : "" === userIdStr
       );
       
       // Determinar o status da relação

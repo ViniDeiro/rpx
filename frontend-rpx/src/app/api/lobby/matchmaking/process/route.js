@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 
 // Chave de API para segurança
-const API_KEY = process.env.MATCHMAKING_API_KEY: 'rpx-matchmaking-secret';
+const API_KEY = process.env.MATCHMAKING_API_KEY || 'rpx-matchmaking-secret';
 
 /**
  * API para processar a fila de matchmaking e criar partidas
@@ -13,7 +13,7 @@ export async function POST(request) {
   try {
     // Verificar autenticação por API key
     const authHeader = request.headers.get('authorization');
-    if (!authHeader: authHeader !== `Bearer ${API_KEY}`) {
+    if (!authHeader || authHeader !== `Bearer ${API_KEY}`) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 400 });
     }
 
@@ -24,9 +24,9 @@ export async function POST(request) {
     // Obter todos os lobbies na fila
     const queueItems = await db.collection('matchmaking_queue')
       .find({ 
-        processed: { $ne } // Apenas lobbies não processados
+        processed: { $ne: true } // Apenas lobbies não processados
       })
-      .sort({ createdAt) // Mais antigos primeiro
+      .sort({ createdAt: 1 }) // Mais antigos primeiro
       .toArray();
     
     if (queueItems.length === 0) {
@@ -40,11 +40,11 @@ export async function POST(request) {
     console.log(`🔍 Encontrados ${queueItems.length} lobbies na fila de matchmaking`);
     
     // Agrupar lobbies por tipo de jogo e tamanho
-    const lobbiesByType, any[]> = {};
+    const lobbiesByType = {};
     
     for (const item of queueItems) {
       // Chave composta por tipo + plataforma + região + modo
-      const key = `${item.type: 'any'}-${item.platformMode: 'any'}-${item.region: 'any'}-${item.gameplayMode: 'normal'}`;
+      const key = `${item.type || 'any'}-${item.platformMode || 'any'}-${item.region || 'any'}-${item.gameplayMode || 'normal'}`;
       
       if (!lobbiesByType[key]) {
         lobbiesByType[key] = [];
@@ -67,7 +67,7 @@ export async function POST(request) {
         const lobby1 = lobbies.shift();
         const lobby2 = lobbies.shift();
         
-        if (!lobby1: !lobby2) break;
+        if (!lobby1 || !lobby2) break;
         
         // Verificar se os lobbies ainda não foram processados
         if (processedLobbies.includes(lobby1.lobbyId) || processedLobbies.includes(lobby2.lobbyId)) {
@@ -81,24 +81,23 @@ export async function POST(request) {
         
         // Criar o objeto da partida
         const matchData = {
-          _id,
-          match_id.toString(),
-          matchId.toString(),
+          _id: matchId,
+          matchId: matchId.toString(),
           status: 'pending', // pending, active, completed, canceled
-          lobbies1.lobbyId, lobby2.lobbyId],
-          players...(lobby1.players: []), ...(lobby2.players: [])],
-          teams
-            { lobbyId1.lobbyId, players1.players: [] },
-            { lobbyId2.lobbyId, players2.players: [] }
+          lobbies: [lobby1.lobbyId, lobby2.lobbyId],
+          players: [...(lobby1.players || []), ...(lobby2.players || [])],
+          teams: [
+            { lobbyId: lobby1.lobbyId, players: lobby1.players || [] },
+            { lobbyId: lobby2.lobbyId, players: lobby2.players || [] }
           ],
-          type1.type,
-          platformMode1.platformMode,
-          gameplayMode1.gameplayMode,
-          region1.region,
+          type: lobby1.type,
+          platformMode: lobby1.platformMode,
+          gameplayMode: lobby1.gameplayMode,
+          region: lobby1.region,
           createdAt: new Date(),
-          startTime,
-          endTime,
-          winner
+          startTime: null,
+          endTime: null,
+          winner: null
         };
         
         // Inserir a nova partida
@@ -106,8 +105,8 @@ export async function POST(request) {
         
         // Marcar lobbies como processados
         await db.collection('matchmaking_queue').updateMany(
-          { lobbyId: { $in1.lobbyId, lobby2.lobbyId] } },
-          { $set, matchId.toString() } }
+          { lobbyId: { $in: [lobby1.lobbyId, lobby2.lobbyId] } },
+          { $set: { matchId: matchId.toString() } }
         );
         
         // Atualizar o status dos lobbies
@@ -117,7 +116,7 @@ export async function POST(request) {
             { 
               $set: { 
                 status: 'match_found',
-                matchId.toString(),
+                matchId: matchId.toString(),
                 matchFoundAt: new Date()
               }
             }
@@ -129,13 +128,13 @@ export async function POST(request) {
           if (lobby && lobby.members) {
             for (const memberId of lobby.members) {
               await db.collection('notifications').insertOne({
-                userId memberId === 'object' ? memberId.toString() ,
+                userId: memberId === 'object' ? memberId.toString() : memberId,
                 type: 'system',
-                read,
+                read: false,
                 title: 'Partida encontrada!',
                 message: 'Uma partida foi encontrada para o seu lobby. Prepare-se para o jogo!',
-                data,
-                  matchId.toString(),
+                data: {
+                  matchId: matchId.toString(),
                   type: 'match_found'
                 },
                 createdAt: new Date()
@@ -146,9 +145,9 @@ export async function POST(request) {
         
         // Adicionar à lista de matches encontrados
         matches.push({
-          matchId.toString(),
-          lobbies1.lobbyId, lobby2.lobbyId],
-          type1.type,
+          matchId: matchId.toString(),
+          lobbies: [lobby1.lobbyId, lobby2.lobbyId],
+          type: lobby1.type,
           createdAt: new Date()
         });
         
@@ -168,7 +167,7 @@ export async function POST(request) {
     console.error('Erro ao processar fila de matchmaking:', error);
     return NextResponse.json({
       status: 'error',
-      error: 'Erro ao processar fila de matchmaking: ' + (error.message: 'Erro desconhecido')
+      error: 'Erro ao processar fila de matchmaking: ' + (error.message || 'Erro desconhecido')
     }, { status: 400 });
   }
 } 

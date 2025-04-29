@@ -1,11 +1,10 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { ObjectId, Document, WithId } from 'mongodb';
-import { Collection, FindCursor } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { isAuthenticated } from '@/lib/auth/verify';
 
 // Interface para convites
@@ -30,9 +29,11 @@ const formatNotification = (notification) => {
   if (formatted.type) {
     // Adicione mapeamentos específicos conforme necessário
     switch (formatted.type) {
-      case 'system_alert'.type = 'system';
+      case 'system_alert':
+        formatted.type = 'system';
         break;
-      case 'payment_update'.type = 'payment';
+      case 'payment_update':
+        formatted.type = 'payment';
         break;
       // Outros mapeamentos conforme necessário
     }
@@ -46,147 +47,209 @@ const formatNotification = (notification) => {
   return formatted;
 };
 
-// GET notificações do usuário
-export async function GET(request) {
+/**
+ * Lida com a solicitação GET para buscar notificações
+ */
+export async function GET(req) {
   try {
-    const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    const session = await getServerSession(authOptions);
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
       return NextResponse.json(
-        { 
-          success, 
-          error: 'Não autorizado'
-        },
-        { status: 400 });
+        { error: 'Você precisa estar autenticado' },
+        { status: 401 }
+      );
     }
-
-    console.log(`🔍 [Notifications] Buscando notificações para usuário: ${userId}`);
+    
+    const userId = session.user.id;
+    
+    // Estabelecer conexão com o banco de dados
     const { db } = await connectToDatabase();
-
-    // Consulta CORRETA - buscar notificações do usuário logado
-    const notificationsQuery = {
-      $or
-        { userId.toString() },       // ID no formato string
-        { userId ObjectId(userId) },    // ID no formato ObjectId
-        { userId: 'todos_usuarios' }         // Notificações globais
-      ]
-    };
-
-    console.log(`🔍 [Notifications] Consulta: ${JSON.stringify(notificationsQuery)}`);
-
-    // Obter notificações do usuário
-    const notificationsResults = await db
-      .collection('notifications')
-      .find(notificationsQuery)
-      .sort({ read, createdAt: -1 }) // Não lidas primeiro, depois por data recente
+    
+    // Buscar notificações do usuário atual
+    const notifications = await db.collection('notifications')
+      .find({ 
+        recipientId: userId,
+        isDeleted: { $ne: true }
+      })
+      .sort({ createdAt: -1 })
+      .limit(50)
       .toArray();
-
-    console.log(`✅ [Notifications] Encontradas ${notificationsResults.length} notificações`);
-    console.log("📋 [Notifications] Primeiras notificações:", 
-      notificationsResults.slice(0, 3).map(n => ({
-        id: _id.toString(),
-        userId.userId,
-        type.type
-      }))
+    
+    // Formatar as notificações para envio
+    const formattedNotifications = notifications.map(notification => ({
+      id: notification._id.toString(),
+      type: notification.type || 'info',
+      message: notification.message || 'Nova notificação',
+      link: notification.link || null,
+      read: notification.read || false,
+      timestamp: notification.createdAt || new Date(),
+      sender: notification.senderId || null,
+      data: notification.data || {}
+    }));
+    
+    // Verificar se há notificações não lidas e contar
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    // Retornar as notificações formatadas
+    return NextResponse.json({
+      notifications: formattedNotifications,
+      unreadCount,
+      total: notifications.length
+    });
+  } catch (error) {
+    console.error('Erro ao buscar notificações:', error);
+    return NextResponse.json(
+      { error: 'Erro ao buscar notificações' },
+      { status: 500 }
     );
+  }
+}
 
-    // Consulta CORRETA - buscar convites do usuário logado
-    const lobbyInviteQuery = {
-      $or
-        { recipient.toString() },    // ID no formato string
-        { recipient ObjectId(userId) }, // ID no formato ObjectId
-        { inviteeId.toString() }     // Usando campo alternativo
-      ],
-      status: 'pending'
-    };
-
-    console.log(`🔍 [Notifications] Consulta de convites: ${JSON.stringify(lobbyInviteQuery)}`);
-
-    const lobbyInvites = await db
-      .collection('lobbyinvites')
-      .find(lobbyInviteQuery)
-      .toArray();
-
-    console.log(`✅ [Notifications] Encontrados ${lobbyInvites.length} convites de lobby`);
-
-    // Para cada convite de lobby, obter informações do convidador
-    const formattedInvites = [];
-    for (const invite of lobbyInvites) {
-      let inviter;
-      try {
-        // Tentar obter dados do convidador
-        inviter = await db.collection('users').findOne({
-          _id invite.inviter === 'string' ? new ObjectId(invite.inviter) .inviter
-        });
-      } catch (err) {
-        console.error('Erro ao buscar dados do convidador:', err);
-        inviter = { username: 'Usuário Desconhecido' };
-      }
-
-      // Formatar o convite como uma notificação
-      formattedInvites.push({
-        id._id ? id._id.toString() : "",
-        type: 'lobby_invite',
-        userId.recipient?.toString() || userId.toString(),
-        read,
-        title: 'Convite para Lobby',
-        message: `${inviter?.username: 'Alguém'} convidou você para um lobby`,
-        createdAt.createdAt instanceof Date ? invite.createdAt.toISOString()  Date().toISOString(),
-        data: {
-          lobbyId.lobbyId ? lobbyId.lobbyId.toString() : "",
-          inviterId?._id?.toString(),
-          inviterName?.username,
-          inviterAvatar: (inviter as any)?.avatar: null,
-          inviteId._id ? inviteId._id.toString() : ""
-        }
+/**
+ * Lida com a solicitação PUT para marcar notificações como lidas
+ */
+export async function PUT(req) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Você precisa estar autenticado' },
+        { status: 401 }
+      );
+    }
+    
+    const userId = session.user.id;
+    const body = await req.json();
+    
+    // Validar os parâmetros
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Dados inválidos' },
+        { status: 400 }
+      );
+    }
+    
+    const { notificationId, markAllAsRead } = body;
+    
+    // Estabelecer conexão com o banco de dados
+    const { db } = await connectToDatabase();
+    
+    // Marcar todas as notificações como lidas
+    if (markAllAsRead) {
+      await db.collection('notifications').updateMany(
+        { recipientId: userId, read: false },
+        { $set: { read: true, updatedAt: new Date() } }
+      );
+      
+      return NextResponse.json({
+        message: 'Todas as notificações foram marcadas como lidas'
       });
     }
-
-    // Formatar todas as notificações para o modelo esperado pelo cliente
-    const formattedNotifications = data: notificationsResults.map(notification => {
-      const baseNotification = formatNotification(notification);
-      
-      // Adicionar campos específicos se estiverem faltando
-      if (!baseNotification.title) {
-        baseNotification.title = baseNotification.type.charAt(0).toUpperCase() + baseNotification.type.slice(1);
-      }
-      
-      if (!baseNotification.message) {
-        baseNotification.message = 'Nova notificação recebida';
-      }
-      
-      return baseNotification;
-    });
-
-    // Combinar notificações e convites
-    const allNotifications = [...formattedNotifications, ...formattedInvites];
     
-    // Ordenar por lidas/não lidas e por data
-    allNotifications.sort((a, b) => {
-      // Primeiro por status não lido (não lidas primeiro)
-      if (a.read !== b.read) {
-        return a.read ? 1 : -1;
+    // Marcar uma notificação específica como lida
+    if (notificationId) {
+      // Verificar se a notificação existe e pertence ao usuário
+      const notification = await db.collection('notifications').findOne({
+        _id: new ObjectId(notificationId),
+        recipientId: userId
+      });
+      
+      if (!notification) {
+        return NextResponse.json(
+          { error: 'Notificação não encontrada' },
+          { status: 404 }
+        );
       }
-      // Depois por data (mais recentes primeiro)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    // Contar notificações não lidas
-    const unreadCount = allNotifications.filter(n => !n.read).length;
-
-    console.log(`📊 [Notifications] Total: ${allNotifications.length}, Não lidas: ${unreadCount}`);
-
-    // Retornar resposta no formato esperado pelo frontend
-    return NextResponse.json({
-      success,
-      data);
-  } catch (error) {
-    console.error('❌ [DEBUG] API Notifications - Erro ao buscar notificações:', error);
+      
+      // Atualizar a notificação
+      await db.collection('notifications').updateOne(
+        { _id: new ObjectId(notificationId) },
+        { $set: { read: true, updatedAt: new Date() } }
+      );
+      
+      return NextResponse.json({
+        message: 'Notificação marcada como lida'
+      });
+    }
+    
+    // Se nem notificationId nem markAllAsRead foram fornecidos
     return NextResponse.json(
-      { 
-        success, 
-        error: 'Erro ao buscar notificações'
-      },
-      { status: 400 });
+      { error: 'Parâmetros inválidos' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Erro ao marcar notificações como lidas:', error);
+    return NextResponse.json(
+      { error: 'Erro ao marcar notificações como lidas' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Lida com a solicitação DELETE para excluir notificações
+ */
+export async function DELETE(req) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Você precisa estar autenticado' },
+        { status: 401 }
+      );
+    }
+    
+    const userId = session.user.id;
+    
+    // Extrair ID da notificação da URL
+    const url = new URL(req.url);
+    const notificationId = url.searchParams.get('id');
+    
+    // Validar o ID da notificação
+    if (!notificationId) {
+      return NextResponse.json(
+        { error: 'ID da notificação não fornecido' },
+        { status: 400 }
+      );
+    }
+    
+    // Estabelecer conexão com o banco de dados
+    const { db } = await connectToDatabase();
+    
+    // Verificar se a notificação existe e pertence ao usuário
+    const notification = await db.collection('notifications').findOne({
+      _id: new ObjectId(notificationId),
+      recipientId: userId
+    });
+    
+    if (!notification) {
+      return NextResponse.json(
+        { error: 'Notificação não encontrada' },
+        { status: 404 }
+      );
+    }
+    
+    // Marcar a notificação como excluída (exclusão lógica)
+    await db.collection('notifications').updateOne(
+      { _id: new ObjectId(notificationId) },
+      { $set: { isDeleted: true, updatedAt: new Date() } }
+    );
+    
+    return NextResponse.json({
+      message: 'Notificação excluída com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao excluir notificação:', error);
+    return NextResponse.json(
+      { error: 'Erro ao excluir notificação' },
+      { status: 500 }
+    );
   }
 }
 
@@ -200,7 +263,7 @@ export async function POST(req) {
     if (!isAuth) {
       return NextResponse.json(
         { 
-          success, 
+          success: false, 
           error: 'Não autorizado'
         },
         { status: 400 });
@@ -209,10 +272,10 @@ export async function POST(req) {
     const body = await req.json();
     const { targetUserId, type, data = {} } = body;
 
-    if (!targetUserId: !type) {
+    if (!targetUserId || !type) {
       return NextResponse.json(
         { 
-          success, 
+          success: false, 
           error: 'ID do usuário alvo e tipo são obrigatórios' 
         },
         { status: 400 });
@@ -222,10 +285,10 @@ export async function POST(req) {
 
     // Criar a notificação
     const notification = {
-      userId,
+      userId: targetUserId,
       type,
-      data,
-      read,
+      data: data,
+      read: false,
       createdAt: new Date()
     };
 
@@ -234,17 +297,18 @@ export async function POST(req) {
     // Formatar a notificação criada para retornar ao cliente
     const formattedNotification = formatNotification({
       ...notification,
-      _id.insertedId
+      _id: result.insertedId
     });
 
     return NextResponse.json({
-      success,
-      data);
+      success: true,
+      data: formattedNotification
+    });
   } catch (error) {
     console.error('❌ [DEBUG] API Notifications - Erro ao criar notificação:', error);
     return NextResponse.json(
       { 
-        success, 
+        success: false, 
         error: 'Erro ao criar notificação' 
       },
       { status: 400 });

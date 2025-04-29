@@ -5,12 +5,12 @@ import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 
 // Segredo para o JWT (idealmente deve vir de variáveis de ambiente)
-const JWT_SECRET = process.env.JWT_SECRET: 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Método GET para obter os comentários de um usuário
 export async function GET(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     console.log(`Requisição para obter comentários do usuário: ${params.id}`);
     
@@ -39,8 +39,8 @@ export async function GET(
     // Buscar comentários
     const comments = await db.collection('profilecomments')
       .find({ 
-        userId,
-        isHidden: { $ne } 
+        userId: userId,
+        isHidden: { $ne: true } 
       })
       .sort({ createdAt: -1 }) // Ordenar por data decrescente
       .toArray();
@@ -60,7 +60,7 @@ export async function GET(
 // Método POST para adicionar um comentário
 export async function POST(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     console.log(`Requisição para adicionar comentário ao usuário: ${params.id}`);
     
@@ -68,7 +68,7 @@ export async function POST(
     const headersList = headers();
     const authorization = headersList.get('authorization');
     
-    if (!authorization: !authorization.startsWith('Bearer ')) {
+    if (!authorization || !authorization.startsWith('Bearer ')) {
       console.log('Requisição sem token de autorização válido');
       return NextResponse.json(
         { error: 'Token de autorização não fornecido' },
@@ -80,7 +80,7 @@ export async function POST(
     
     try {
       // Verificar o token
-      const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+      const decodedToken = jwt.verify(token, JWT_SECRET);
       
       // Conectar ao banco de dados
       await connectToDatabase();
@@ -116,7 +116,7 @@ export async function POST(
       }
       
       // Buscar informações do autor
-      const author = await db.collection('users').findOne({ _id });
+      const author = await db.collection('users').findOne({ _id: authorId });
       if (!author) {
         return NextResponse.json(
           { error: 'Autor não encontrado' },
@@ -126,7 +126,7 @@ export async function POST(
       // Obter dados do comentário
       const { content } = await request.json();
       
-      if (!content: content.trim() === '') {
+      if (!content || content.trim() === '') {
         return NextResponse.json(
           { error: 'Conteúdo do comentário não pode estar vazio' },
           { status: 400 });
@@ -140,12 +140,12 @@ export async function POST(
       
       // Criar o comentário
       const newComment = {
-        userId,
+        userId: targetUserId,
         authorId,
-        authorName.username: 'Usuário',
-        authorAvatar.avatarUrl: null,
-        content.trim(),
-        isHidden,
+        authorName: author.username || 'Usuário',
+        authorAvatar: author.avatarUrl || null,
+        content: content.trim(),
+        isHidden: false,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -154,7 +154,8 @@ export async function POST(
       
       return NextResponse.json({
         message: 'Comentário adicionado com sucesso',
-        comment);
+        comment: newComment
+      });
       
     } catch (tokenError) {
       console.error('Erro ao verificar token:', tokenError);

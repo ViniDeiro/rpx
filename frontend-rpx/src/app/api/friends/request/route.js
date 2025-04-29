@@ -27,14 +27,14 @@ export async function POST(request) {
 
     // Verifica se já são amigos
     const currentUser = await User.findById(session.user.id);
-    const isAlreadyFriend = currentUser.friends.some((friend) => friend.userId ? friend.userId.toString() : "" === targetUserId);
+    const isAlreadyFriend = currentUser.friends.some((friend) => (friend.userId ? friend.userId ? friend.userId.toString() : "" : "") === targetUserId);
     if (isAlreadyFriend) {
       return NextResponse.json({ error: 'Usuários já são amigos' }, { status: 400 });
     }
 
     // Verifica se já existe uma solicitação pendente
     const hasPendingRequest = targetUser.friendRequests.some(
-      (request) => request.userId ? request.userId.toString() : "" === session.user.id
+      (request) => (request.userId ? request.userId ? request.userId.toString() : "" : "") === session.user.id
     );
     if (hasPendingRequest) {
       return NextResponse.json({ error: 'Já existe uma solicitação pendente' }, { status: 400 });

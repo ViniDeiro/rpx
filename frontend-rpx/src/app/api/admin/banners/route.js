@@ -41,7 +41,7 @@ export async function GET(request) {
       status: 'success',
       data: banners.map(banner => ({
         ...banner,
-        id: banner._id.toString()
+        id: banner._id ? banner._id.toString() : ""
       }))
     });
   } catch (error) {

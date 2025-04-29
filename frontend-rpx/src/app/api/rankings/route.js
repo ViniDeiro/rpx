@@ -23,7 +23,29 @@ const gerarAvatarAleatorio = () => {
 const gerarRankingSimulado = (quantidade, tipo) => {
   const entries = [];
   
-  for (let i = 0; i  b.winRate - a.winRate);
+  for (let i = 0; i < quantidade; i++) {
+    const totalGames = Math.floor(Math.random() * 500) + 20;
+    const wins = Math.floor(Math.random() * totalGames);
+    const totalWon = Math.floor(Math.random() * 10000) + 100;
+    const biggestWin = Math.floor(Math.random() * 2000) + 50;
+    
+    entries.push({
+      id: uuidv4(),
+      username: gerarNomeAleatorio(),
+      avatar: gerarAvatarAleatorio(),
+      rank: i + 1,
+      score: Math.floor(Math.random() * 1000) + 100,
+      wins,
+      totalGames,
+      winRate: totalGames > 0 ? (wins / totalGames * 100) : 0,
+      totalWon,
+      biggestWin,
+    });
+  }
+  
+  // Ordenar conforme o tipo
+  if (tipo === 'winrate') {
+    entries.sort((a, b) => b.winRate - a.winRate);
   } else if (tipo === 'totalWon') {
     entries.sort((a, b) => b.totalWon - a.totalWon);
   } else if (tipo === 'biggestWin') {
@@ -57,7 +79,7 @@ export async function GET(req) {
     
     // Retornar dados simulados
     return NextResponse.json({
-      rankings,
+      rankings: rankingData,
       type,
       period,
       updatedAt: new Date()

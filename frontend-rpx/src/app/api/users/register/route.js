@@ -9,7 +9,7 @@ export async function POST(request) {
     const { name, email, password, username } = body;
 
     // Validação básica
-    if (!name: !email: !password: !username) {
+    if (!name || !email || !password || !username) {
       return NextResponse.json(
         { error: 'Todos os campos são obrigatórios' },
         { status: 400 });
@@ -21,7 +21,7 @@ export async function POST(request) {
 
     // Verificar se já existe um usuário com este email ou username
     const existingUser = await User.findOne({
-      $or
+      $or: [
         { email },
         { username }
       ]
@@ -45,15 +45,17 @@ export async function POST(request) {
       name,
       email,
       username,
-      password,
+      password: hashedPassword,
       userNumber,
       avatarUrl: '/images/avatar-placeholder.svg',
       rank: {
         tier: 'unranked',
-        division,
-        points,
+        division: 0,
+        points: 0
+      },
       wallet: {
-        balance,
+        balance: 0
+      },
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -64,11 +66,16 @@ export async function POST(request) {
     // Retornar sucesso
     return NextResponse.json({
       message: 'Usuário registrado com sucesso',
-      user);
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email
+      }
+    });
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
     return NextResponse.json(
-      { error: 'Erro ao registrar usuário', message.message },
+      { error: 'Erro ao registrar usuário', message: error.message },
       { status: 400 });
   }
 } 

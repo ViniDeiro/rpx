@@ -53,7 +53,7 @@ export async function GET(request) {
     // Formatar resposta
     const formattedTournaments = tournaments.map(tournament => ({
       ...tournament,
-      id: tournament._id.toString(),
+      id: tournament._id ? tournament._id.toString() : "",
       _id: undefined
     }));
     
@@ -131,7 +131,7 @@ export async function POST(request) {
     // Registrar ação do admin
     await db.collection('admin_logs').insertOne({
       action: 'create_tournament',
-      tournamentId: result.insertedId.toString(),
+      tournamentId: result.insertedId ? result.insertedId.toString() : "",
       adminId: (await getServerSession(authOptions)).user.id,
       details: newTournament,
       timestamp: new Date()
@@ -140,7 +140,7 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Torneio criado com sucesso',
-      id: result.insertedId.toString()
+      id: result.insertedId ? result.insertedId.toString() : ""
     }, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar torneio:', error);

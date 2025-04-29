@@ -47,7 +47,7 @@ export async function POST(request) {
     // Criar token JWT
     const token = jwt.sign(
       {
-        userId: user._id.toString(),
+        userId: user._id ? user._id.toString() : "",
         email: user.email,
         username: user.username,
         isAdmin: user.isAdmin === true
@@ -58,7 +58,7 @@ export async function POST(request) {
     
     // Criar resposta com cookie
     const response = NextResponse.json({
-      userId: user._id.toString(),
+      userId: user._id ? user._id.toString() : "",
       username: user.username,
       email: user.email,
       token: token

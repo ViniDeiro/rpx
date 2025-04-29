@@ -18,7 +18,7 @@ export async function GET(request) {
       console.log('⚠️ MODO DESENVOLVIMENTO admin liberado automaticamente');
       return NextResponse.json(
         { 
-          authorized,
+          authorized: true,
           user: {
             email: 'dev@example.com',
             name: 'Dev Mode',
@@ -27,7 +27,7 @@ export async function GET(request) {
           warning: 'Modo de desenvolvimento - acesso admin automático'
         }, 
         { 
-          status,
+          status: 200,
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
@@ -75,7 +75,7 @@ export async function GET(request) {
       if (dbUser) {
         isAdmin = dbUser.isAdmin === true;
         user = {
-          id: dbUser._id.toString(),
+          id: dbUser._id ? dbUser._id.toString() : "",
           username: dbUser.username || '',
           email: dbUser.email,
           name: dbUser.name || dbUser.username || '',

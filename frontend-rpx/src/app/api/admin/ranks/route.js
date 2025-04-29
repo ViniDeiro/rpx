@@ -29,7 +29,7 @@ export async function GET(request) {
       status: 'success',
       data: ranks.map(rank => ({
         ...rank,
-        id: rank._id.toString()
+        id: rank._id ? rank._id.toString() : ""
       }))
     });
   } catch (error) {
@@ -120,7 +120,7 @@ export async function POST(request) {
         adminEmail: session.user.email,
         action: 'update_rank',
         entity: 'rank',
-        entityId: existingRank._id.toString(),
+        entityId: existingRank._id ? existingRank._id.toString() : "",
         details: rankData,
         timestamp: new Date()
       });
@@ -128,7 +128,7 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'success',
         message: 'Rank atualizado com sucesso',
-        rankId: existingRank._id.toString()
+        rankId: existingRank._id ? existingRank._id.toString() : ""
       });
     } else {
       // Adicionar campos para criação
@@ -143,7 +143,7 @@ export async function POST(request) {
         adminEmail: session.user.email,
         action: 'create_rank',
         entity: 'rank',
-        entityId: result.insertedId.toString(),
+        entityId: result.insertedId ? result.insertedId.toString() : "",
         details: rankData,
         timestamp: new Date()
       });
@@ -151,7 +151,7 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'success',
         message: 'Rank criado com sucesso',
-        rankId: result.insertedId.toString()
+        rankId: result.insertedId ? result.insertedId.toString() : ""
       }, { status: 201 });
     }
   } catch (error) {

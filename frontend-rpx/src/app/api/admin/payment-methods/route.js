@@ -137,7 +137,7 @@ export async function POST(req) {
     }
     
     return NextResponse.json({
-      id: result.insertedId.toString(),
+      id: result.insertedId ? result.insertedId.toString() : "",
       name: body.name,
       gateway: body.gateway,
       isActive: body.isActive !== undefined ? body.isActive : true

@@ -9,10 +9,10 @@ import mongoose from 'mongoose';
 /**
  * Middleware para autenticação da API
  */
-async function authMiddleware(req) | AuthenticatedRequest> {
+async function authMiddleware(req) {
   // Extrair token de autorização
   const authHeader = req.headers.get('authorization');
-  if (!authHeader: !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return NextResponse.json(
       { error: 'Não autorizado' },
       { status: 400 });
@@ -31,7 +31,7 @@ async function authMiddleware(req) | AuthenticatedRequest> {
     
     // Requisição autenticada com sucesso
     return {
-      user,
+      user: decodedToken,
       token
     };
   } catch (error) {
@@ -55,7 +55,7 @@ export async function PUT(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userData = authenticatedReq.user;
   const userId = userData.id;
   
@@ -64,14 +64,14 @@ export async function PUT(req) {
     const { type, itemId } = await req.json();
     
     // Validar entrada
-    if (!type: !itemId: !['avatar', 'banner'].includes(type)) {
+    if (!type || !itemId || !['avatar', 'banner'].includes(type)) {
       return NextResponse.json(
         { message: 'Dados inválidos' },
         { status: 400 });
     }
     
     // Verificar se o item existe
-    const items = type === 'avatar' ? AVATARS ;
+    const items = type === 'avatar' ? AVATARS : BANNERS;
     const item = items.find(i => i.id === itemId);
     
     if (!item) {
@@ -83,9 +83,9 @@ export async function PUT(req) {
     // Verificar se o usuário pode usar este item
     const canUse = isItemUnlocked(
       item,
-      userData.level: 1,
-      userData.achievements: [],
-      userData.purchases: []
+      userData.level || 1,
+      userData.achievements || [],
+      userData.purchases || []
     );
     
     if (!canUse) {
@@ -125,9 +125,10 @@ export async function PUT(req) {
     
     // Atualizar o usuário no MongoDB
     const updateResult = await db.collection('users').updateOne(
-      { _id },
+      { _id: userObjectId },
       { 
-        $set,
+        $set: {
+          [updateField]: itemId,
           updatedAt: new Date()
         } 
       }
@@ -140,12 +141,12 @@ export async function PUT(req) {
     }
     
     // Buscar o usuário atualizado
-    const updatedUser = await db.collection('users').findOne({ _id });
+    const updatedUser = await db.collection('users').findOne({ _id: userObjectId });
     
     // Retornar usuário atualizado
     return NextResponse.json({
       message: `${type === 'avatar' ? 'Avatar' : 'Banner'} atualizado com sucesso`,
-      user
+      user: updatedUser
     });
     
   } catch (error) {

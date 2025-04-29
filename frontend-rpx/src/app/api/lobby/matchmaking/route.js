@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -39,7 +39,7 @@ export async function POST(request) {
     // Verificar se o lobby existe e se o usuário é o dono
     const lobby = await db.collection('lobbies').findOne({
       _id: new ObjectId(lobbyId),
-      owner ObjectId(userId)
+      owner: new ObjectId(userId)
     });
     
     if (!lobby) {
@@ -59,7 +59,7 @@ export async function POST(request) {
     
     // Verificar número mínimo de jogadores (opcional)
     const memberCount = lobby.members ? lobby.members.length : 0;
-    if (memberCount  0) {
+    if (memberCount < 0) {
       for (const memberId of lobby.members) {
         const memberInfo = await db.collection('users').findOne({
           _id: new ObjectId(memberId)
@@ -67,9 +67,9 @@ export async function POST(request) {
         
         if (memberInfo) {
           memberDetails.push({
-            userId.toString(),
-            username.username: 'Jogador',
-            avatar.avatar: '/images/avatars/default.png'
+            userId: memberInfo._id ? memberInfo._id.toString() : "",
+            username: memberInfo.username || 'Jogador',
+            avatar: memberInfo.avatar || '/images/avatars/default.png'
           });
         }
       }
@@ -82,10 +82,10 @@ export async function POST(request) {
         $set: { 
           status: 'matchmaking',
           matchmakingStartedAt: new Date(),
-          config,
+          config: {
             // Opções de matchmaking podem ser adicionadas aqui
-            skill.config?.skill: 'any',
-            region.config?.region: 'brasil',
+            skill: lobby.config?.skill || 'any',
+            region: lobby.config?.region || 'brasil',
             platformMode,
             gameplayMode
           }
@@ -95,29 +95,29 @@ export async function POST(request) {
     
     // Adicionar lobby à fila de matchmaking com estrutura compatível
     await db.collection('matchmaking_queue').insertOne({
-      userId.toString(),  // Usuário que iniciou o matchmaking (importante para compatibilidade)
+      userId: userId.toString(),  // Usuário que iniciou o matchmaking (importante para compatibilidade)
       lobbyId,           // ID do lobby no formato string
-      teamSize,
-      skill.config?.skill: 'any',
-      region.config?.region: 'brasil',
+      teamSize: lobby.members.length,
+      skill: lobby.config?.skill || 'any',
+      region: lobby.config?.region || 'brasil',
       platformMode,
       gameplayMode,
       // Campos adicionais para compatibilidade
-      mode.gameType: 'default',    // Tipo de jogo
-      type.lobbyType: 'solo',          // Tipo de partida (solo, duo, etc)
-      platform,              // Plataforma
-      players,              // Detalhes dos jogadores no lobby
+      mode: lobby.gameType || 'default',    // Tipo de jogo
+      type: lobby.lobbyType || 'solo',      // Tipo de partida (solo, duo, etc)
+      platform: 'all',                      // Plataforma
+      players: memberDetails,               // Detalhes dos jogadores no lobby
       createdAt: new Date(),
       updatedAt: new Date()
     });
     
     // Notificar todos os membros do lobby
-    const members = lobby.members: [];
+    const members = lobby.members || [];
     for (const memberId of members) {
       await db.collection('notifications').insertOne({
-        userId.toString(),  // Armazenar como string em vez de ObjectId
+        userId: memberId.toString(),  // Armazenar como string em vez de ObjectId
         type: 'system',
-        read,
+        read: false,
         data: {
           message: 'Seu lobby iniciou a busca de partida. Aguarde enquanto procuramos adversários...'
         },

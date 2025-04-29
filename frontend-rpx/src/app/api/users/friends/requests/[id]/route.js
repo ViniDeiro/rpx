@@ -4,17 +4,15 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 
-
-
-const JWT_SECRET = process.env.JWT_SECRET: 'jwt_secret_dev_environment';
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_dev_environment';
 
 /**
  * Middleware para autenticação da API
  */
-async function authMiddleware(req) | AuthenticatedRequest> {
+async function authMiddleware(req) {
   // Extrair token de autorização
   const authHeader = req.headers.get('authorization');
-  if (!authHeader: !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.error('Token de autorização ausente ou inválido');
     return NextResponse.json(
       { error: 'Não autorizado' },
@@ -25,10 +23,10 @@ async function authMiddleware(req) | AuthenticatedRequest> {
   
   try {
     // Verificar o token JWT diretamente para garantir que temos o ID
-    const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+    const decodedToken = jwt.verify(token, JWT_SECRET);
     
     // Verificar se temos userId ou id (aceitar ambos)
-    if (!decodedToken: (!decodedToken.id && !decodedToken.userId)) {
+    if (!decodedToken || (!decodedToken.id && !decodedToken.userId)) {
       console.error('Token JWT inválido ou sem ID de usuário', decodedToken);
       return NextResponse.json(
         { error: 'Token inválido ou sem ID de usuário' },
@@ -36,12 +34,12 @@ async function authMiddleware(req) | AuthenticatedRequest> {
     }
     
     // Usar userId ou id, o que estiver disponível
-    const userId = decodedToken.userId: decodedToken.id;
+    const userId = decodedToken.userId || decodedToken.id;
     
     // Criar um objeto de usuário normalizado
-    const normalizedUser = {
+    const user = {
       ...decodedToken,
-      id  // Garantir que temos uma propriedade id para uso consistente
+      id: userId  // Garantir que temos uma propriedade id para uso consistente
     };
     
     // Requisição autenticada com sucesso
@@ -62,7 +60,7 @@ async function authMiddleware(req) | AuthenticatedRequest> {
  */
 export async function PATCH(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -72,7 +70,7 @@ export async function PATCH(
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id;
   
   try {
@@ -93,7 +91,7 @@ export async function PATCH(
       .collection('friendRequests')
       .findOne({
         _id: new ObjectId(id),
-        recipientId,
+        recipientId: userId,
         status: 'pending'
       });
     
@@ -113,15 +111,17 @@ export async function PATCH(
       
       // Adicionar conexão de amizade para ambos os usuários
       await db.collection('users').updateOne(
-        { _id },
-        { $addToSet);
+        { _id: new ObjectId(userId) },
+        { $addToSet: { friends: { userId: friendRequest.senderId, addedAt: new Date() } } }
+      );
       
       await db.collection('users').updateOne(
-        { _id.senderId },
-        { $addToSet);
+        { _id: new ObjectId(friendRequest.senderId) },
+        { $addToSet: { friends: { userId: userId, addedAt: new Date() } } }
+      );
       
       return NextResponse.json({
-        success,
+        success: true,
         message: 'Solicitação de amizade aceita com sucesso!'
       });
     } else {
@@ -132,7 +132,7 @@ export async function PATCH(
       );
       
       return NextResponse.json({
-        success,
+        success: true,
         message: 'Solicitação de amizade rejeitada com sucesso!'
       });
     }

@@ -10,10 +10,10 @@ async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId: null };
+    return { isAuth: false, error: 'Não autorizado', userId: null }
   }
   
-  return { isAuth, error, userId: session.user.id };
+  return { isAuth: true, error: null, userId: session.user.id }
 }
 
 // POST: Inscrever usuário em um torneio
@@ -25,7 +25,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error
-      }, { status);
+      }, { status: 400 });
     }
     
     const tournamentId = params.id;
@@ -34,7 +34,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio não fornecido'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Validar se o ID é um ObjectID válido
@@ -42,7 +42,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio inválido'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Obter dados da requisição
@@ -59,7 +59,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o torneio está aberto para inscrições
@@ -67,7 +67,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Este torneio não está aceitando inscrições no momento'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o torneio atingiu o limite de participantes
@@ -75,19 +75,19 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio com número máximo de participantes atingido'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o usuário já está inscrito
     const existingParticipant = tournament.participants.find(p => 
-      p.userId.toString() === userId.toString()
+      p.userId ? p.userId.toString() : "" === userId.toString()
     );
     
     if (existingParticipant) {
       return NextResponse.json({
         status: 'error',
         error: 'Você já está inscrito neste torneio'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Adicionar participante
@@ -99,24 +99,24 @@ export async function POST(request, { params }) {
         message: 'Inscrição realizada com sucesso',
         data: {
           tournamentId,
-          tournamentName,
+          tournamentName: tournament.name,
           registeredAt: new Date(),
-          entryFee,
+          entryFee: tournament.entryFee,
           paymentStatus: tournament.entryFee > 0 ? 'pending' : 'completed'
         }
       });
     } catch (addError) {
       return NextResponse.json({
         status: 'error',
-        error.message || 'Erro ao processar inscrição'
-      }, { status);
+        error: addError.message || 'Erro ao processar inscrição'
+      }, { status: 400 });
     }
   } catch (error) {
     console.error('Erro ao inscrever-se no torneio:', error);
     return NextResponse.json({
       status: 'error',
       error: 'Erro ao processar inscrição'
-    }, { status);
+    }, { status: 400 });
   }
 }
 
@@ -129,7 +129,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error
-      }, { status);
+      }, { status: 400 });
     }
     
     const tournamentId = params.id;
@@ -138,7 +138,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio não fornecido'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Conectar ao banco de dados
@@ -151,7 +151,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o torneio já começou
@@ -159,19 +159,19 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Não é possível cancelar inscrição em torneio já iniciado ou finalizado'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o usuário está inscrito
     const participantIndex = tournament.participants.findIndex(p => 
-      p.userId.toString() === userId.toString()
+      p.userId ? p.userId.toString() : "" === userId.toString()
     );
     
     if (participantIndex === -1) {
       return NextResponse.json({
         status: 'error',
         error: 'Você não está inscrito neste torneio'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Remover participante
@@ -188,6 +188,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({
       status: 'error',
       error: 'Erro ao processar cancelamento'
-    }, { status);
+    }, { status: 400 });
   }
 } 

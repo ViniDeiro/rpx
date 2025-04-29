@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -38,7 +38,7 @@ export async function POST(request) {
     
     // Verificar se o usuário já tem um lobby ativo
     const existingLobby = await db.collection('lobbies').findOne({
-      owner ObjectId(userId),
+      owner: new ObjectId(userId),
       status: 'active'
     });
     
@@ -47,14 +47,14 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'success',
         message: 'Lobby existente',
-        lobbyId._id ? lobbyId._id.toString() : ""
+        lobbyId: existingLobby._id ? existingLobby._id.toString() : ""
       });
     }
     
     // Criar novo lobby
     const newLobby = {
-      owner ObjectId(userId),
-      members ObjectId(userId)],
+      owner: new ObjectId(userId),
+      members: [new ObjectId(userId)],
       lobbyType,
       maxPlayers,
       status: 'active',
@@ -74,7 +74,7 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Lobby criado com sucesso',
-      lobbyId.insertedId ? lobbyId.insertedId.toString() : ""
+      lobbyId: result.insertedId ? result.insertedId.toString() : ""
     });
   } catch (error) {
     console.error('Erro ao criar lobby:', error);

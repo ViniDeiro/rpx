@@ -63,7 +63,7 @@ export async function GET(request) {
     
     // Formatar resposta
     const formattedUsers = users.map(user => ({
-      id: user._id.toString(),
+      id: user._id ? user._id.toString() : "",
       username: user.username,
       email: user.email,
       name: user.name,
@@ -149,7 +149,7 @@ export async function POST(request) {
     
     return NextResponse.json({
       message: 'Usuário criado com sucesso',
-      userId: result.insertedId.toString()
+      userId: result.insertedId ? result.insertedId.toString() : ""
     }, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar usuário:', error);

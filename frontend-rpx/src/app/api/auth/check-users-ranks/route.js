@@ -20,7 +20,7 @@ export async function GET(request) {
     
     // Extrair e formatar os dados relevantes
     const formattedUsers = users.map(user => ({
-      id: user._id.toString(),
+      id: user._id ? user._id.toString() : "",
       username: user.username,
       name: user.name || user.username,
       rankingPoints: user.rankingPoints || 0,

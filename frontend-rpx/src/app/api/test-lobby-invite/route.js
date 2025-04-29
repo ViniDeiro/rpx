@@ -10,7 +10,7 @@ export async function GET() {
     // 1. Testar autenticação
     const session = await getServerSession(authOptions);
     
-    if (!session: !session.user.id) {
+    if (!session || !session.user.id) {
       return NextResponse.json({
         status: 'error',
         error: 'Não autenticado'
@@ -43,10 +43,10 @@ export async function GET() {
     
     // 4. Obter contagens simplificadas
     let stats = {
-      lobbies,
-      lobbyinvites,
+      lobbies: 0,
+      lobbyinvites: 0,
       notifications: 0
-    };
+    }
     
     try {
       const lobbiesCollection = db.collection('lobbies');
@@ -67,8 +67,8 @@ export async function GET() {
     return NextResponse.json({
       status: 'success',
       message: 'Teste de conexão e estrutura realizado com sucesso',
-      auth,
-      database);
+      auth: session
+    });
   } catch (error) {
     console.error('Erro no teste de diagnóstico:', error);
     return NextResponse.json({
@@ -83,7 +83,7 @@ export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session: !session.user.id) {
+    if (!session || !session.user.id) {
       return NextResponse.json({
         status: 'error',
         error: 'Não autenticado'
@@ -105,10 +105,10 @@ export async function POST(request) {
     
     // 1. Criar lobby de teste
     const lobbyResult = await db.collection('lobbies').insertOne({
-      owner ObjectId(userId),
-      members ObjectId(userId)],
+      owner: new ObjectId(userId),
+      members: [new ObjectId(userId)],
       lobbyType: 'solo',
-      maxPlayers,
+      maxPlayers: 2,
       status: 'active',
       createdAt: new Date(),
       updatedAt: new Date()
@@ -118,12 +118,12 @@ export async function POST(request) {
       throw new Error('Falha ao criar lobby de teste');
     }
     
-    const lobbyId = lobbyResult.insertedId ? lobbyResult.insertedId.toString() : "";
+    const lobbyId = lobbyResult.insertedId ? lobbyResult.insertedId ? lobbyResult.insertedId.toString() : "" : "";
     
     // 2. Criar convite
     const inviteResult = await db.collection('lobbyinvites').insertOne({
-      inviter ObjectId(userId),
-      recipient ObjectId(recipientId),
+      inviter: new ObjectId(userId),
+      recipient: new ObjectId(recipientId),
       lobbyId,
       gameMode: 'solo',
       status: 'pending',
@@ -137,14 +137,15 @@ export async function POST(request) {
     // 3. Criar notificação
     const inviter = await db.collection('users').findOne(
       { _id: new ObjectId(userId) },
-      { projection: { _id, username, avatar);
+      { projection: { _id: 1, username: 1, avatar: 1 } }
+    );
     
     const notificationResult = await db.collection('notifications').insertOne({
-      userId ObjectId(recipientId),
+      userId: new ObjectId(recipientId),
       type: 'lobby_invite',
-      read,
-      data,
-        invite,
+      read: false,
+      data: {
+        invite: {
           status: 'pending',
           createdAt: new Date()
         }
@@ -160,14 +161,14 @@ export async function POST(request) {
       status: 'success',
       message: 'Teste de criação de lobby e convite concluído com sucesso',
       results: {
-        lobby,
-          insertedId.insertedId ? insertedId.insertedId.toString() : ""
+        lobby: {
+          id: lobbyResult.insertedId ? lobbyResult.insertedId ? lobbyResult.insertedId.toString() : "" : ""
         },
         invite: {
-          id.insertedId ? id.insertedId.toString() : ""
+          id: inviteResult.insertedId ? inviteResult.insertedId ? inviteResult.insertedId.toString() : "" : ""
         },
         notification: {
-          id.insertedId ? id.insertedId.toString() : ""
+          id: notificationResult.insertedId ? notificationResult.insertedId ? notificationResult.insertedId.toString() : "" : ""
         }
       }
     });

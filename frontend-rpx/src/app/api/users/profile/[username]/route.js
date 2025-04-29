@@ -1,14 +1,13 @@
 import { NextResponse, request } from 'next/server';
 import { getModels } from '@/lib/mongodb/models';
 import { authMiddleware } from '@/lib/auth/middleware';
-import { AuthenticatedRequest } from '@/types/auth';
 
 /**
  * GET - Obter perfil de um usuário específico pelo username
  */
 export async function GET(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -18,7 +17,7 @@ export async function GET(
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const currentUserId = authenticatedReq.user.id;
   const username = params.username;
   
@@ -38,7 +37,7 @@ export async function GET(
     }
     
     // Verificar se o usuário está visualizando o próprio perfil
-    const isSelf = user._id ? user._id.toString() : "" === currentUserId;
+    const isSelf = user._id.toString() === currentUserId;
     
     // Buscar o usuário atual para verificar se são amigos
     const currentUser = await User.findById(currentUserId)
@@ -53,28 +52,28 @@ export async function GET(
     
     // Verificar se os usuários são amigos
     const isFriend = currentUser.friends?.some(
-      (friend) => friend.userId ? friend.userId.toString() : "" === user._id ? user._id.toString() : ""
+      (friend) => friend.userId && friend.userId.toString() === user._id.toString()
     );
     
     // Preparar dados do usuário para resposta
     // Se não for o próprio usuário ou um amigo, limitar as informações visíveis
     const userData = {
-      id._id,
-      username.username,
-      avatarUrl.avatarUrl: '/images/avatars/default.svg',
+      id: user._id.toString(),
+      username: user.username,
+      avatarUrl: user.avatarUrl || '/images/avatars/default.svg',
       profile: {
-        bio.profile?.bio: '',
-        level.profile?.level: 1,
-        xp: isFriend ? (user.profile?.xp: 0) 
+        bio: user.profile?.bio || '',
+        level: user.profile?.level || 1,
+        xp: isFriend ? (user.profile?.xp || 0) : 0
       },
-      stats,
-      rank.rank: { tier: 'unranked', division, points,
-      recentMatches: isFriend ? user.recentMatches: [] 
+      stats: user.stats || {},
+      rank: user.rank || { tier: 'unranked', division: 0, points: 0 },
+      recentMatches: isFriend ? (user.recentMatches || []) : []
     };
     
     // Retornar os dados do perfil
     return NextResponse.json({
-      user
+      user: userData
     });
     
   } catch (error) {

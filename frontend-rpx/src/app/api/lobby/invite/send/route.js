@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -18,7 +18,7 @@ export async function POST(request) {
     const body = await request.json();
     const { lobbyId, friendId } = body;
     
-    if (!lobbyId: !friendId) {
+    if (!lobbyId || !friendId) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do lobby ou do amigo não fornecido'
@@ -39,9 +39,9 @@ export async function POST(request) {
     // Verificar se o lobby existe e se o usuário é o dono ou membro
     const lobby = await db.collection('lobbies').findOne({
       _id: new ObjectId(lobbyId),
-      $or
-        { owner ObjectId(userId) },
-        { members: { $in ObjectId(userId)] } }
+      $or: [
+        { owner: new ObjectId(userId) },
+        { members: { $in: [new ObjectId(userId)] } }
       ]
     });
     
@@ -86,8 +86,8 @@ export async function POST(request) {
     
     // Verificar se já existe um convite pendente para este amigo neste lobby
     const existingInvite = await db.collection('lobbyinvites').findOne({
-      lobbyId ObjectId(lobbyId),
-      recipient ObjectId(friendId),
+      lobbyId: new ObjectId(lobbyId),
+      recipient: new ObjectId(friendId),
       status: 'pending'
     });
     
@@ -99,37 +99,38 @@ export async function POST(request) {
     }
     
     // Criar convite
-    const now = new: new Date();
+    const now = new Date();
     const inviteResult = await db.collection('lobbyinvites').insertOne({
-      lobbyId ObjectId(lobbyId),
-      inviter ObjectId(userId),
-      recipient ObjectId(friendId),
+      lobbyId: new ObjectId(lobbyId),
+      inviter: new ObjectId(userId),
+      recipient: new ObjectId(friendId),
       status: 'pending',
-      createdAt
+      createdAt: now
     });
     
     // Criar notificação para o amigo
     const inviter = await db.collection('users').findOne(
       { _id: new ObjectId(userId) },
-      { projection: { _id, username, avatar);
+      { projection: { _id: 1, username: 1, avatar: 1 } }
+    );
     
     await db.collection('notifications').insertOne({
-      userId.toString(),
+      userId: friendId,
       type: 'lobby_invite',
-      read,
-      data,
-        invite,
+      read: false,
+      data: {
+        invite: {
           status: 'pending',
-          createdAt
+          createdAt: now
         }
       },
-      createdAt
+      createdAt: now
     });
     
     return NextResponse.json({
       status: 'success',
       message: 'Convite enviado com sucesso',
-      inviteId.insertedId
+      inviteId: inviteResult.insertedId
     });
   } catch (error) {
     console.error('Erro ao enviar convite para lobby:', error);

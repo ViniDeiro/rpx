@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
@@ -6,7 +6,7 @@ import { authMiddleware, getUserId } from '@/lib/auth/middleware';
 // GET - Obter detalhes de uma equipe específica
 export async function GET(
   req,
-  { params }: { params) {
+  { params }) {
   try {
     // Obter ID da equipe da URL
     const teamId = params.id;
@@ -29,7 +29,7 @@ export async function GET(
     
     // Buscar equipe pelo ID
     const team = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!team) {
@@ -40,33 +40,33 @@ export async function GET(
     
     // Formatar equipe para resposta
     const formattedTeam = {
-      id._id ? id._id.toString() : "",
-      name: name,
-      tag.tag,
-      logo.logo,
-      ownerId.ownerId,
-      members.data: members.map((member) => ({
-        userId.userId,
-        username.username,
-        role.role,
-        joinedAt.joinedAt
+      id: team._id ? team._id ? team._id.toString() : "" : "",
+      name: team.name,
+      tag: team.tag,
+      logo: team.logo,
+      ownerId: team.ownerId,
+      members: team.members.map((member) => ({
+        userId: member.userId,
+        username: member.username,
+        role: member.role,
+        joinedAt: member.joinedAt
       })),
-      description.description,
-      createdAt.createdAt,
-      updatedAt.updatedAt,
-      stats.stats: {
-        totalMatches,
-        wins,
+      description: team.description,
+      createdAt: team.createdAt,
+      updatedAt: team.updatedAt,
+      stats: team.stats || {
+        totalMatches: 0,
+        wins: 0,
         losses: 0
       }
     };
     
-    // Buscar histório de partidas da equipe
+    // Buscar histórico de partidas da equipe
     const matches = await db.collection('matches')
       .find({
-        $or
-          { 'teams.teamId' },
-          { 'teams.id' }
+        $or: [
+          { 'teams.teamId': teamId },
+          { 'teams.id': teamId }
         ]
       })
       .sort({ createdAt: -1 })
@@ -74,25 +74,25 @@ export async function GET(
       .toArray();
     
     // Formatar partidas para resposta
-    const formattedMatches = data: matches.map((match) => ({
-      id._id ? id._id.toString() : "",
-      title.title,
-      mode.mode,
-      status.status,
-      startTime.startTime,
-      createdAt.createdAt,
-      teams.data: teams.map((team) => ({
-        id.id: team.teamId,
-        name: name,
-        score.score
+    const formattedMatches = matches.map((match) => ({
+      id: match._id ? match._id ? match._id.toString() : "" : "",
+      title: match.title,
+      mode: match.mode,
+      status: match.status,
+      startTime: match.startTime,
+      createdAt: match.createdAt,
+      teams: match.teams.map((team) => ({
+        id: team.id || team.teamId,
+        name: team.name,
+        score: team.score
       })),
-      result.result
+      result: match.result
     }));
     
     // Retornar dados formatados
     return NextResponse.json({ 
-      team,
-      recentMatches
+      team: formattedTeam,
+      recentMatches: formattedMatches
     });
   } catch (error) {
     console.error('Erro ao obter detalhes da equipe:', error);
@@ -105,7 +105,7 @@ export async function GET(
 // PATCH - Atualizar detalhes de uma equipe
 export async function PATCH(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -152,7 +152,7 @@ export async function PATCH(
     
     // Buscar equipe pelo ID
     const team = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!team) {
@@ -164,20 +164,20 @@ export async function PATCH(
     // Verificar se o usuário é dono ou administrador da equipe
     const memberInfo = team.members.find((member) => member.userId === userId);
     
-    if (!memberInfo: (memberInfo.role !== 'owner' && memberInfo.role !== 'admin')) {
+    if (!memberInfo || (memberInfo.role !== 'owner' && memberInfo.role !== 'admin')) {
       return NextResponse.json(
         { error: 'Você não tem permissão para modificar esta equipe' },
         { status: 400 });
     }
     
     // Validar dados para atualização
-    if (name && (name.length  30)) {
+    if (name && (name.length < 3 || name.length > 30)) {
       return NextResponse.json(
         { error: 'Nome da equipe deve ter entre 3 e 30 caracteres' },
         { status: 400 });
     }
     
-    if (tag && (tag.length  5)) {
+    if (tag && (tag.length < 2 || tag.length > 5)) {
       return NextResponse.json(
         { error: 'Tag da equipe deve ter entre 2 e 5 caracteres' },
         { status: 400 });
@@ -186,10 +186,10 @@ export async function PATCH(
     // Verificar se o nome ou tag já estão em uso por outra equipe
     if ((name && name !== team.name) || (tag && tag !== team.tag)) {
       const existingTeam = await db.collection('teams').findOne({
-        _id: { $ne mongoose.Types.ObjectId(teamId) },
-        $or
-          ...(name ? [{ name: { $regex RegExp(`^${name}$`, 'i') } }] ),
-          ...(tag ? [{ tag: { $regex RegExp(`^${tag}$`, 'i') } }] )
+        _id: { $ne: new mongoose.Types.ObjectId(teamId) },
+        $or: [
+          ...(name ? [{ name: { $regex: new RegExp(`^${name}$`, 'i') } }] : []),
+          ...(tag ? [{ tag: { $regex: new RegExp(`^${tag}$`, 'i') } }] : [])
         ]
       });
       
@@ -220,13 +220,13 @@ export async function PATCH(
     
     // Atualizar a equipe no banco de dados
     await db.collection('teams').updateOne(
-      { _id mongoose.Types.ObjectId(teamId) },
-      { $set }
+      { _id: new mongoose.Types.ObjectId(teamId) },
+      { $set: updateData }
     );
     
     // Buscar equipe atualizada
     const updatedTeam = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!updatedTeam) {
@@ -237,18 +237,18 @@ export async function PATCH(
     
     // Formatar equipe para resposta
     const formattedTeam = {
-      id._id ? id._id.toString() : "",
-      name: name,
-      tag.tag,
-      logo.logo,
-      description.description,
-      updatedAt.updatedAt
+      id: updatedTeam._id ? updatedTeam._id.toString() : "",
+      name: updatedTeam.name,
+      tag: updatedTeam.tag,
+      logo: updatedTeam.logo,
+      description: updatedTeam.description,
+      updatedAt: updatedTeam.updatedAt
     };
     
     // Retornar dados atualizados
     return NextResponse.json({
       message: 'Equipe atualizada com sucesso',
-      team
+      team: formattedTeam
     });
   } catch (error) {
     console.error('Erro ao atualizar equipe:', error);
@@ -258,10 +258,10 @@ export async function PATCH(
   }
 }
 
-// DELETE - Remover uma equipe
+// DELETE - Excluir uma equipe
 export async function DELETE(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -304,7 +304,7 @@ export async function DELETE(
     
     // Buscar equipe pelo ID
     const team = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!team) {
@@ -314,33 +314,25 @@ export async function DELETE(
     }
     
     // Verificar se o usuário é o dono da equipe
-    if (team.ownerId !== userId) {
+    const memberInfo = team.members.find((member) => member.userId === userId);
+    
+    if (!memberInfo || memberInfo.role !== 'owner') {
       return NextResponse.json(
-        { error: 'Apenas o dono da equipe pode excluí-la' },
+        { error: 'Apenas o dono pode excluir a equipe' },
         { status: 400 });
     }
     
-    // Verificar se a equipe está participando de partidas ativas
-    const activeMatches = await db.collection('matches').countDocuments({
-      $or
-        { 'teams.teamId' },
-        { 'teams.id' }
-      ],
-      status: { $in'waiting', 'in_progress'] }
+    // Excluir convites pendentes
+    await db.collection('teamInvitations').deleteMany({
+      teamId
     });
     
-    if (activeMatches > 0) {
-      return NextResponse.json(
-        { error: 'Não é possível excluir uma equipe que está participando de partidas ativas' },
-        { status: 400 });
-    }
+    // Excluir a equipe
+    await db.collection('teams').deleteOne({
+      _id: new mongoose.Types.ObjectId(teamId)
+    });
     
-    // Remover a equipe do banco de dados
-    await db.collection('teams').deleteOne(
-      { _id mongoose.Types.ObjectId(teamId) }
-    );
-    
-    // Retornar confirmação
+    // Retornar sucesso
     return NextResponse.json({
       message: 'Equipe excluída com sucesso'
     });

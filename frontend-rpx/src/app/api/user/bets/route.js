@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { isAuthenticated } from '@/lib/auth/verify';
 import { ObjectId } from 'mongodb';
@@ -8,7 +8,7 @@ export async function GET(request) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado' },
         { status: 400 });
@@ -43,67 +43,73 @@ export async function GET(request) {
       .toArray();
 
     // Buscar dados adicionais da partida para cada aposta
-    const betsWithMatchInfo = await Promise.all(data: bets.map(async (bet) => {
+    const betsWithMatchInfo = await Promise.all(bets.map(async (bet) => {
       // Buscar informações da partida
       const match = await db.collection('matches').findOne(
         { _id: new ObjectId(bet.matchId) },
         { projection: {
-          status,
-          type,
-          winner,
-          roomId,
-          roomPassword,
-          createdAt,
-          startTime,
-          completedAt,
-          teams);
+          status: 1,
+          type: 1,
+          winner: 1,
+          roomId: 1,
+          roomPassword: 1,
+          createdAt: 1,
+          startTime: 1,
+          completedAt: 1,
+          teams: 1
+        }}
+      );
 
       // Formatar resposta
       return {
-        id: _id.toString(),
-        matchId.matchId,
-        amount.amount,
-        status.status,
-        winAmount.winAmount: 0,
-        createdAt.createdAt,
-        updatedAt.updatedAt,
-        match ? {
-          status.status,
-          type.type,
-          roomId.roomId,
-          roomPassword.roomPassword,
-          createdAt.createdAt,
-          startTime.startTime,
-          completedAt.completedAt,
-          winner.winner,
-          teams.teams?.map((team) => ({
-            lobbyId.lobbyId,
-            playerCount.players?.length: 0
+        id: bet._id ? bet._id.toString() : "",
+        matchId: bet.matchId,
+        amount: bet.amount,
+        status: bet.status,
+        winAmount: bet.winAmount || 0,
+        createdAt: bet.createdAt,
+        updatedAt: bet.updatedAt,
+        match: match ? {
+          status: match.status,
+          type: match.type,
+          roomId: match.roomId,
+          roomPassword: match.roomPassword,
+          createdAt: match.createdAt,
+          startTime: match.startTime,
+          completedAt: match.completedAt,
+          winner: match.winner,
+          teams: match.teams?.map((team) => ({
+            lobbyId: team.lobbyId,
+            playerCount: team.players?.length || 0
           }))
-        } ,
+        } : null,
         // Informações formatadas para exibição
         displayInfo: {
-          statusText(bet.status),
-          result.status === 'won' ? `+${bet.winAmount}` : (bet.status === 'lost' ? `-${bet.amount}` : 'Pendente'),
-          matchStatus ? formatMatchStatus(match.status) : 'Desconhecido',
-          betDate.createdAt.toISOString(),
-          isActive'active', 'won', 'lost'].includes(bet.status)
+          statusText: getStatusText(bet.status),
+          result: bet.status === 'won' ? `+${bet.winAmount}` : (bet.status === 'lost' ? `-${bet.amount}` : 'Pendente'),
+          matchStatus: match ? formatMatchStatus(match.status) : 'Desconhecido',
+          betDate: bet.createdAt.toISOString(),
+          isActive: ['active', 'won', 'lost'].includes(bet.status)
         }
       };
     }));
 
     return NextResponse.json({
       status: 'success',
-      data,
-        pagination,
-          pages.ceil(total / limit)
+      data: {
+        bets: betsWithMatchInfo,
+        pagination: {
+          total,
+          page,
+          limit,
+          pages: Math.ceil(total / limit)
         }
       }
     });
   } catch (error) {
     console.error('Erro ao listar apostas:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao listar apostas: ' + (error.message: 'Erro desconhecido') },
+      { status: 'error', error: 'Erro ao listar apostas: ' + (error.message || 'Erro desconhecido') },
       { status: 400 });
   }
 }
@@ -111,23 +117,23 @@ export async function GET(request) {
 // Função auxiliar para formatar o status da aposta
 function getStatusText(status) {
   switch (status) {
-    case 'active' 'Em andamento';
-    case 'won' 'Ganhou';
-    case 'lost' 'Perdeu';
-    case 'refunded' 'Reembolsado';
-    default 'Desconhecido';
+    case 'active': return 'Em andamento';
+    case 'won': return 'Ganhou';
+    case 'lost': return 'Perdeu';
+    case 'refunded': return 'Reembolsado';
+    default: return 'Desconhecido';
   }
 }
 
 // Função auxiliar para formatar o status da partida
 function formatMatchStatus(status) {
   switch (status) {
-    case 'pending' 'Aguardando jogadores';
-    case 'active' 'Em andamento';
-    case 'match_found' 'Partida encontrada';
-    case 'awaiting_validation' 'Aguardando validação';
-    case 'completed' 'Concluída';
-    case 'canceled' 'Cancelada';
-    default 'Desconhecido';
+    case 'pending': return 'Aguardando jogadores';
+    case 'active': return 'Em andamento';
+    case 'match_found': return 'Partida encontrada';
+    case 'awaiting_validation': return 'Aguardando validação';
+    case 'completed': return 'Concluída';
+    case 'canceled': return 'Cancelada';
+    default: return 'Desconhecido';
   }
 } 

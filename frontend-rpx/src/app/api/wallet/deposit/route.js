@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Armazenamento simulado (em memória)
 // Na prática, isso seria armazenado em banco de dados
 let transactions = [];
-let userWallets, { balance }> = {};
+let userWallets = {};
 
 // POST - Solicitar depósito na carteira (versão simulada)
 export async function POST(req) {
@@ -20,7 +20,14 @@ export async function POST(req) {
     const { amount, paymentMethod } = body;
     
     // Validar dados
-    if (!amount: amount  setTimeout(resolve, 800));
+    if (!amount || amount < 1) {
+      return NextResponse.json(
+        { error: 'Valor de depósito inválido' },
+        { status: 400 });
+    }
+    
+    // Simular tempo de processamento
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     // Gerar referência única para o depósito
     const reference = `DEP-${uuidv4().substring(0, 8).toUpperCase()}`;
@@ -28,14 +35,14 @@ export async function POST(req) {
     
     // Criar nova transação simulada
     const transaction = {
-      id,
-      userId,
+      id: transactionId,
+      userId: userId,
       type: 'deposit',
       amount,
       status: 'completed', // Na simulação, já aprovamos o depósito automaticamente
       paymentMethod,
       reference,
-      description: `Depósito via ${paymentMethod === 'pix' ? 'PIX'  === 'credit_card' || paymentMethod === 'card' ? 'Cartão de Crédito'  === 'boleto' ? 'Boleto Bancário' : 'Transferência Bancária'}`,
+      description: `Depósito via ${paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'credit_card' || paymentMethod === 'card' ? 'Cartão de Crédito' : paymentMethod === 'boleto' ? 'Boleto Bancário' : 'Transferência Bancária'}`,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -54,7 +61,7 @@ export async function POST(req) {
     const currentBalance = userWallets[userId].balance;
     
     console.log(`💰 [SIMULAÇÃO] Depósito de R$${amount} para o usuário ${userId} realizado com sucesso`);
-    console.log(`💰 [SIMULAÇÃO] Novo saldo$${currentBalance}`);
+    console.log(`💰 [SIMULAÇÃO] Novo saldo: $${currentBalance}`);
     
     // Simular instruções de pagamento
     const paymentInstructions = {
@@ -65,7 +72,8 @@ export async function POST(req) {
     // Retornar dados da transação
     return NextResponse.json({
       message: 'Depósito simulado realizado com sucesso',
-      transaction,
+      transaction: {
+        id: transactionId,
         type: 'deposit',
         amount,
         status: 'completed',
@@ -74,9 +82,9 @@ export async function POST(req) {
         createdAt: new Date()
       },
       paymentInstructions,
-      simulation,
+      simulation: true,
       currentBalance,
-      walletUpdated // Indicar que o saldo foi atualizado
+      walletUpdated: true // Indicar que o saldo foi atualizado
     });
   } catch (error) {
     console.error('Erro ao processar solicitação de depósito simulado:', error);

@@ -73,7 +73,7 @@ export async function GET(req) {
     
     // Processar apostas para resposta
     const formattedBets = userBets.map((bet) => ({
-      id: bet._id.toString(),
+      id: bet._id ? bet._id.toString() : "",
       userId: bet.userId,
       matchId: bet.matchId,
       amount: bet.amount,
@@ -250,7 +250,7 @@ export async function POST(req) {
         description: `Aposta na partida: ${match.title || matchId}`,
         reference: {
           type: 'bet',
-          id: result.insertedId.toString()
+          id: result.insertedId ? result.insertedId.toString() : ""
         },
         createdAt: new Date()
       }, { session });
@@ -272,7 +272,7 @@ export async function POST(req) {
         success: true,
         message: 'Aposta realizada com sucesso',
         bet: {
-          id: result.insertedId.toString(),
+          id: result.insertedId ? result.insertedId.toString() : "",
           ...newBet
         }
       }, { status: 201 });

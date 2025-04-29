@@ -53,7 +53,7 @@ export async function GET(request) {
           collections: collectionNames,
           userCount,
           sampleUsers: sampleUsers.map(u => ({
-            id: u._id.toString(),
+            id: u._id ? u._id.toString() : "",
             email: u.email,
             name: u.name || u.username,
             created: u.createdAt

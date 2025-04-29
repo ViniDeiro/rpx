@@ -9,12 +9,12 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       console.log(`API Lobby Invite Accept - Erro de autenticação: ${error}`);
-      return NextResponse.json({
-        status: 'error',
-        error: 'Não autorizado'
-      }, { status: 400 });
+      return NextResponse.json(
+        { status: 'error', error: error || 'Não autorizado' },
+        { status: 401 }
+      );
     }
     
     // Obter o ID do convite do corpo da requisição
@@ -62,9 +62,9 @@ export async function POST(request) {
           return null;
         }
       })
-      .filter((id) is ObjectId => id !== null); // Remover IDs inválidos e tipar corretamente
+      .filter((id) => id !== null); // Remover IDs inválidos e tipar corretamente
       
-    console.log(`API Lobby Invite Accept - ObjectIds válidos:`, data: objectIds.map(id => id.toString()));
+    console.log(`API Lobby Invite Accept - ObjectIds válidos:`, objectIds.map(id => id.toString()));
     
     const { db } = await connectToDatabase();
     
@@ -78,7 +78,7 @@ export async function POST(request) {
     }
     
     // Buscar o convite - usamos estratégias múltiplas para maior confiabilidade
-    console.log(`API Lobby Invite Accept - Buscando convite com IDs:`, data: objectIds.map(id => id.toString()));
+    console.log(`API Lobby Invite Accept - Buscando convite com IDs:`, objectIds.map(id => id.toString()));
     
     // Tentar buscar o convite usando diferentes estratégias
     let invite;
@@ -110,7 +110,7 @@ export async function POST(request) {
           const recentInvites = await db.collection('lobbyinvites')
             .find({
               status: 'pending',
-              recipient ObjectId(userId)
+              recipient: new ObjectId(userId)
             })
             .sort({ createdAt: -1 })
             .limit(10)
@@ -138,16 +138,16 @@ export async function POST(request) {
     }
     
     console.log(`API Lobby Invite Accept - Convite encontrado:`, JSON.stringify({
-      id: _id.toString(),
-      inviter invite.inviter === 'object' ? invite.inviter ? invite.inviter.toString() : "" .inviter,
-      recipient invite.recipient === 'object' ? invite.recipient ? invite.recipient.toString() : "" .recipient,
-      lobbyId invite.lobbyId === 'object' ? invite.lobbyId ? invite.lobbyId.toString() : "" .lobbyId,
-      status.status
+      id: invite._id ? invite._id.toString() : "",
+      inviter: typeof invite.inviter === 'object' ? invite.inviter ? invite.inviter ? invite.inviter.toString() : "" : "" : invite.inviter,
+      recipient: typeof invite.recipient === 'object' ? invite.recipient ? invite.recipient ? invite.recipient.toString() : "" : "" : invite.recipient,
+      lobbyId: typeof invite.lobbyId === 'object' ? invite.lobbyId ? invite.lobbyId ? invite.lobbyId.toString() : "" : "" : invite.lobbyId,
+      status: invite.status
     }, null, 2));
     
     // Garantir que os IDs estejam em formato string para comparação
-    const inviterIdString = typeof invite.inviter === 'object' ? invite.inviter ? invite.inviter.toString() : "" .inviter;
-    const recipientIdString = typeof invite.recipient === 'object' ? invite.recipient ? invite.recipient.toString() : "" .recipient;
+    const inviterIdString = typeof invite.inviter === 'object' ? invite.inviter ? invite.inviter ? invite.inviter.toString() : "" : "" : invite.inviter;
+    const recipientIdString = typeof invite.recipient === 'object' ? invite.recipient ? invite.recipient ? invite.recipient.toString() : "" : "" : invite.recipient;
     const userIdString = userId.toString();
     
     // Verificar se o usuário é o destinatário do convite
@@ -172,7 +172,7 @@ export async function POST(request) {
     // Garantir que o lobbyId seja um ObjectId para a consulta
     let lobbyObjectId;
     try {
-      lobbyObjectId = typeof invite.lobbyId === 'object' ? invite.lobbyId  ObjectId(invite.lobbyId);
+      lobbyObjectId = typeof invite.lobbyId === 'object' ? invite.lobbyId : new ObjectId(invite.lobbyId);
     } catch (e) {
       console.log(`API Lobby Invite Accept - Erro de lobby inválido: ${invite.lobbyId}`);
       return NextResponse.json({
@@ -191,7 +191,7 @@ export async function POST(request) {
       
       // Marcar convite como expirado
       await db.collection('lobbyinvites').updateOne(
-        { _id._id },
+        { _id: invite._id },
         { $set: { status: 'expired' } }
       );
       
@@ -202,10 +202,10 @@ export async function POST(request) {
     }
     
     console.log(`API Lobby Invite Accept - Lobby encontrado:`, JSON.stringify({
-      id: _id.toString(),
-      name: name,
-      maxPlayers.maxPlayers,
-      type.lobbyType
+      id: lobby._id ? lobby._id.toString() : "",
+      name: lobby.name,
+      maxPlayers: lobby.maxPlayers,
+      type: lobby.lobbyType
     }, null, 2));
     
     // IMPORTANTE ObjectId em vez de string para o lobbyId
@@ -213,17 +213,17 @@ export async function POST(request) {
     
     // Verificar se o lobby tem espaço para mais jogadores
     const currentPlayers = await db.collection('lobbymembers').find({
-      lobbyId.toString()
+      lobbyId: lobbyIdForQueries
     }).toArray();
     
-    const maxPlayers = lobby.maxPlayers: (lobby.lobbyType === 'solo' ? 1 .lobbyType === 'duo' ? 2 );
+    const maxPlayers = lobby.lobbyType === 'solo' ? 1 : lobby.lobbyType === 'duo' ? 2 : 4;
     
     if (currentPlayers.length >= maxPlayers) {
       console.log(`API Lobby Invite Accept - Erro ${lobbyObjectId.toString()} está cheio (${currentPlayers.length}/${maxPlayers})`);
       
       // Marcar convite como expirado
       await db.collection('lobbyinvites').updateOne(
-        { _id._id },
+        { _id: invite._id },
         { $set: { status: 'expired' } }
       );
       
@@ -235,7 +235,7 @@ export async function POST(request) {
     
     // Verificar se o usuário já está no lobby
     const userMember = currentPlayers.find(p => {
-      const memberIdString = typeof p.userId === 'object' ? p.userId ? p.userId.toString() : "" .userId;
+      const memberIdString = typeof p.userId === 'object' && p.userId ? p.userId.toString() : p.userId;
       return memberIdString === userIdString;
     });
     
@@ -244,14 +244,14 @@ export async function POST(request) {
       
       // Marcar convite como aceito
       await db.collection('lobbyinvites').updateOne(
-        { _id._id },
+        { _id: invite._id },
         { $set: { status: 'accepted' } }
       );
       
       return NextResponse.json({
         status: 'success',
         message: 'Você já está neste lobby',
-        lobbyId.toString()
+        lobbyId: lobbyObjectId.toString()
       });
     }
     
@@ -262,8 +262,9 @@ export async function POST(request) {
     try {
       // Buscar dados do usuário
       const user = await db.collection('users').findOne(
-        { _id },
-        { projection: { username, avatar, level);
+        { _id: userObjectId },
+        { projection: { username: 1, avatar: 1, level: 1 } }
+      );
       
       if (!user) {
         throw new Error('Usuário não encontrado');
@@ -271,13 +272,13 @@ export async function POST(request) {
       
       // Criar documento de membro do lobby
       const lobbyMember = {
-        lobbyId,  // Usar ObjectId diretamente
-        userId,
-        username.username,
-        avatar.avatar,
-        level.level: 1,
-        isLeader,
-        isReady,
+        lobbyId: lobbyObjectId,  // Usar ObjectId diretamente
+        userId: userObjectId,
+        username: user.username,
+        avatar: user.avatar,
+        level: user.level || 1,
+        isLeader: false,
+        isReady: false,
         joinedAt: new Date()
       };
       
@@ -290,9 +291,9 @@ export async function POST(request) {
       try {
         // Adicionar usuário à lista de membros do lobby
         await db.collection('lobbies').updateOne(
-          { _id },
+          { _id: lobbyObjectId },
           { 
-            $addToSet,
+            $addToSet: { members: userObjectId },
             $set: { updatedAt: new Date() }
           }
         );
@@ -312,7 +313,7 @@ export async function POST(request) {
     
     // Marcar convite como aceito
     await db.collection('lobbyinvites').updateOne(
-      { _id._id },
+      { _id: invite._id },
       { $set: { status: 'accepted' } }
     );
     
@@ -321,14 +322,15 @@ export async function POST(request) {
     // Adicionar mensagem ao chat do lobby
     try {
       const user = await db.collection('users').findOne(
-        { _id },
-        { projection: { username);
+        { _id: userObjectId },
+        { projection: { username: 1 } }
+      );
       
       await db.collection('lobbychat').insertOne({
-        lobbyId,  // Usar ObjectId diretamente
-        userId, // Mensagem de sistema
+        lobbyId: lobbyObjectId,  // Usar ObjectId diretamente
+        userId: null, // Mensagem de sistema
         username: 'Sistema',
-        message: `${user?.username: 'Novo jogador'} entrou no lobby.`,
+        message: `${user?.username || 'Novo jogador'} entrou no lobby.`,
         type: 'system',
         timestamp: new Date()
       });
@@ -342,18 +344,20 @@ export async function POST(request) {
       // Marcar na coleção de notificações
       await db.collection('notifications').updateOne(
         {
-          'data.invite._id'._id,
-          userId
+          'data.invite._id': invite._id,
+          userId: userObjectId
         },
-        { $set);
+        { $set: { read: true } }
+      );
       
       // Também atualizar qualquer notificação que use o ID do convite diretamente
       await db.collection('notifications').updateOne(
         {
-          _id._id,
-          userId
+          'data._id': invite._id,
+          userId: userObjectId
         },
-        { $set);
+        { $set: { read: true } }
+      );
     } catch (notificationError) {
       console.error('API Lobby Invite Accept - Erro ao marcar notificação como lida:', notificationError);
       // Continuar mesmo se falhar a atualização da notificação
@@ -365,14 +369,14 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Convite aceito com sucesso',
-      lobbyId.toString(),
+      lobbyId: lobbyObjectId.toString(),
       redirect: `/lobby/${lobbyObjectId.toString()}`
     });
   } catch (error) {
     console.error('API Lobby Invite Accept - Erro:', error);
     return NextResponse.json({
       status: 'error',
-      error: 'Erro ao aceitar convite: ' + (error.message: 'Erro desconhecido')
+      error: 'Erro ao aceitar convite: ' + (error.message || 'Erro desconhecido')
     }, { status: 400 });
   }
 } 

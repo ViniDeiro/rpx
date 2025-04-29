@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import Tournament from '@/models/Tournament';
 import { getServerSession } from 'next-auth';
@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth';
 // Função para obter os detalhes de um torneio específico
 export async function GET(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     const tournamentId = params.id;
     
@@ -37,24 +37,25 @@ export async function GET(
     const userId = session?.user?.id;
 
     // Contar participantes atuais
-    const currentParticipants = tournament.participants?.length: 0;
+    const currentParticipants = tournament.participants?.length || 0;
 
     // Preparar dados do torneio para retorno
     const tournamentData = {
       ...tournament.toObject(),
       currentParticipants,
-      isRegistered 
+      isRegistered: userId 
         ? tournament.participants.some((p) => p.userId?._id?.toString() === userId)
-        
+        : false
     };
 
     return NextResponse.json({
       status: 'success',
-      data);
+      data: tournamentData
+    });
   } catch (error) {
     console.error('Erro ao buscar detalhes do torneio:', error);
     return NextResponse.json(
-      { status: 'error', error.message: 'Erro ao processar a solicitação' },
+      { status: 'error', error: error.message || 'Erro ao processar a solicitação' },
       { status: 400 });
   }
 } 

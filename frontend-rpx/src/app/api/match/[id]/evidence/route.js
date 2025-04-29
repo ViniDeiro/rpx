@@ -9,11 +9,11 @@ import { mkdir } from 'fs/promises';
 // POST - Enviar evidência (screenshot) de uma partida
 export async function POST(
   request,
-  { params }: { params) {
+  { params }) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado' },
         { status: 400 });
@@ -28,13 +28,13 @@ export async function POST(
 
     // Processar o formulário multipart
     const formData = await request.formData();
-    const file = formData.get('screenshot') as File;
-    const winner = formData.get('winner') as string;
-    const comment = formData.get('comment') as string;
+    const file = formData.get('screenshot');
+    const winner = formData.get('winner');
+    const comment = formData.get('comment');
 
     if (!file) {
       return NextResponse.json(
-        { status: 'error', error: 'Nenhuma screenshot enviada' },
+        { status: 'error', error: 'Screenshot não enviado' },
         { status: 400 });
     }
 
@@ -116,20 +116,20 @@ export async function POST(
 
     // Registrar evidência no banco de dados
     const evidence = {
-      matchId,
-      userId,
-      screenhotUrl,
-      claimedWinner,
-      comment,
+      matchId: matchId,
+      userId: userId,
+      screenshotUrl: publicPath,
+      claimedWinner: winner,
+      comment: comment || '',
       status: 'pending', // pending, approved, rejected
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    const result = await db.collection('match_evidence').insertOne(evidence);
+    const evidenceResult = await db.collection('match_evidence').insertOne(evidence);
 
     // Verificar se todos os jogadores enviaram evidências
-    const matchParticipantIds = match.data: players.map((p) => p.userId);
+    const matchParticipantIds = match.players.map((p) => p.userId);
     const evidenceCount = await db.collection('match_evidence').countDocuments({
       matchId
     });
@@ -160,14 +160,14 @@ export async function POST(
     return NextResponse.json({
       status: 'success',
       message: 'Evidência enviada com sucesso',
-      evidenceId.insertedId ? evidenceId.insertedId.toString() : "",
-      evidenceUrl
+      evidenceId: evidenceResult.insertedId ? evidenceResult.insertedId.toString() : "",
+      evidenceUrl: publicPath
     });
     
   } catch (error) {
     console.error('Erro ao enviar evidência:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao enviar evidência: ' + (error.message: 'Erro desconhecido') },
+      { status: 'error', error: 'Erro ao enviar evidência: ' + (error.message || 'Erro desconhecido') },
       { status: 400 });
   }
 } 

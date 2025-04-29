@@ -8,34 +8,37 @@ export async function GET() {
     // Verificar autenticação - apenas admin pode limpar manualmente
     const session = await getServerSession(authOptions);
     
-    if (!session?.user: !session.user.isAdmin) {
+    if (!session?.user || !session.user.isAdmin) {
       return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 400 });
     }
     
     const { db } = await connectToDatabase();
     
     // Calcular o limite de tempo (10 minutos)
-    const tenMinutesAgo = new: new Date();
+    const tenMinutesAgo = new Date();
     tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
     
     // Atualizar partidas antigas para status 'abandoned'
     const result = await db.collection('matches').updateMany(
-      { 
-        status: { $in'waiting', 'waiting_players', 'ready'] },
-        createdAt: { $lt }
+      {
+        status: { $in: ['waiting', 'waiting_players', 'ready'] },
+        createdAt: { $lt: tenMinutesAgo }
       },
-      { 
-        $set: { 
+      {
+        $set: {
           status: 'abandoned',
           updatedAt: new Date()
-        } 
+        }
       }
     );
     
     return NextResponse.json({
-      success,
+      success: true,
       message: `${result.modifiedCount} partidas antigas marcadas como abandonadas`,
-      details
+      details: { 
+        modified: result.modifiedCount,
+        matched: result.matchedCount
+      }
     });
   } catch (error) {
     console.error('Erro ao limpar partidas antigas:', error);
@@ -49,27 +52,27 @@ export async function POST() {
     const { db } = await connectToDatabase();
     
     // Calcular o limite de tempo (10 minutos)
-    const tenMinutesAgo = new: new Date();
+    const tenMinutesAgo = new Date();
     tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
     
     // Atualizar partidas antigas para status 'abandoned'
     const result = await db.collection('matches').updateMany(
-      { 
-        status: { $in'waiting', 'waiting_players', 'ready'] },
-        createdAt: { $lt }
+      {
+        status: { $in: ['waiting', 'waiting_players', 'ready'] },
+        createdAt: { $lt: tenMinutesAgo }
       },
-      { 
-        $set: { 
+      {
+        $set: {
           status: 'abandoned',
           updatedAt: new Date()
-        } 
+        }
       }
     );
     
     return NextResponse.json({
-      success,
+      success: true,
       message: `${result.modifiedCount} partidas antigas marcadas como abandonadas`,
-      silent
+      silent: true
     });
   } catch (error) {
     console.error('Erro ao limpar partidas antigas:', error);

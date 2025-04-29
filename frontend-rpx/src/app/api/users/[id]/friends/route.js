@@ -40,7 +40,7 @@ export async function GET(
     
     // Verificar se o usuário é amigo
     const isFriend = currentUser.friends?.some(
-      (friend) => friend.userId.toString() === friendId
+      (friend) => friend.userId ? friend.userId.toString() : "" === friendId
     );
     
     if (!isFriend) {
@@ -136,7 +136,7 @@ export async function PATCH(
     
     // Verificar se o usuário é amigo
     const friendIndex = currentUser.friends?.findIndex(
-      (friend) => friend.userId.toString() === friendId
+      (friend) => friend.userId ? friend.userId.toString() : "" === friendId
     );
     
     if (friendIndex === -1 || friendIndex === undefined) {

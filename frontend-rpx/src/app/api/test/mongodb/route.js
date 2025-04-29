@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 
 export async function GET(request) {
@@ -15,27 +15,34 @@ export async function GET(request) {
     
     // Verificar se o banco está respondendo com um comando admin
     const adminDb = client.db('admin');
-    const pingResult = await adminDb.command({ ping);
+    const pingResult = await adminDb.command({ ping: 1 });
     
     // Tentar listar as coleções como teste adicional
     const collections = await db.listCollections().toArray();
-    const collectionNames = data: collections.map(c => c.name);
+    const collectionNames = collections.map(c => c.name);
     
     const dbPingTime = Date.now() - dbPingStart;
     
     return NextResponse.json({
       status: 'success',
       message: 'Conexão com MongoDB estabelecida com sucesso',
-      timing,
-      dbInfo);
+      timing: {
+        connection: connectionTime,
+        pingTest: dbPingTime
+      },
+      dbInfo: {
+        collections: collectionNames,
+        ping: pingResult
+      }
+    });
   } catch (error) {
     console.error('❌ Erro no teste de conexão com MongoDB:', error);
     
     return NextResponse.json({
       status: 'error',
       message: 'Falha na conexão com MongoDB',
-      error.message,
-      stack.env.NODE_ENV === 'development' ? error.stack 
+      errorMessage: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 400 });
   }
 } 

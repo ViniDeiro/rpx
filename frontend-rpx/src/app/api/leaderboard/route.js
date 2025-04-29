@@ -40,8 +40,8 @@ export async function GET(request) {
       
       // Consultar membros do time para ranking específico da equipe
       const team = await db.collection('teams').findOne(
-        { _id mongoose.Types.ObjectId(teamId) }
-      ) as TeamDocument | null;
+        { _id: mongoose.Types.ObjectId(teamId) }
+      );
       
       if (!team) {
         return NextResponse.json(
@@ -50,39 +50,40 @@ export async function GET(request) {
       }
       
       // Extrair IDs dos usuários do time
-      const teamUserIds = (team.members: []).map((member) => 
+      const teamUserIds = (team.members || []).map((member) =>
         new mongoose.Types.ObjectId(member.userId)
       );
       
-      leaderboardQuery = { _id: { $in } };
+      leaderboardQuery = { _id: { $in: teamUserIds } };
     }
     
     // Buscar usuários e ordenar por pontuação
     const users = await db.collection('users')
       .find(leaderboardQuery)
       .project({
-        username,
-        displayName,
-        avatar,
-        stats,
-        country)
+        username: 1,
+        displayName: 1,
+        avatar: 1,
+        stats: 1,
+        country: 1
+      })
       .sort({ 'stats.elo': -1, 'stats.wins': -1 })
       .limit(limit)
-      .toArray() as UserDocument[];
+      .toArray();
     
     // Mapear usuários para o formato de leaderboard
-    const leaderboard = data: users.map((user, index) => ({
-      rank + 1,
-      username.username,
-      displayName.displayName: user.username,
-      avatar.avatar: null,
-      country.country: null,
-      elo.stats?.elo: 1000,
-      wins.stats?.wins: 0,
-      losses.stats?.losses: 0,
-      winRate.stats ? 
-        (user.stats.matches > 0 ? 
-          Math.round((user.stats.wins / user.stats.matches) * 100) ) ));
+    const leaderboard = users.map((user, index) => ({
+      rank: index + 1,
+      username: user.username,
+      displayName: user.displayName || user.username,
+      avatar: user.avatar || null,
+      country: user.country || null,
+      elo: user.stats?.elo || 1000,
+      wins: user.stats?.wins || 0,
+      losses: user.stats?.losses || 0,
+      winRate: user.stats && user.stats.matches > 0 ? 
+        Math.round((user.stats.wins / user.stats.matches) * 100) : 0
+    }));
     
     return NextResponse.json({ leaderboard });
   } catch (error) {

@@ -27,7 +27,7 @@ export async function GET(request) {
     
     // Mapear para garantir formato consistente
     const users = usersRaw.map(user => ({
-      id: user._id.toString(),
+      id: user._id ? user._id.toString() : "",
       name: user.name || user.username || 'Usuário sem nome',
       email: user.email || 'sem-email@exemplo.com',
       username: user.username || user.email?.split('@')[0] || 'sem-username',

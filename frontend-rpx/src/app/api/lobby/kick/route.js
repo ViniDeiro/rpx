@@ -8,17 +8,17 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
-      }, { status: 400 });
+      }, { status: 401 });
     }
     
     const body = await request.json();
     const { lobbyId, memberId } = body;
     
-    if (!lobbyId: !memberId) {
+    if (!lobbyId || !memberId) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do lobby ou do membro não fornecido'
@@ -78,15 +78,15 @@ export async function POST(request) {
     
     // Remover o membro do lobby
     const result = await db.collection('lobbies').updateOne(
-      { _id: new ObjectId(lobbyId), owner ObjectId(userId) },
-      { $pull: { members ObjectId(memberId) } as unknown as Document }
+      { _id: new ObjectId(lobbyId), owner: new ObjectId(userId) },
+      { $pull: { members: new ObjectId(memberId) } }
     );
     
     // Notificar o membro expulso
     await db.collection('notifications').insertOne({
-      userId ObjectId(memberId),
+      userId: new ObjectId(memberId),
       type: 'system',
-      read,
+      read: false,
       data: {
         message: 'Você foi expulso do lobby'
       },

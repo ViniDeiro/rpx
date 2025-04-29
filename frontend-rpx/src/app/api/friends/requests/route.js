@@ -78,7 +78,7 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -114,8 +114,8 @@ export async function POST(request) {
     }
     
     // Verificar se o usuário existe
-    const recipient = await db.collection('users').findOne({ 
-      _id: new ObjectId(recipientId) 
+    const recipient = await db.collection('users').findOne({
+      _id: new ObjectId(recipientId)
     });
     
     if (!recipient) {
@@ -226,7 +226,7 @@ export async function PUT(request) {
     // Buscar a solicitação
     const friendRequest = await db.collection('friendrequests').findOne({
       _id: new ObjectId(requestId),
-      recipient ObjectId(userId),
+      recipient: ObjectId(userId),
       status: 'pending'
     });
     
@@ -245,8 +245,8 @@ export async function PUT(request) {
     
     // Criar a amizade em ambas as direções
     const friendship = {
-      user1.sender,
-      user2 ObjectId(userId),
+      user1: friendRequest.sender,
+      user2: ObjectId(userId),
       createdAt: new Date()
     };
     
@@ -270,7 +270,7 @@ export async function DELETE(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -301,7 +301,7 @@ export async function DELETE(request) {
     const result = await db.collection('friendrequests').updateOne(
       { 
         _id: new ObjectId(requestId), 
-        recipient ObjectId(userId) 
+        recipient: ObjectId(userId) 
       },
       { $set: { status: 'rejected' } }
     );

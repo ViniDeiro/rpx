@@ -40,7 +40,7 @@ export async function GET(request) {
     
     // Formatar resposta para o front-end
     const salasFormatadas = salas.map(sala => ({
-      id: sala._id.toString(),
+      id: sala._id ? sala._id.toString() : "",
       nome: sala.nome,
       capacidade: sala.capacidade,
       status: sala.status,
@@ -116,8 +116,8 @@ export async function POST(request) {
     return NextResponse.json(
       { 
         message: 'Sala criada com sucesso', 
-        id: result.insertedId.toString(),
-        sala: { ...novaSala, id: result.insertedId.toString() }
+        id: result.insertedId ? result.insertedId.toString() : "",
+        sala: { ...novaSala, id: result.insertedId ? result.insertedId.toString() : "" }
       },
       { status: 201 }
     );

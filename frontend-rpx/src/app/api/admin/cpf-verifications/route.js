@@ -79,12 +79,12 @@ export async function GET(request) {
     // Criar mapeamento de ID para dados do usuário
     const userMap = {};
     users.forEach(user => {
-      userMap[user._id.toString()] = user;
+      userMap[user._id ? user._id.toString() : ""] = user;
     });
     
     // Formatar resposta
     const formattedVerifications = verifications.map(v => ({
-      id: v._id.toString(),
+      id: v._id ? v._id.toString() : "",
       userId: v.userId,
       cpf: v.cpf,
       name: v.name,

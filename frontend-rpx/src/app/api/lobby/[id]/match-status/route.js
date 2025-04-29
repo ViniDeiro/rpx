@@ -10,7 +10,8 @@ export async function GET(request, { params }) {
     if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: error || 'Não autorizado' },
-        { status: 401 });
+        { status: 401 }
+      );
     }
 
     const lobbyId = params.id;
@@ -46,7 +47,7 @@ export async function GET(request, { params }) {
       (typeof memberId === 'object' ? memberId.toString() : memberId) === userId
     );
 
-    if (!isMember && lobby.owner.toString() !== userId) {
+    if (!isMember && lobby.owner ? lobby.owner.toString() : "" !== userId) {
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado a acessar este lobby' },
         { status: 403 });
@@ -70,7 +71,7 @@ export async function GET(request, { params }) {
 
       if (match) {
         matchInfo = {
-          matchId: match._id.toString(),
+          matchId: match._id ? match._id.toString() : "",
           status: match.status,
           teams: match.teams,
           type: match.type,

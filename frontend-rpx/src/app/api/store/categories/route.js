@@ -11,7 +11,7 @@ export async function GET(request) {
     const collection = db.collection('products');
     
     // Buscar categorias distintas de produtos em estoque
-    const categories = await collection.distinct("category", { inStock);
+    const categories = await collection.distinct("category", { inStock: true });
     
     console.log(`${categories.length} categorias encontradas:`, categories);
     
@@ -23,11 +23,11 @@ export async function GET(request) {
         name
       }));
     
-    return NextResponse.json({ categories);
+    return NextResponse.json({ categories: formattedCategories });
   } catch (error) {
     console.error('Erro ao buscar categorias:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar categorias', details,
-      { status);
+      { error: 'Erro ao buscar categorias', details: error.message },
+      { status: 400 });
   }
 } 

@@ -86,7 +86,7 @@ export async function POST(request) {
         success: true,
         message: `Rank do usuário ${username} atualizado para ${tier}`,
         user: {
-          id: user._id.toString(),
+          id: user._id ? user._id.toString() : "",
           username: user.username,
           rank: user.rank
         }

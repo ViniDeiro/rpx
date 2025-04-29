@@ -77,7 +77,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       message: `${TEST_USERS.length} usuários de teste criados com sucesso`,
-      userIds: TEST_USERS.map(user => user._id.toString())
+      userIds: TEST_USERS.map(user => user._id ? user._id.toString() : "")
     });
     
   } catch (error) {

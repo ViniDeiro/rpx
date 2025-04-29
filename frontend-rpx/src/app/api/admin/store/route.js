@@ -77,7 +77,7 @@ export async function GET(request) {
       totalProducts,
       productsByCategory,
       recentSales: recentSales.map(sale => ({
-        id: sale._id.toString(),
+        id: sale._id ? sale._id.toString() : "",
         user: sale.userId,
         total: sale.totalAmount,
         date: sale.createdAt

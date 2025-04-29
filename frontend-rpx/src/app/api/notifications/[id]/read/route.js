@@ -1,12 +1,13 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
+import { ObjectId } from 'mongodb';
 
 // POST - Marcar uma notificação como lida
 export async function POST(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -49,7 +50,7 @@ export async function POST(
     
     // Buscar notificação pelo ID
     const notification = await db.collection('notifications').findOne(
-      { _id mongoose.Types.ObjectId(notificationId) }
+      { _id: new ObjectId(notificationId) }
     );
     
     if (!notification) {
@@ -70,23 +71,27 @@ export async function POST(
       return NextResponse.json({
         message: 'Notificação já está marcada como lida',
         notification: {
-          id._id ? id._id.toString() : "",
-          isRead,
-          readAt.readAt
+          id: notification._id ? notification._id ? notification._id.toString() : "" : "",
+          isRead: notification.isRead,
+          readAt: notification.readAt
         }
       });
     }
     
     // Marcar a notificação como lida
-    const now = new: new Date();
+    const now = new Date();
     await db.collection('notifications').updateOne(
-      { _id mongoose.Types.ObjectId(notificationId) },
+      { _id: new ObjectId(notificationId) },
       { 
-        $set);
+        $set: {
+          isRead: true,
+          readAt: now
+        }
+      });
     
     // Buscar notificação atualizada
     const updatedNotification = await db.collection('notifications').findOne(
-      { _id mongoose.Types.ObjectId(notificationId) }
+      { _id: new ObjectId(notificationId) }
     );
     
     if (!updatedNotification) {
@@ -97,16 +102,16 @@ export async function POST(
     
     // Formatar notificação para resposta
     const formattedNotification = {
-      id._id ? id._id.toString() : "",
-      title.title,
-      isRead.isRead,
-      readAt.readAt
+      id: updatedNotification._id ? updatedNotification._id ? updatedNotification._id.toString() : "" : "",
+      title: updatedNotification.title,
+      isRead: updatedNotification.isRead,
+      readAt: updatedNotification.readAt
     };
     
     // Retornar dados atualizados
     return NextResponse.json({
       message: 'Notificação marcada como lida com sucesso',
-      notification
+      notification: formattedNotification
     });
   } catch (error) {
     console.error('Erro ao marcar notificação como lida:', error);
@@ -150,11 +155,15 @@ export async function PUT(req) {
     }
     
     // Marcar todas as notificações do usuário como lidas
-    const now = new: new Date();
+    const now = new Date();
     const result = await db.collection('notifications').updateMany(
-      { userId, isRead },
+      { userId: userId, isRead: false },
       { 
-        $set);
+        $set: {
+          isRead: true,
+          readAt: now
+        }
+      });
     
     // Verificar resultado da operação
     if (!result.acknowledged) {
@@ -166,7 +175,7 @@ export async function PUT(req) {
     // Retornar dados atualizados
     return NextResponse.json({
       message: 'Todas as notificações foram marcadas como lidas',
-      count.modifiedCount
+      count: result.modifiedCount
     });
   } catch (error) {
     console.error('Erro ao marcar todas as notificações como lidas:', error);

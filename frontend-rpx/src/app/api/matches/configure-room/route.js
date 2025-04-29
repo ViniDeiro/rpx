@@ -8,11 +8,11 @@ import { ObjectId } from 'mongodb';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // POST sala da partida (admin)
@@ -20,10 +20,10 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
-        error
+        error: error
       }, { status: 400 });
     }
     
@@ -35,7 +35,7 @@ export async function POST(request) {
       _id: new ObjectId(userId)
     });
     
-    if (!user: user.role !== 'admin') {
+    if (!user && user.role !== 'admin') {
       return NextResponse.json({
         status: 'error',
         error: 'Apenas administradores podem configurar salas'
@@ -46,7 +46,7 @@ export async function POST(request) {
     const body = await request.json();
     const { matchId, roomId, password } = body;
     
-    if (!matchId: !roomId: !password) {
+    if (!matchId || !roomId || !password) {
       return NextResponse.json({
         status: 'error',
         error: 'ID da partida, ID da sala e senha são obrigatórios'
@@ -78,10 +78,10 @@ export async function POST(request) {
       { 
         $set: { 
           status: 'ready',
-          'roomInfo.roomId',
-          'roomInfo.password',
-          'roomInfo.createdBy',
-          'roomInfo.createdAt' Date()
+          'roomInfo.roomId': roomId,
+          'roomInfo.password': password,
+          'roomInfo.createdBy': userId,
+          'roomInfo.createdAt': new Date()
         } 
       }
     );
@@ -99,12 +99,12 @@ export async function POST(request) {
     
     for (const memberId of allMembers) {
       await db.collection('notifications').insertOne({
-        userId ObjectId(memberId),
+        userId: new ObjectId(memberId),
         type: 'match_ready',
-        read,
+        read: false,
         data: {
           message: 'A sala da partida está pronta! ID e senha estão disponíveis na sala da partida.',
-          matchId
+          matchId: matchId
         },
         createdAt: new Date()
       });
@@ -113,7 +113,7 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Sala configurada com sucesso',
-      matchId
+      matchId: matchId
     });
     
   } catch (error) {

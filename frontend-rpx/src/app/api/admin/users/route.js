@@ -248,52 +248,32 @@ export async function POST(request) {
     const existingUsername = await db.collection('users').findOne({ username: body.username });
     if (existingUsername) {
       return NextResponse.json(
-        { error: 'Nome de usuário já em uso.' },
+        { error: 'Nome de usuário já cadastrado.' },
         { status: 409 }
       );
     }
     
-    // Preparar objeto de usuário
+    // Criar o novo usuário
     const newUser = {
+      name: body.name || body.username,
       email: body.email,
       username: body.username,
-      name: body.name || body.username,
       isAdmin: body.isAdmin === true,
       isActive: body.isActive !== false,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      balance: body.balance || 0,
-      stats: {
-        wins: 0,
-        losses: 0,
-        matches: 0,
-        ...body.stats
-      },
-      currentRank: 'Novato',
-      rankingPoints: 0,
-      createdBy: 'admin'
+      credits: body.credits || 0,
+      avatar: body.avatar || null
     };
     
-    // Inserir usuário
     const result = await db.collection('users').insertOne(newUser);
     
-    // Registrar ação do admin
-    await db.collection('admin_logs').insertOne({
-      action: 'create_user',
-      adminId: (await getServerSession(authOptions)).user.id,
-      details: {
-        userId: result.insertedId.toString(),
-        email: body.email,
-        username: body.username,
-        isAdmin: body.isAdmin === true
+    return NextResponse.json(
+      { 
+        message: 'Usuário criado com sucesso',
+        userId: result.insertedId.toString()
       },
-      timestamp: new Date()
-    });
-    
-    return NextResponse.json({
-      message: 'Usuário criado com sucesso',
-      userId: result.insertedId.toString()
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Erro ao criar usuário:', error);
     return NextResponse.json(
@@ -394,7 +374,7 @@ export async function PUT(request) {
     // Retornar o usuário atualizado
     return NextResponse.json({
       ...updatedUser,
-      id: updatedUser._id.toString(),
+      id: updatedUser._id ? updatedUser._id.toString() : "",
       _id: undefined
     });
   } catch (error) {

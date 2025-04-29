@@ -16,8 +16,8 @@ export async function POST(request) {
     if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
-        error || 'Não autorizado'
-      }, { status);
+        error: error || 'Não autorizado'
+      }, { status: 400 });
     }
 
     // Conectar ao banco de dados para verificar se é admin
@@ -25,14 +25,15 @@ export async function POST(request) {
     
     // Verificar se o usuário é administrador
     const userInfo = await db.collection('users').findOne(
-      { _id ObjectId(userId) },
-      { projection: { isAdmin);
+      { _id: new ObjectId(userId) },
+      { projection: { isAdmin: 1 } }
+    );
     
     if (!userInfo?.isAdmin) {
       return NextResponse.json({
         status: 'error',
         error: 'Apenas administradores podem configurar salas'
-      }, { status);
+      }, { status: 403 });
     }
     
     // Obter dados da requisição
@@ -43,19 +44,19 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'error',
         error: 'ID da partida, ID da sala e senha da sala são obrigatórios'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Verificar se o match existe
     const match = await db.collection('matches').findOne({ 
-      matchId 
+      matchId: matchId
     });
     
     if (!match) {
       return NextResponse.json({
         status: 'error',
         error: 'Partida não encontrada'
-      }, { status);
+      }, { status: 404 });
     }
     
     // Verificar se a sala já foi configurada
@@ -63,16 +64,16 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'error',
         error: 'Esta sala já foi configurada anteriormente'
-      }, { status);
+      }, { status: 400 });
     }
     
     // Dados para atualização
     const updateData = {
-      idSala,
-      senhaSala,
-      salaConfigurada,
-      updatedAt Date(),
-      updatedBy
+      idSala: idSala,
+      senhaSala: senhaSala,
+      salaConfigurada: true,
+      updatedAt: new Date(),
+      updatedBy: userId
     };
     
     // Se deve iniciar o temporizador
@@ -84,8 +85,8 @@ export async function POST(request) {
     
     // Atualizar o match com as informações da sala
     await db.collection('matches').updateOne(
-      { matchId },
-      { $set }
+      { matchId: matchId },
+      { $set: updateData }
     );
     
     // Enviar notificações para os jogadores
@@ -100,16 +101,16 @@ export async function POST(request) {
       // Enviar notificação para cada jogador
       for (const player of players) {
         await db.collection('notifications').insertOne({
-          userId.userId,
+          userId: player.userId,
           type: 'match_room_configured',
           title: 'Sala configurada!',
-          message,
-          read,
-          data,
-            timerStartedAt ? new Date() ,
+          message: notificationMessage,
+          read: false,
+          data: {
+            timerStartedAt: startTimer ? new Date() : null,
             timerDuration: 5 * 60 // 5 minutos em segundos
           },
-          createdAt Date()
+          createdAt: new Date()
         });
       }
     } catch (notifError) {
@@ -120,13 +121,13 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Sala configurada com sucesso',
-      timerStarted
+      timerStarted: startTimer
     });
   } catch (error) {
     console.error('Erro ao configurar sala:', error);
     return NextResponse.json({
       status: 'error',
       error: 'Erro interno ao configurar sala: ' + (error.message || 'erro desconhecido')
-    }, { status);
+    }, { status: 500 });
   }
 } 

@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb/connect';
 import { getModels } from '@/lib/mongodb/models';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
 
 export async function POST(request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request) {
     
     // Verifica se existe a solicitação pendente
     const pendingRequest = currentUser.friendRequests.find(
-      (request) => request.userId ? request.userId.toString() : "" === requesterId
+      (request) => request.userId ? request.userId ? request.userId.toString() : "" : "" === requesterId
     );
     
     if (!pendingRequest) {
@@ -38,9 +39,10 @@ export async function POST(request) {
 
     // Remove a solicitação pendente
     await User.findByIdAndUpdate(session.user.id, {
-      $pull: { friendRequests,
-      $push: {
-        friends,
+      $pull: { friendRequests: { userId: new ObjectId(requesterId) } },
+      $push: { 
+        friends: {
+          userId: new ObjectId(requesterId),
           since: new Date()
         }
       }
@@ -48,9 +50,10 @@ export async function POST(request) {
 
     // Remove dos pedidos enviados do solicitante e adiciona aos amigos
     await User.findByIdAndUpdate(requesterId, {
-      $pull: { sentFriendRequests,
-      $push: {
-        friends,
+      $pull: { sentFriendRequests: { userId: new ObjectId(session.user.id) } },
+      $push: { 
+        friends: {
+          userId: new ObjectId(session.user.id),
           since: new Date()
         }
       }

@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
@@ -9,7 +9,7 @@ export async function POST(req) {
   try {
     // Verificar autenticação
     const session = await getServerSession(authOptions);
-    if (!session: !session.user) {
+    if (!session || !session.user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 400 });
     }
 
@@ -25,7 +25,7 @@ export async function POST(req) {
     } = await req.json();
 
     // Validar dados
-    if (!userId: !mode: !type) {
+    if (!userId || !mode || !type) {
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
     }
 
@@ -42,7 +42,7 @@ export async function POST(req) {
 
     // Verificar se o usuário já está em uma fila
     const existingQueue = await db.collection('matchmaking_queue').findOne({
-      userId,
+      userId: userId,
     });
 
     if (existingQueue) {
@@ -50,8 +50,8 @@ export async function POST(req) {
       console.log('API Matchmaking - Usuário já está na fila:', queueId);
       // Se já estiver em uma fila, retornar o ID de espera
       return NextResponse.json({
-        matchFound,
-        waitingId,
+        matchFound: false,
+        waitingId: queueId,
         message: 'Usuário já está na fila de matchmaking'
       });
     }
@@ -60,10 +60,11 @@ export async function POST(req) {
 
     // Verificar se o usuário já está em uma partida ativa
     const existingMatch = await db.collection('matches').findOne({
-      $or
-        { 'team1.players': { $elemMatch,
-        { 'team2.players': { $elemMatch,
-      status: { $in'waiting', 'in_progress'] }
+      $or: [
+        { 'team1.players': { $elemMatch: { userId: userId } } },
+        { 'team2.players': { $elemMatch: { userId: userId } } }
+      ],
+      status: { $in: ['waiting', 'in_progress'] }
     });
 
     if (existingMatch) {
@@ -71,8 +72,8 @@ export async function POST(req) {
       console.log('API Matchmaking - Usuário já está em uma partida:', matchId);
       // Se já estiver em uma partida, retornar a partida
       return NextResponse.json({
-        matchFound,
-        match,
+        matchFound: true,
+        match: existingMatch,
         message: 'Usuário já está em uma partida'
       });
     }
@@ -80,6 +81,9 @@ export async function POST(req) {
     console.log('API Matchmaking - Adicionando usuário à fila:', {
       userId, mode, type, platform, platformMode, gameplayMode, teamSize
     });
+
+    // Obter dados do usuário
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
 
     // Adicionar usuário à fila de matchmaking
     const result = await db.collection('matchmaking_queue').insertOne({
@@ -93,11 +97,10 @@ export async function POST(req) {
       createdAt: new Date(),
       status: 'waiting',
       // Campos adicionais necessários para o processamento
-      lobbyId ObjectId().toString(), // Criar um ID virtual de lobby para usuários solo
-      players{
+      lobbyId: new ObjectId().toString(), // Criar um ID virtual de lobby para usuários solo
+      players: [{
         userId,
-        username.user.name: 'Jogador',
-        avatar.user.image: '/images/avatars/default.png'
+        username: user?.username || 'Jogador'
       }]
     });
 
@@ -111,7 +114,7 @@ export async function POST(req) {
 
     // Retornar ID de espera
     return NextResponse.json({
-      matchFound,
+      matchFound: false,
       waitingId,
       message: 'Adicionado à fila de matchmaking com sucesso'
     });
@@ -119,7 +122,7 @@ export async function POST(req) {
     console.error('Erro no matchmaking:', error);
     return NextResponse.json({ 
       error: 'Erro interno do servidor',
-      details instanceof Error ? error.message : 'Erro desconhecido'
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
     }, { status: 400 });
   }
 } 

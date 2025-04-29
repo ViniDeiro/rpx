@@ -53,7 +53,7 @@ export async function POST(request) {
       success: true,
       message: `Usuário ${email} promovido a administrador`,
       user: {
-        id: user._id.toString(),
+        id: user._id ? user._id.toString() : "",
         email: email,
         name: user.name || user.username
       }
@@ -120,7 +120,7 @@ export async function GET(request) {
       success: true,
       message: `Usuário ${email} promovido a administrador`,
       user: {
-        id: user._id.toString(),
+        id: user._id ? user._id.toString() : "",
         email: email,
         name: user.name || user.username
       }

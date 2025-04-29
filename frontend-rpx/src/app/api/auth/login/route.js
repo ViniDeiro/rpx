@@ -145,7 +145,7 @@ export async function POST(request) {
       console.log('Gerando token JWT...');
       const token = jwt.sign(
         {
-          userId: user._id.toString(),
+          userId: user._id ? user._id.toString() : "",
           email: user.email,
           username: user.username,
           role: user.role || 'user'
@@ -169,7 +169,7 @@ export async function POST(request) {
       
       // Criar resposta com dados do usuário
       const userData = {
-        id: user._id.toString(),
+        id: user._id ? user._id.toString() : "",
         username: user.username,
         email: user.email,
         name: user.name || user.username,

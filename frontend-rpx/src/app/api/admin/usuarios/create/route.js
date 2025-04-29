@@ -98,7 +98,7 @@ export async function POST(request) {
     await db.collection('admin_logs').insertOne({
       action: 'create_user',
       adminId: session.user.id,
-      userId: result.insertedId.toString(),
+      userId: result.insertedId ? result.insertedId.toString() : "",
       details: {
         username,
         email,
@@ -109,7 +109,7 @@ export async function POST(request) {
     
     return NextResponse.json({
       message: 'Usuário criado com sucesso',
-      userId: result.insertedId.toString()
+      userId: result.insertedId ? result.insertedId.toString() : ""
     }, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar usuário:', error);

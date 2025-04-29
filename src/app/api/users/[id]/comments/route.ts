@@ -43,7 +43,7 @@ export async function GET(
     const comments = await db.collection('profilecomments')
       .find({ 
         userId: userId,
-        isHidden: { $ne: true } 
+        isHidden: { $ne: true   } 
       })
       .sort({ createdAt: -1 }) // Ordenar por data decrescente
       .toArray();

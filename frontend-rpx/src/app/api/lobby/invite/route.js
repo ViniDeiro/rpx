@@ -8,7 +8,7 @@ export async function GET(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -28,27 +28,27 @@ export async function GET(request) {
     
     // Obter convites pendentes para o usuário
     const invites = await db.collection('lobbyinvites').find({
-      $or
-        { recipient ObjectId(userId) },
-        { recipient.toString() }
+      $or: [
+        { recipient: new ObjectId(userId) },
+        { recipient: userId.toString() }
       ],
       status: 'pending'
     }).toArray();
     
     // Buscar dados dos usuários que enviaram os convites
-    const userIds = data: invites.map(invite => invite.inviter);
+    const userIds = invites.map(invite => invite.inviter);
     const users = await db.collection('users').find(
-      { _id: { $in } },
+      { _id: { $in: userIds } },
     ).toArray();
     
     // Juntar dados do convite com dados do usuário
-    const invitesWithUserData = data: invites.map((invite) => {
+    const invitesWithUserData = invites.map((invite) => {
       const inviter = users.find((user) => 
-        user._id ? user._id.toString() : "" === invite.inviter ? invite.inviter.toString() : ""
+        user._id ? user._id ? user._id.toString() : "" : "" === invite.inviter ? invite.inviter ? invite.inviter.toString() : "" : ""
       );
       return {
         ...invite,
-        inviter: { username: 'Usuário desconhecido' }
+        inviter: inviter || { username: 'Usuário desconhecido' }
       };
     });
     
@@ -72,7 +72,7 @@ export async function POST(request) {
     
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       console.error('🔒 [DEBUG] API Lobby Invite POST - Erro de autenticação:', error);
       return NextResponse.json({
         status: 'error',
@@ -90,7 +90,7 @@ export async function POST(request) {
     }
     
     console.log('📝 [DEBUG] API Lobby Invite POST - Dados recebidos:', { 
-      userId,
+      userId: memberId,
       recipientId, 
       lobbyId, 
       gameMode 
@@ -167,7 +167,7 @@ export async function POST(request) {
         
         // Criar lobby com ID fixo baseado no ID do usuário
         const userObjectId = new ObjectId(userId);
-        const now = new: new Date();
+        const now = new Date();
         
         const newLobby = {
           _id,  // Usar o ID fixo baseado no ID do usuário
@@ -196,7 +196,7 @@ export async function POST(request) {
         lobby = newLobby;
         console.log('✅ [DEBUG] API Lobby Invite POST - Lobby criado automaticamente:', lobbyId);
       } else {
-        console.log('✓ [DEBUG] API Lobby Invite POST - Lobby encontrado:', lobby.name: lobbyId);
+        console.log('✓ [DEBUG] API Lobby Invite POST - Lobby encontrado:', lobby.name || lobbyId);
       }
     } catch (err) {
       console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao verificar/criar lobby:', err);
@@ -210,9 +210,9 @@ export async function POST(request) {
     // Agora vamos apenas verificar, mas permitir a criação mesmo se já houver convites
     try {
       const existingInvite = await db.collection('lobbyinvites').findOne({
-        inviter ObjectId(userId),
-        recipient ObjectId(recipientId),
-        lobbyId.toString(),
+        inviter: new ObjectId(userId),
+        recipient: new ObjectId(recipientId),
+        lobbyId: lobbyObjectId.toString(),
         status: 'pending'
       });
       
@@ -227,9 +227,9 @@ export async function POST(request) {
     // Criar novo convite
     try {
       const newInvite = {
-        inviter ObjectId(userId),
-        recipient ObjectId(recipientId),
-        lobbyId.toString(),
+        inviter: new ObjectId(userId),
+        recipient: new ObjectId(recipientId),
+        lobbyId: lobbyObjectId.toString(),
         gameMode: 'casual', // Valor padrão 'casual'
         status: 'pending',
         createdAt: new Date()
@@ -238,7 +238,7 @@ export async function POST(request) {
       console.log('📝 [DEBUG] API Lobby Invite POST - Criando novo convite:', {
         inviter,
         recipient,
-        lobbyId.toString()
+        lobbyId: lobbyObjectId.toString()
       });
       
       const result = await db.collection('lobbyinvites').insertOne(newInvite);
@@ -252,10 +252,11 @@ export async function POST(request) {
       }
       
       // Adicionar o ID do convite como string em um campo separado
-      const inviteId = result.insertedId ? result.insertedId.toString() : "";
+      const inviteId = result.insertedId ? result.insertedId ? result.insertedId.toString() : "" : "";
       await db.collection('lobbyinvites').updateOne(
-        { _id.insertedId },
-        { $set);
+        { _id: result.insertedId },
+        { $set: { inviteId: inviteId } }
+      );
       
       console.log('✅ [DEBUG] API Lobby Invite POST - Convite criado com sucesso:', inviteId);
       
@@ -263,18 +264,24 @@ export async function POST(request) {
       try {
         const inviter = await db.collection('users').findOne(
           { _id: new ObjectId(userId) },
-          { projection: { _id, username, avatar);
+          { projection: { _id: 1, username: 1, avatar: 1 } }
+        );
         
         // Garantir que o ID do recipiente está em formato string
         const recipientIdString = recipientId.toString();
         
         const notificationData = {
-          userId, // Sempre usar string para userId
+          userId: memberId, // Sempre usar string para userId
           type: 'lobby_invite',
-          read,
-          data,
-            invite, // Adicionar campo explícito com ID como string
-              lobbyId.toString(),
+          read: false,
+          data: {
+            invite: {
+              _id: inviteId,
+              inviter: inviter._id ? inviter._id.toString() : "",
+              inviterName: inviter.username,
+              avatar: inviter.avatar,
+              recipient: recipientIdString,
+              lobbyId: lobbyObjectId.toString(),
               status: 'pending',
               createdAt: new Date()
             }
@@ -283,15 +290,15 @@ export async function POST(request) {
         };
         
         console.log('📤 [DEBUG] API Lobby Invite POST - Criando notificação:', {
-          userId,
+          userId: memberId,
           type: 'lobby_invite',
-          inviterId,
-          inviterName?.username: 'Unknown'
+          inviterId: inviter._id ? inviter._id.toString() : "",
+          inviterName: inviter.username || 'Unknown'
         });
         
         const notifResult = await db.collection('notifications').insertOne(notificationData);
         
-        console.log('✅ [DEBUG] API Lobby Invite POST - Notificação criada com sucesso. ID:', notifResult.insertedId ? notifResult.insertedId.toString() : "");
+        console.log('✅ [DEBUG] API Lobby Invite POST - Notificação criada com sucesso. ID:', notifResult.insertedId ? notifResult.insertedId ? notifResult.insertedId.toString() : "" : "");
       } catch (notifError) {
         console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao criar notificação:', notifError);
         // Continuar mesmo se a notificação falhar
@@ -300,7 +307,19 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'success',
         message: 'Convite enviado com sucesso',
-        invite);
+        invite: {
+          _id: inviteId,
+          inviter: {
+            _id: newInvite.inviter ? newInvite.inviter.toString() : "",
+            username: newInvite.inviter ? newInvite.inviter.toString() : ""
+          },
+          recipient: newInvite.recipient ? newInvite.recipient.toString() : "",
+          lobbyId: newInvite.lobbyId,
+          gameMode: newInvite.gameMode,
+          status: newInvite.status,
+          createdAt: newInvite.createdAt.toISOString()
+        }
+      });
     } catch (createError) {
       console.error('❌ [DEBUG] API Lobby Invite POST - Erro ao criar convite:', createError);
       return NextResponse.json({
@@ -312,7 +331,7 @@ export async function POST(request) {
     console.error('❌ [DEBUG] API Lobby Invite POST - Erro detalhado:', error);
     return NextResponse.json({
       status: 'error',
-      error: 'Erro ao criar convite para lobby: ' + (error.message: 'Erro desconhecido')
+      error: 'Erro ao criar convite para lobby: ' + (error.message || 'Erro desconhecido')
     }, { status: 400 });
   }
 }
@@ -322,7 +341,7 @@ export async function DELETE(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
@@ -354,9 +373,9 @@ export async function DELETE(request) {
     const result = await db.collection('lobbyinvites').updateOne(
       { 
         _id: new ObjectId(inviteId), 
-        $or
-          { recipient ObjectId(userId) },
-          { recipient.toString() }
+        $or: [
+          { recipient: new ObjectId(userId) },
+          { recipient: userId.toString() }
         ]
       },
       { $set: { status: 'rejected' } }
@@ -387,7 +406,7 @@ export async function PATCH(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error: 'Não autorizado'
@@ -398,7 +417,7 @@ export async function PATCH(request) {
     const requestBody = await request.json();
     const { invitationId, action } = requestBody;
     
-    if (!invitationId: !action) {
+    if (!invitationId || !action) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do convite e ação são obrigatórios'
@@ -428,7 +447,7 @@ export async function PATCH(request) {
     
     const invite = await db.collection('lobbyinvites').findOne({
       _id,
-      recipient ObjectId(userId),
+      recipient: new ObjectId(userId),
       status: 'pending'
     });
     
@@ -446,7 +465,7 @@ export async function PATCH(request) {
       try {
         // Buscar o lobby
         const lobbyId = invite.lobbyId;
-        const lobbyObjectId = typeof lobbyId === 'object' ? lobbyId  ObjectId(lobbyId);
+        const lobbyObjectId = typeof lobbyId === 'object' ? lobbyId : new ObjectId(lobbyId);
         
         const lobby = await db.collection('lobbies').findOne({
           _id
@@ -471,7 +490,8 @@ export async function PATCH(request) {
         // Buscar dados do usuário
         const user = await db.collection('users').findOne(
           { _id },
-          { projection: { username, avatar, level);
+          { projection: { username, avatar, level } }
+        );
         
         // Verificar se o usuário existe
         if (!user) {
@@ -479,19 +499,19 @@ export async function PATCH(request) {
         }
         
         const lobbyMember = {
-          lobbyId.toString(),
-          userId,
-          username.username: 'Anônimo',
-          avatar.avatar: null,
-          level.level: 1,
-          isLeader,
-          isReady,
+          lobbyId: lobbyObjectId.toString(),
+          userId: memberId,
+          username: user.username || 'Anônimo',
+          avatar: user.avatar || null,
+          level: user.level || 1,
+          isLeader: false,
+          isReady: false,
           joinedAt: new Date()
         };
         
         // Verificar se já é membro
         const existingMember = await db.collection('lobbymembers').findOne({
-          lobbyId.toString(),
+          lobbyId: lobbyObjectId.toString(),
           userId
         });
         
@@ -503,17 +523,17 @@ export async function PATCH(request) {
           await db.collection('lobbies').updateOne(
             { _id },
             { 
-              $addToSet,
+              $addToSet: { members: memberId },
               $set: { updatedAt: new Date() }
             }
           );
           
           // Adicionar mensagem ao chat
           await db.collection('lobbychat').insertOne({
-            lobbyId.toString(),
-            userId, // Mensagem de sistema
+            lobbyId: lobbyObjectId.toString(),
+            userId: memberId, // Mensagem de sistema
             username: 'Sistema',
-            message: `${user?.username: 'Novo jogador'} entrou no lobby.`,
+            message: `${user.username ? user.username : 'Novo jogador'} entrou no lobby.`,
             type: 'system',
             timestamp: new Date()
           });
@@ -527,13 +547,14 @@ export async function PATCH(request) {
         
         // Marcar notificação como lida
         await db.collection('notifications').updateOne(
-          { 'data.invite._id' },
-          { $set);
+          { 'data.invite._id': invite._id },
+          { $set: { read: true } }
+        );
         
         return NextResponse.json({
           status: 'success',
           message: 'Convite aceito com sucesso',
-          lobbyId.toString(),
+          lobbyId: lobbyObjectId.toString(),
           redirect: `/lobby/${lobbyObjectId.toString()}`
         });
       } catch (error) {
@@ -552,8 +573,9 @@ export async function PATCH(request) {
       
       // Marcar notificação como lida
       await db.collection('notifications').updateOne(
-        { 'data.invite._id' },
-        { $set);
+        { 'data.invite._id': invite._id },
+        { $set: { read: true } }
+      );
       
       return NextResponse.json({
         status: 'success',

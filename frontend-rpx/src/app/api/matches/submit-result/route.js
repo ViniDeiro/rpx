@@ -8,11 +8,11 @@ import { ObjectId } from 'mongodb';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // POST resultado da partida
@@ -20,20 +20,20 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
-        error
+        error: error || 'Não autorizado'
       }, { status: 400 });
     }
     
     // Utilizar FormData para receber a imagem
     const formData = await request.formData();
-    const matchId = formData.get('matchId') as string;
-    const resultImage = formData.get('resultImage') as File;
-    const comment = formData.get('comment') as string;
+    const matchId = formData.get('matchId');
+    const resultImage = formData.get('resultImage');
+    const comment = formData.get('comment') || '';
     
-    if (!matchId: !resultImage) {
+    if (!matchId || !resultImage) {
       return NextResponse.json({
         status: 'error',
         error: 'ID da partida e imagem do resultado são obrigatórios'
@@ -102,14 +102,14 @@ export async function POST(request) {
         $set: { 
           status: 'awaiting_validation',
           resultSubmission: {
-            submittedBy ObjectId(userId),
+            submittedBy: new ObjectId(userId),
             submittedAt: new Date(),
-            imageUrl,
-            comment,
-            validated,
-            validatedBy,
-            validatedAt,
-            validationComment
+            imageUrl: imageUrl,
+            comment: comment,
+            validated: false,
+            validatedBy: null,
+            validatedAt: null,
+            validationComment: null
           }
         } 
       }
@@ -122,7 +122,7 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Resultado enviado com sucesso e aguardando validação',
-      matchId
+      matchId: matchId
     });
     
   } catch (error) {

@@ -44,7 +44,7 @@ export async function POST(req) {
     
     // Verificar se o usuário está bloqueado
     const isBlocked = currentUser.blockedUsers?.some(
-      (blocked) => blocked.userId ? blocked.userId.toString() : "" === userId
+      (blocked) => blocked.userId ? blocked.userId.toString() || "" : "" === userId
     );
     
     if (!isBlocked) {
@@ -56,7 +56,8 @@ export async function POST(req) {
     // Remover da lista de bloqueados
     await User.findByIdAndUpdate(
       currentUserId,
-      { $pull: { blockedUsers);
+      { $pull: { blockedUsers: { userId: userId } } }
+    );
     
     return NextResponse.json({
       message: 'Usuário desbloqueado com sucesso'

@@ -8,7 +8,7 @@ export async function GET(request) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado' },
         { status: 400 });
@@ -22,17 +22,17 @@ export async function GET(request) {
     
     // Buscar lobbies do usuário
     const userLobbies = await db.collection('lobbies').find({
-      members ObjectId(userId)
+      members: new ObjectId(userId)
     }).sort({ createdAt: -1 }).toArray();
     
     // Formatar os lobbies para a resposta
-    const formattedLobbies = data: userLobbies.map(lobby => ({
+    const formattedLobbies = userLobbies.map(lobby => ({
       ...lobby,
-      id: _id.toString(),
-      owner.owner ? owner.owner.toString() : "",
-      members.data: members.map((id | string) => id.toString()),
-      createdAt.createdAt instanceof Date ? lobby.createdAt.toISOString() .createdAt,
-      updatedAt.updatedAt instanceof Date ? lobby.updatedAt.toISOString() .updatedAt
+      id: lobby._id ? lobby._id.toString() : "",
+      owner: typeof lobby.owner === 'object' ? lobby.owner ? lobby.owner ? lobby.owner.toString() : "" : "" : lobby.owner,
+      members: lobby.members.map(id => id.toString()),
+      createdAt: lobby.createdAt instanceof Date ? lobby.createdAt.toISOString() : lobby.createdAt,
+      updatedAt: lobby.updatedAt instanceof Date ? lobby.updatedAt.toISOString() : lobby.updatedAt
     }));
     
     return NextResponse.json({
@@ -53,7 +53,7 @@ export async function POST(request) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado' },
         { status: 400 });
@@ -84,7 +84,7 @@ export async function POST(request) {
     
     // Criar objeto de lobby
     const userObjectId = new ObjectId(userId);
-    const now = new: new Date();
+    const now = new Date();
     
     // Verificar se já existe um lobby fixo para este usuário
     // Usamos o ID do usuário como base para o ID do lobby
@@ -103,11 +103,10 @@ export async function POST(request) {
         { 
           $set: {
             status: 'active',
-            lobbyType.lobbyType,
+            lobbyType: body.lobbyType,
             maxPlayers,
-            gameMode.gameMode: 'casual',
-            updatedAt,
-            settings.settings: {}
+            gameMode: body.gameMode || 'casual',
+            updatedAt: new Date()
           }
         }
       );
@@ -115,24 +114,24 @@ export async function POST(request) {
       return NextResponse.json({
         status: 'success',
         message: 'Lobby existente atualizado',
-        lobbyId.toString()
+        lobbyId: fixedLobbyId.toString()
       });
     }
     
     // Se não existe, criar um novo lobby com o ID fixo
     const lobbyData = {
       _id, // Usar ID fixo baseado no ID do usuário
-      name: name: `Lobby de ${userId}`,
+      name: `Lobby de ${userId}`,
       owner,
       members, // Proprietário já é um membro
-      lobbyType.lobbyType,
+      lobbyType: body.lobbyType,
       maxPlayers,
       status: 'active',
-      gameMode.gameMode: 'casual',
+      gameMode: body.gameMode || 'casual',
       createdAt,
       updatedAt,
       readyMembers, // Ninguém está pronto no início
-      settings.settings: {}
+      settings: {}
     };
     
     console.log(`Criando lobby fixo para usuário ${userId}, ID: ${fixedLobbyId}`);
@@ -149,19 +148,20 @@ export async function POST(request) {
     // Também adicionar o usuário como membro na coleção lobbymembers
     try {
       const user = await db.collection('users').findOne(
-        { _id },
-        { projection: { username, avatar, level);
+        { _id: new ObjectId(userId) },
+        { projection: { username: 1, avatar: 1, level: 1 } }
+      );
       
       if (user) {
         await db.collection('lobbymembers').insertOne({
-          lobbyId.insertedId ? lobbyId.insertedId.toString() : "",
-          userId,
-          username.username: 'Usuário',
-          avatar.avatar: null,
-          level.level: 1,
-          isLeader, // Proprietário é o líder
-          isReady,
-          joinedAt
+          lobbyId: result.insertedId ? result.insertedId.toString() : "",
+          userId: userId,
+          username: user.username || 'Usuário',
+          avatar: user.avatar || null,
+          level: user.level || 1,
+          isLeader: true, // Proprietário é o líder
+          isReady: false,
+          joinedAt: new Date()
         });
       }
     } catch (memberError) {
@@ -172,7 +172,7 @@ export async function POST(request) {
     return NextResponse.json({
       status: 'success',
       message: 'Lobby criado com sucesso',
-      lobbyId.insertedId ? lobbyId.insertedId.toString() : ""
+      lobbyId: result.insertedId ? result.insertedId.toString() : ""
     });
     
   } catch (error) {
@@ -190,7 +190,7 @@ export async function PATCH(request) {
   try {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       console.log('❌ Usuário não autenticado:', error);
       return NextResponse.json(
         { status: 'error', error: 'Não autorizado' },
@@ -220,13 +220,13 @@ export async function PATCH(request) {
     const userObjectId = new ObjectId(userId);
     
     // Verificar se o lobby existe
-    const lobby = await db.collection('lobbies').findOne({ _id });
+    const lobby = await db.collection('lobbies').findOne({ _id: lobbyObjectId });
     
     if (!lobby) {
       console.log('⚠️ Lobby não encontrado, tentando criar com base nos membros');
       
       // Verificar se existem membros para este lobby
-      const members = await db.collection('lobbymembers').find({ lobbyId }).toArray();
+      const members = await db.collection('lobbymembers').find({ lobbyId: lobbyId }).toArray();
       
       if (members && members.length > 0) {
         console.log(`✅ Encontrados ${members.length} membros para o lobby ${lobbyId}`);
@@ -235,17 +235,17 @@ export async function PATCH(request) {
         const leader = members.find(m => m.isLeader) || members[0];
         
         const newLobby = {
-          _id,
+          _id: lobbyObjectId,
           name: `Lobby reconstruído`,
-          owner.userId,
-          data: members.map(m => m.userId),
+          owner: leader.userId,
+          members: members.map(m => m.userId),
           lobbyType: 'reconstructed',
-          maxPlayers,
+          maxPlayers: 4,
           status: 'active',
           gameMode: 'casual',
           createdAt: new Date(),
           updatedAt: new Date(),
-          readyMembers.filter(m => m.isReady).map(m => m.userId)
+          readyMembers: members.filter(m => m.isReady).map(m => m.userId)
         };
         
         // Inserir o lobby reconstruído
@@ -262,15 +262,15 @@ export async function PATCH(request) {
     // Verificar se o usuário já está na lista de membros do lobby
     let isMemberInLobby = false;
     if (lobby && lobby.members) {
-      isMemberInLobby = lobby.members.some((memberId | string) => 
+      isMemberInLobby = lobby.members.some((memberId) => 
         memberId.toString() === userId.toString()
       );
     }
     
     // Verificar se o usuário já está na coleção lobbymembers
     const existingMember = await db.collection('lobbymembers').findOne({
-      lobbyId,
-      userId
+      lobbyId: lobbyId,
+      userId: userId
     });
     
     // Se o usuário não estiver em qualquer uma das estruturas, adicioná-lo
@@ -281,12 +281,12 @@ export async function PATCH(request) {
       console.log('🔧 Adicionando usuário à lista de membros do lobby');
       
       await db.collection('lobbies').updateOne(
-        { _id },
+        { _id: lobbyObjectId },
         { 
-          $addToSet,
+          $addToSet: { members: userObjectId },
           $set: { updatedAt: new Date() }
         },
-        { upsert }
+        { upsert: true }
       );
       
       changes = true;
@@ -298,19 +298,20 @@ export async function PATCH(request) {
       
       // Obter dados do usuário
       const user = await db.collection('users').findOne(
-        { _id },
-        { projection: { username, avatar, level);
+        { _id: userObjectId },
+        { projection: { username: 1, avatar: 1, level: 1 } }
+      );
       
       // Se o usuário for encontrado, criar entrada na coleção lobbymembers
       if (user) {
         await db.collection('lobbymembers').insertOne({
-          lobbyId,
-          userId,
-          username.username: 'Usuário',
-          avatar.avatar: null,
-          level.level: 1,
-          isLeader,
-          isReady,
+          lobbyId: lobbyId,
+          userId: userId,
+          username: user.username || 'Usuário',
+          avatar: user.avatar || null,
+          level: user.level || 1,
+          isLeader: false,
+          isReady: false,
           joinedAt: new Date()
         });
         
@@ -322,15 +323,15 @@ export async function PATCH(request) {
     
     return NextResponse.json({
       status: 'success',
-      message ? 'Filiação ao lobby consertada' : 'Filiação ao lobby já estava correta',
-      changesApplied,
-      lobbyId
+      message: changes ? 'Filiação ao lobby consertada' : 'Filiação ao lobby já estava correta',
+      changesApplied: changes,
+      lobbyId: lobbyId
     });
     
   } catch (error) {
     console.error('❌ Erro ao consertar filiação ao lobby:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro interno do servidor', details.message },
+      { status: 'error', error: 'Erro interno do servidor', details: error.message },
       { status: 400 });
   }
 } 

@@ -68,7 +68,7 @@ export async function GET(request) {
     return NextResponse.json({
       message: 'Permissões de administrador corrigidas com sucesso',
       user: {
-        id: updatedUser._id.toString(),
+        id: updatedUser._id ? updatedUser._id.toString() : "",
         username: updatedUser.username,
         email: updatedUser.email,
         isAdmin: updatedUser.isAdmin,

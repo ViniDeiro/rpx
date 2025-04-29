@@ -8,11 +8,11 @@ import { authOptions } from '@/lib/auth';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id };
 }
 
 // POST um convite de lobby
@@ -23,7 +23,7 @@ export async function POST(request) {
     // Verificar autenticação
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       console.log('API Lobby Invite Reject - Usuário não autenticado');
       return NextResponse.json({
         status: 'error',
@@ -72,11 +72,11 @@ export async function POST(request) {
     }
     
     console.log(`API Lobby Invite Reject - Convite encontrado: ${JSON.stringify({
-      id: _id.toString(),
-      inviter.inviter ? inviter.inviter.toString() : "",
-      recipient.recipient ? recipient.recipient.toString() : "",
-      lobbyId.lobbyId ? lobbyId.lobbyId.toString() : "",
-      status.status
+      id: invite._id ? invite._id.toString() : "",
+      inviter: invite.inviter ? invite.inviter.toString() : "",
+      recipient: invite.recipient ? invite.recipient.toString() : "",
+      lobbyId: invite.lobbyId ? invite.lobbyId.toString() : "",
+      status: invite.status
     })}`);
     
     // Verificar se o usuário é o destinatário do convite
@@ -109,10 +109,11 @@ export async function POST(request) {
     console.log(`API Lobby Invite Reject - Marcando notificação como lida`);
     await db.collection('notifications').updateOne(
       {
-        'data.invite._id' ObjectId(inviteId),
-        userId ObjectId(userId)
+        'data.invite._id': new ObjectId(inviteId),
+        userId: new ObjectId(userId)
       },
-      { $set);
+      { $set: { read: true } }
+    );
     
     console.log(`API Lobby Invite Reject - Processamento concluído com sucesso`);
     

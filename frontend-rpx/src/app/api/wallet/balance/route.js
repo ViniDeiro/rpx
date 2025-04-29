@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Referência ao armazenamento simulado compartilhado entre APIs
 // Na prática, isso seria armazenado em banco de dados
 // Como não temos acesso direto às variáveis das outras APIs, inicializamos novamente
-let userWallets, { balance }> = {};
+let userWallets = {};
 
 // GET - Obter saldo da carteira (versão simulada)
 export async function GET(req) {
@@ -25,14 +25,14 @@ export async function GET(req) {
     
     // Registrar consulta no log
     console.log(`💰 [SIMULAÇÃO] Consulta de saldo para o usuário ${userId}`);
-    console.log(`💰 [SIMULAÇÃO] Saldo atual$${userWallets[userId].balance}`);
+    console.log(`💰 [SIMULAÇÃO] Saldo atual: $${userWallets[userId].balance}`);
     
     // Retornar dados da carteira
     return NextResponse.json({
-      userId,
-      balance.balance,
+      userId: userId,
+      balance: userWallets[userId].balance,
       currency: 'BRL',
-      simulation,
+      simulation: true,
       timestamp: new Date()
     });
   } catch (error) {
@@ -56,15 +56,15 @@ export async function POST(req) {
     const { amount, operation } = body;
     
     // Validar dados
-    if (!amount: isNaN(amount)) {
+    if (!amount || isNaN(amount)) {
       return NextResponse.json(
         { error: 'Valor inválido' },
         { status: 400 });
     }
     
-    if (!operation: !['add', 'subtract', 'set'].includes(operation)) {
+    if (!operation || !['add', 'subtract', 'set'].includes(operation)) {
       return NextResponse.json(
-        { error: 'Operação inválida. Use, subtract ou set' },
+        { error: 'Operação inválida. Use add, subtract ou set' },
         { status: 400 });
     }
     
@@ -89,18 +89,18 @@ export async function POST(req) {
     }
     
     console.log(`💰 [SIMULAÇÃO] Atualização de saldo para o usuário ${userId}`);
-    console.log(`💰 [SIMULAÇÃO] Operação: ${operation}, Valor$${amount}`);
-    console.log(`💰 [SIMULAÇÃO] Saldo anterior$${oldBalance}, Novo saldo$${userWallets[userId].balance}`);
+    console.log(`💰 [SIMULAÇÃO] Operação: ${operation}, Valor: $${amount}`);
+    console.log(`💰 [SIMULAÇÃO] Saldo anterior: $${oldBalance}, Novo saldo: $${userWallets[userId].balance}`);
     
     // Retornar dados atualizados
     return NextResponse.json({
-      userId,
-      previousBalance,
-      currentBalance.balance,
+      userId: userId,
+      previousBalance: oldBalance,
+      currentBalance: userWallets[userId].balance,
       operation,
       amount,
       currency: 'BRL',
-      simulation,
+      simulation: true,
       timestamp: new Date()
     });
   } catch (error) {

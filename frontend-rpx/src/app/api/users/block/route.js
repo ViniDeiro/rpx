@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-
+import { ObjectId } from 'mongodb';
 import { getModels } from '@/lib/mongodb/models';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -45,7 +45,7 @@ export async function POST(req) {
     // Verificar se o usuário já está bloqueado
     const currentUser = await User.findById(currentUserId).exec();
     const isAlreadyBlocked = currentUser.blockedUsers?.some(
-      (blockedUser: { id | { toString() } }) => blockedUser.id ? blockedUser.id.toString() : "" === userId
+      (blockedUser) => blockedUser.id ? blockedUser.id.toString() : "" === userId
     );
 
     if (isAlreadyBlocked) {
@@ -57,28 +57,35 @@ export async function POST(req) {
     // Adicionar à lista de bloqueados
     await User.findByIdAndUpdate(currentUserId, {
       $push: {
-        blockedUsers,
-          blockedAt: new Date(),
-        },
-      },
+        blockedUsers: {
+          userId: new ObjectId(userId),
+          blockedAt: new Date()
+        }
+      }
     });
 
     // Remover da lista de amigos caso existente
     await User.findByIdAndUpdate(currentUserId, {
       $pull: {
-        friends);
+        friends: { userId: userId }
+      }
+    });
 
     // Remover solicitações de amizade pendentes
     await User.findByIdAndUpdate(currentUserId, {
       $pull: {
-        friendRequests);
+        friendRequests: { userId: userId }
+      }
+    });
 
     await User.findByIdAndUpdate(userId, {
       $pull: {
-        sentFriendRequests);
+        sentFriendRequests: { userId: currentUserId }
+      }
+    });
 
     return NextResponse.json({
-      message: 'Usuário bloqueado com sucesso',
+      message: 'Usuário bloqueado com sucesso'
     });
   } catch (error) {
     console.error('Erro ao bloquear usuário:', error);

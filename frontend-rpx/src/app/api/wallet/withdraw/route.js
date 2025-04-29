@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Referência ao armazenamento simulado compartilhado entre APIs
 // Na prática, isso seria armazenado em banco de dados
 let transactions = [];
-let userWallets, { balance }> = {};
+let userWallets = {};
 
 // POST - Solicitar saque da carteira (versão simulada)
 export async function POST(req) {
@@ -20,7 +20,14 @@ export async function POST(req) {
     const { amount, paymentMethod, accountInfo } = body;
     
     // Validar dados
-    if (!amount: amount  setTimeout(resolve, 800));
+    if (!amount || amount < 1) {
+      return NextResponse.json(
+        { error: 'Valor de saque inválido' },
+        { status: 400 });
+    }
+    
+    // Simular tempo de processamento
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     // Calcular taxa de saque (se aplicável)
     const withdrawalFee = 0; // Sem taxa para o exemplo
@@ -35,18 +42,30 @@ export async function POST(req) {
         { status: 400 });
     }
     
+    // Inicializar a carteira se não existir
+    if (!userWallets[userId]) {
+      userWallets[userId] = { balance: 1000 }; // Inicializar com saldo para simulação
+    }
+    
+    // Verificar saldo
+    if (userWallets[userId].balance < totalAmount) {
+      return NextResponse.json(
+        { error: 'Saldo insuficiente para realizar o saque' },
+        { status: 400 });
+    }
+    
     // Gerar referência única para o saque
     const reference = `WD-${uuidv4().substring(0, 8).toUpperCase()}`;
     const transactionId = uuidv4();
     
     // Criar nova transação simulada
     const transaction = {
-      id,
-      userId,
+      id: transactionId,
+      userId: userId,
       type: 'withdrawal',
       amount,
-      fee,
-      netAmount,
+      fee: withdrawalFee,
+      netAmount: amount - withdrawalFee,
       status: 'completed', // Na simulação, já aprovamos o saque automaticamente
       paymentMethod,
       accountInfo,
@@ -63,12 +82,13 @@ export async function POST(req) {
     userWallets[userId].balance -= totalAmount;
     
     console.log(`💸 [SIMULAÇÃO] Saque de R$${amount} para o usuário ${userId} realizado com sucesso`);
-    console.log(`💸 [SIMULAÇÃO] Novo saldo$${userWallets[userId].balance}`);
+    console.log(`💸 [SIMULAÇÃO] Novo saldo: $${userWallets[userId].balance}`);
     
     // Retornar dados da transação
     return NextResponse.json({
       message: 'Saque simulado realizado com sucesso',
-      transaction,
+      transaction: {
+        id: transactionId,
         type: 'withdrawal',
         amount,
         status: 'completed',
@@ -76,8 +96,8 @@ export async function POST(req) {
         reference,
         createdAt: new Date()
       },
-      simulation,
-      currentBalance.balance,
+      simulation: true,
+      currentBalance: userWallets[userId].balance,
       estimatedProcessingTime: 'Imediato (simulação)'
     });
   } catch (error) {

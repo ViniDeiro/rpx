@@ -76,7 +76,7 @@ export async function GET(req, { params }) {
     
     // Formatar aposta para resposta
     const formattedBet = {
-      id: bet._id.toString(),
+      id: bet._id ? bet._id.toString() : "",
       userId: bet.userId,
       matchId: bet.matchId,
       amount: bet.amount,
@@ -89,7 +89,7 @@ export async function GET(req, { params }) {
       settledAt: bet.settledAt,
       cashoutAmount: bet.cashoutAmount,
       match: match ? {
-        id: match._id.toString(),
+        id: match._id ? match._id.toString() : "",
         title: match.title,
         status: match.status,
         teams: match.teams
@@ -250,13 +250,6 @@ export async function POST(req, { params }) {
           reference: { type: 'bet', id: betId },
           createdAt: new Date()
         };
-        
-        // Atualizar saldo do usuário
-        await User.findByIdAndUpdate(
-          userId,
-          { $inc: { balance: cashoutAmount } },
-          { session: session, new: true }
-        );
       } else if (action === 'cancel') {
         // Atualizar aposta para status de cancelada
         updateData = {
@@ -265,80 +258,57 @@ export async function POST(req, { params }) {
           updatedAt: new Date()
         };
         
-        // Preparar dados da transação (reembolso do valor apostado)
+        // Preparar dados da transação para reembolso
         transactionData = {
           userId: userId,
-          type: 'bet_refund',
+          type: 'refund',
           amount: bet.amount,
           status: 'completed',
           description: `Cancelamento da aposta #${betId}`,
           reference: { type: 'bet', id: betId },
           createdAt: new Date()
         };
-        
-        // Atualizar saldo do usuário (reembolsar o valor apostado)
-        await User.findByIdAndUpdate(
-          userId,
-          { $inc: { balance: bet.amount } },
-          { session: session, new: true }
-        );
       }
       
-      // Atualizar aposta
+      // Atualizar aposta no banco de dados
       await db.collection('bets').updateOne(
         { _id: new mongoose.Types.ObjectId(betId) },
         { $set: updateData },
-        { session: session }
+        { session }
       );
       
       // Registrar transação
-      await db.collection('transactions').insertOne(
-        transactionData,
-        { session: session }
+      await db.collection('transactions').insertOne(transactionData, { session });
+      
+      // Atualizar saldo do usuário
+      const amount = action === 'cashout' ? updateData.cashoutAmount : bet.amount;
+      await User.updateOne(
+        { _id: new mongoose.Types.ObjectId(userId) },
+        { $inc: { 'wallet.balance': amount } },
+        { session }
       );
       
       // Confirmar transação
       await session.commitTransaction();
       
-      // Buscar aposta atualizada
-      const updatedBet = await db.collection('bets').findOne(
-        { _id: new mongoose.Types.ObjectId(betId) }
-      );
-      
-      // Formatar resposta
-      const formattedBet = {
-        id: updatedBet._id.toString(),
-        userId: updatedBet.userId,
-        matchId: updatedBet.matchId,
-        amount: updatedBet.amount,
-        odd: updatedBet.odd,
-        potentialWin: updatedBet.potentialWin,
-        type: updatedBet.type,
-        selection: updatedBet.selection,
-        status: updatedBet.status,
-        settledAt: updatedBet.settledAt,
-        cashoutAmount: updatedBet.cashoutAmount
-      };
-      
-      // Retornar dados formatados
+      // Retornar sucesso
       return NextResponse.json({
         success: true,
         message: action === 'cashout' ? 'Cashout realizado com sucesso' : 'Aposta cancelada com sucesso',
-        bet: formattedBet
+        amount: amount
       });
-      
-    } catch (txError) {
+    } catch (error) {
       // Reverter transação em caso de erro
       await session.abortTransaction();
-      throw txError;
+      throw error;
     } finally {
-      // Finalizar sessão
+      // Encerrar sessão
       session.endSession();
     }
   } catch (error) {
-    console.error(`Erro ao processar ${error}`, error);
+    console.error(`Erro ao processar ${body?.action || 'ação'} para aposta:`, error);
     return NextResponse.json(
-      { error: 'Erro ao processar a requisição' },
+      { error: `Erro ao processar ${body?.action || 'ação'} para aposta` },
       { status: 500 }
     );
   }
@@ -426,7 +396,7 @@ export async function DELETE(req, { params }) {
         
         // Registrar transação de reembolso
         await db.collection('transactions').insertOne({
-          userId,
+          userId: bet.userId,
           type: 'refund',
           amount: bet.amount,
           status: 'completed',

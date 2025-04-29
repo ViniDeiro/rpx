@@ -4,14 +4,15 @@ import { v4 as uuidv4 } from 'uuid';
 // Função para gerar transações simuladas para um usuário
 const generateSimulatedTransactions = (userId, count = 15) => {
   const transactions = [];
-  const currentTime = new: new Date();
+  const currentTime = new Date();
   
-  for (let i = 0; i  0.4; // 60% chance de ser depósito
+  for (let i = 0; i < count; i++) {
+    const isDeposit = Math.random() > 0.4; // 60% chance de ser depósito
     const amount = Math.floor(Math.random() * 500) + 10; // Valores entre 10 e 510
     
     // Definir datas aleatórias nos últimos 30 dias
     const date = new Date(currentTime);
-    date.setDate(date.get: new Date() - Math.floor(Math.random() * 30));
+    date.setDate(date.getDate() - Math.floor(Math.random() * 30));
     
     // Gerar ID e referência
     const id = uuidv4();
@@ -32,16 +33,16 @@ const generateSimulatedTransactions = (userId, count = 15) => {
     transactions.push({
       id,
       userId,
-      type ? 'deposit' : 'withdrawal',
+      type: isDeposit ? 'deposit' : 'withdrawal',
       amount,
       status: 'completed',
       paymentMethod,
       reference,
-      description 
-        ? `Depósito via ${paymentMethod === 'pix' ? 'PIX'  === 'credit_card' ? 'Cartão de Crédito' : 'Transferência Bancária'}`
+      description: isDeposit 
+        ? `Depósito via ${paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'credit_card' ? 'Cartão de Crédito' : 'Transferência Bancária'}`
         : `Saque via ${paymentMethod === 'pix' ? 'PIX' : 'Transferência Bancária'}`,
-      createdAt,
-      updatedAt
+      createdAt: date,
+      updatedAt: date
     });
   }
   
@@ -72,7 +73,7 @@ export async function GET(req) {
     // Filtrar por tipo, se necessário
     const filteredTransactions = type === 'all' 
       ? allTransactions 
-      .filter(t => t.type === type);
+      : allTransactions.filter(t => t.type === type);
     
     // Aplicar paginação
     const startIndex = (page - 1) * limit;
@@ -89,8 +90,13 @@ export async function GET(req) {
     
     // Retornar dados paginados
     return NextResponse.json({
-      transactions,
-      pagination,
+      transactions: paginatedTransactions,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      },
       timestamp: new Date()
     });
   } catch (error) {

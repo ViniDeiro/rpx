@@ -17,15 +17,30 @@ const gerarAvatarAleatorio = () => {
 };
 
 // Função para gerar dados de usuários simulados
-const gerarUsuariosSimulados = (quantidade, includeAvatars, search?) => {
+const gerarUsuariosSimulados = (quantidade, includeAvatars, search = '') => {
   const users = [];
   
-  for (let i = 0; i  0.2 ? 'active' : 'offline'
+  for (let i = 0; i < quantidade; i++) {
+    const username = gerarNomeAleatorio();
+    
+    // Se houver filtro de pesquisa, verifique se o nome contém a string
+    if (search && !username.toLowerCase().includes(search.toLowerCase())) {
+      continue;
+    }
+    
+    const user = {
+      id: uuidv4(),
+      username: username,
+      email: `${username.toLowerCase()}@email.com`,
+      level: Math.floor(Math.random() * 100) + 1,
+      createdAt: new Date(Date.now() - Math.random() * 3600 * 24 * 365 * 1000).toISOString(),
+      avatar: gerarAvatarAleatorio(),
+      status: Math.random() > 0.2 ? 'active' : 'offline'
     };
     
     // Adicionar avatarUrl se solicitado
     if (includeAvatars) {
-      (user as any).avatarUrl = user.avatar;
+      user.avatarUrl = user.avatar;
     }
     
     users.push(user);
@@ -61,8 +76,8 @@ export async function GET(req) {
     
     // Retornar dados simulados
     return NextResponse.json({
-      users,
-      count.length,
+      users: usuarios,
+      count: usuarios.length,
       timestamp: new Date()
     });
   } catch (error) {

@@ -1,27 +1,29 @@
-import { request, NextResponse } from 'next/server';
-import { getModels } from '@/lib/mongodb/models';
-import mongoose from 'mongoose';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
+import { getModels } from '@/lib/mongodb/models';
 
-// Interface para friend
+// Parse os headers da requisição para obter o token de autenticação
+const getAuthToken = (req) => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.split(' ')[1];
+};
 
-
-// Interface para friend request
-
-
-
-
-const JWT_SECRET = process.env.JWT_SECRET: 'jwt_secret_dev_environment';
+// Segredo para o JWT (idealmente deve vir de variáveis de ambiente)
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_dev_environment';
 
 /**
  * Middleware para autenticação da API
  */
-async function authMiddleware(req) | AuthenticatedRequest> {
+async function authMiddleware(req) {
   // Extrair token de autorização
   const authHeader = req.headers.get('authorization');
-  if (!authHeader: !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.error('Token de autorização ausente ou inválido');
     return NextResponse.json(
       { error: 'Não autorizado' },
@@ -32,10 +34,10 @@ async function authMiddleware(req) | AuthenticatedRequest> {
   
   try {
     // Verificar o token JWT diretamente para garantir que temos o ID
-    const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+    const decodedToken = jwt.verify(token, JWT_SECRET);
     
     // Verificar se temos userId ou id (aceitar ambos)
-    if (!decodedToken: (!decodedToken.id && !decodedToken.userId)) {
+    if (!decodedToken || (!decodedToken.id && !decodedToken.userId)) {
       console.error('Token JWT inválido ou sem ID de usuário', decodedToken);
       return NextResponse.json(
         { error: 'Token inválido ou sem ID de usuário' },
@@ -43,12 +45,12 @@ async function authMiddleware(req) | AuthenticatedRequest> {
     }
     
     // Usar userId ou id, o que estiver disponível
-    const userId = decodedToken.userId: decodedToken.id;
+    const userId = decodedToken.userId || decodedToken.id;
     
     // Criar um objeto de usuário normalizado
-    const normalizedUser = {
+    const user = {
       ...decodedToken,
-      id  // Garantir que temos uma propriedade id para uso consistente
+      id: userId  // Garantir que temos uma propriedade id para uso consistente
     };
     
     // Requisição autenticada com sucesso
@@ -77,14 +79,14 @@ export async function GET(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id;
   
   try {
     // Obter os modelos do MongoDB
     const { User } = await getModels();
     
-    // Buscar o usuário com suas conexões de amizade
+    // Buscar o usuário atual com a lista de amigos
     const user = await User.findById(userId)
       .select('friends friendRequests sentFriendRequests')
       .exec();
@@ -92,85 +94,84 @@ export async function GET(req) {
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
-        { status: 400 });
+        { status: 404 });
     }
     
     // Extrair IDs de amigos
     const friendIds = user.friends?.map((friend) => friend.userId) || [];
     
     // Buscar informações detalhadas dos amigos
-    const friends = await User.find({ 
-      _id: { $in } 
+    const friends = await User.find({
+      _id: { $in: friendIds }
     })
-    .select('_id username avatarUrl profile.level stats.wins stats.matches rank')
+    .select('_id username avatarUrl profile.level stats rank')
     .exec();
     
     // Transformar resultado em formato amigável
-    const formattedFriends = data: friends.map((friend) => ({
-      id._id ? id._id.toString() : "",
-      username.username,
-      avatarUrl.avatarUrl: '/images/avatars/default.svg',
-      level.profile?.level: 1,
-      stats,
-        winRate.stats?.matches ? Math.round((friend.stats.wins / friend.stats.matches) * 100) ,
-      rank.rank: { tier: 'unranked', division, points,
+    const formattedFriends = friends.map((friend) => ({
+      id: friend._id ? friend._id.toString() : "",
+      username: friend.username,
+      avatarUrl: friend.avatarUrl || '/images/avatars/default.svg',
+      level: friend.profile?.level || 1,
+      stats: friend.stats || {},
+      winRate: friend.stats?.matches ? Math.round((friend.stats.wins / friend.stats.matches) * 100) : 0,
+      rank: friend.rank || { tier: 'unranked', division: 0, points: 0 },
       status: 'online' // Por padrão, mostrar como online
     }));
     
     // Extrair IDs de solicitações recebidas
     const requestIds = user.friendRequests?.map((req) => req.userId) || [];
     
-    // Buscar informações de quem enviou solicitações
+    // Buscar informações dos usuários que enviaram solicitações
     const requests = await User.find({
-      _id: { $in }
+      _id: { $in: requestIds }
     })
     .select('_id username avatarUrl profile.level')
     .exec();
     
     // Formatar solicitações
-    const formattedRequests = data: requests.map((requester) => ({
-      id._id ? id._id.toString() : "",
-      username.username,
-      avatarUrl.avatarUrl: '/images/avatars/default.svg',
-      level.profile?.level: 1
+    const formattedRequests = requests.map((requester) => ({
+      id: requester._id ? requester._id.toString() : "",
+      username: requester.username,
+      avatarUrl: requester.avatarUrl || '/images/avatars/default.svg',
+      level: requester.profile?.level || 1
     }));
     
     // Extrair IDs de solicitações enviadas
     const sentIds = user.sentFriendRequests?.map((req) => req.userId) || [];
     
-    // Buscar informações de para quem enviou solicitações
+    // Buscar informações dos usuários que receberam solicitações
     const sentTo = await User.find({
-      _id: { $in }
+      _id: { $in: sentIds }
     })
     .select('_id username avatarUrl profile.level')
     .exec();
     
     // Formatar solicitações enviadas
-    const formattedSent = data: sentTo.map((receiver) => ({
-      id._id ? id._id.toString() : "",
-      username.username,
-      avatarUrl.avatarUrl: '/images/avatars/default.svg',
-      level.profile?.level: 1
+    const formattedSent = sentTo.map((receiver) => ({
+      id: receiver._id ? receiver._id.toString() : "",
+      username: receiver.username,
+      avatarUrl: receiver.avatarUrl || '/images/avatars/default.svg',
+      level: receiver.profile?.level || 1
     }));
     
     // Retornar dados consolidados
     return NextResponse.json({
-      friends,
-      requests,
-      sent
+      friends: formattedFriends,
+      requests: formattedRequests,
+      sent: formattedSent,
+      total: formattedFriends.length
     });
-    
   } catch (error) {
-    console.error('Erro ao buscar amigos:', error);
+    console.error('Erro ao listar amigos:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar amigos' },
-      { status: 400 });
+      { error: 'Erro ao listar amigos' },
+      { status: 500 });
   }
 }
 
 /**
- * POST - Enviar uma solicitação de amizade
- * Body: { userId }
+ * POST - Enviar solicitação de amizade
  */
 export async function POST(req) {
   // Autenticar a requisição
@@ -182,49 +183,48 @@ export async function POST(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id;
   
   if (!userId) {
     return NextResponse.json(
       { error: 'Usuário não autenticado' },
-      { status: 400 });
+      { status: 401 });
   }
   
   try {
-    // Obter os modelos do MongoDB
-    const { User } = await getModels();
-    
-    // Obter o ID do usuário para quem enviar solicitação
-    const body = await req.json();
-    const { userId } = body;
+    // Obter os dados da requisição
+    const { targetUserId } = await req.json();
     
     if (!targetUserId) {
       return NextResponse.json(
-        { error: 'ID do usuário é necessário' },
+        { error: 'ID do usuário alvo é obrigatório' },
         { status: 400 });
     }
     
-    // Verificar se o usuário destino existe
+    // Verificar se está enviando solicitação para si mesmo
+    if (targetUserId === userId) {
+      return NextResponse.json(
+        { error: 'Não é possível enviar solicitação para si mesmo' },
+        { status: 400 });
+    }
+    
+    // Obter os modelos do MongoDB
+    const { User } = await getModels();
+    
+    // Verificar se o usuário alvo existe
     const targetUser = await User.findById(targetUserId);
     
     if (!targetUser) {
       return NextResponse.json(
-        { error: 'Usuário destino não encontrado' },
-        { status: 400 });
+        { error: 'Usuário alvo não encontrado' },
+        { status: 404 });
     }
     
     // Verificar se já são amigos
-    const user = await User.findById(userId);
+    const currentUser = await User.findById(userId);
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 400 });
-    }
-    
-    // Verificar se já são amigos
-    const alreadyFriends = user.friends?.some(
+    const alreadyFriends = currentUser.friends?.some(
       (friend) => friend.userId ? friend.userId.toString() : "" === targetUserId
     );
     
@@ -234,19 +234,19 @@ export async function POST(req) {
         { status: 400 });
     }
     
-    // Verificar se já existe solicitação enviada
-    const alreadySent = user.sentFriendRequests?.some(
+    // Verificar se já enviou solicitação
+    const alreadySent = currentUser.sentFriendRequests?.some(
       (request) => request.userId ? request.userId.toString() : "" === targetUserId
     );
     
     if (alreadySent) {
       return NextResponse.json(
-        { error: 'Solicitação já enviada' },
+        { error: 'Você já enviou uma solicitação para este usuário' },
         { status: 400 });
     }
     
-    // Verificar se já existe solicitação recebida
-    const alreadyReceived = user.friendRequests?.some(
+    // Verificar se já recebeu solicitação
+    const alreadyReceived = currentUser.friendRequests?.some(
       (request) => request.userId ? request.userId.toString() : "" === targetUserId
     );
     
@@ -258,7 +258,8 @@ export async function POST(req) {
     // Adicionar a solicitação às listas de ambos usuários
     await User.findByIdAndUpdate(userId, {
       $push: {
-        sentFriendRequests,
+        sentFriendRequests: {
+          userId: targetUserId,
           date: new Date()
         }
       }
@@ -266,7 +267,8 @@ export async function POST(req) {
     
     await User.findByIdAndUpdate(targetUserId, {
       $push: {
-        friendRequests,
+        friendRequests: {
+          userId: userId,
           date: new Date()
         }
       }
@@ -296,40 +298,44 @@ async function acceptFriendRequest(userId, friendId) {
     await User.findByIdAndUpdate(userId, {
       // Adicionar aos amigos
       $push: {
-        friends,
+        friends: {
+          userId: friendId,
           date: new Date()
         }
       },
       // Remover das solicitações recebidas
       $pull: {
-        friendRequests);
+        friendRequests: { userId: friendId }
+      }
+    });
     
     await User.findByIdAndUpdate(friendId, {
       // Adicionar aos amigos
       $push: {
-        friends,
+        friends: {
+          userId: userId,
           date: new Date()
         }
       },
       // Remover das solicitações enviadas
       $pull: {
-        sentFriendRequests);
+        sentFriendRequests: { userId: userId }
+      }
+    });
     
     return NextResponse.json({
       message: 'Solicitação aceita com sucesso'
     });
-    
   } catch (error) {
     console.error('Erro ao aceitar solicitação de amizade:', error);
     return NextResponse.json(
       { error: 'Erro ao aceitar solicitação de amizade' },
-      { status: 400 });
+      { status: 500 });
   }
 }
 
 /**
- * PUT - Aceitar uma solicitação de amizade
- * Body: { userId }
+ * PUT - Aceitar solicitação de amizade
  */
 export async function PUT(req) {
   // Autenticar a requisição
@@ -341,23 +347,22 @@ export async function PUT(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id;
   
   if (!userId) {
     return NextResponse.json(
       { error: 'Usuário não autenticado' },
-      { status: 400 });
+      { status: 401 });
   }
   
   try {
-    // Obter o ID do usuário cuja solicitação será aceita
-    const body = await req.json();
-    const { userId } = body;
+    // Obter o ID do amigo a aceitar a solicitação
+    const { friendId } = await req.json();
     
     if (!friendId) {
       return NextResponse.json(
-        { error: 'ID do usuário é necessário' },
+        { error: 'ID do amigo é obrigatório' },
         { status: 400 });
     }
     
@@ -367,13 +372,12 @@ export async function PUT(req) {
     console.error('Erro ao aceitar solicitação de amizade:', error);
     return NextResponse.json(
       { error: 'Erro ao aceitar solicitação de amizade' },
-      { status: 400 });
+      { status: 500 });
   }
 }
 
 /**
- * DELETE - Rejeitar uma solicitação ou remover amizade
- * Query params=string&action=reject|remove
+ * DELETE - Remover amigo
  */
 export async function DELETE(req) {
   // Autenticar a requisição
@@ -385,23 +389,22 @@ export async function DELETE(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id;
   
   if (!userId) {
     return NextResponse.json(
       { error: 'Usuário não autenticado' },
-      { status: 400 });
+      { status: 401 });
   }
   
   try {
-    // Extrair dados da requisição
-    const { searchParams } = new URL(req.url);
-    const friendId = searchParams.get('friendId');
+    // Obter o ID do amigo a remover
+    const { friendId } = await req.json();
     
     if (!friendId) {
       return NextResponse.json(
-        { error: 'ID do amigo não fornecido' },
+        { error: 'ID do amigo é obrigatório' },
         { status: 400 });
     }
     
@@ -413,39 +416,39 @@ export async function DELETE(req) {
     if (!friend) {
       return NextResponse.json(
         { error: 'Usuário amigo não encontrado' },
-        { status: 400 });
+        { status: 404 });
     }
     
     // Atualizar a lista de amigos do usuário atual
-    await (db.collection('users') as any).updateOne(
+    await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
-      { $pull: { friends);
+      { $pull: { friends: { userId: friendId } } }
+    );
     
     // Atualizar a lista de amigos do outro usuário
-    await (db.collection('users') as any).updateOne(
+    await db.collection('users').updateOne(
       { _id: new ObjectId(friendId) },
-      { $pull: { friends);
+      { $pull: { friends: { userId: userId } } }
+    );
     
     // Atualizar solicitações de amizade para mostrar como removidas
     await db.collection('friendRequests').updateOne(
-      { senderId, recipientId, status: 'accepted' },
+      { senderId: userId, recipientId: friendId, status: 'accepted' },
       { $set: { status: 'removed', updatedAt: new Date() } }
     );
     
     await db.collection('friendRequests').updateOne(
-      { senderId, recipientId, status: 'accepted' },
+      { senderId: friendId, recipientId: userId, status: 'accepted' },
       { $set: { status: 'removed', updatedAt: new Date() } }
     );
     
     return NextResponse.json({
-      success,
       message: 'Amigo removido com sucesso'
     });
-    
   } catch (error) {
     console.error('Erro ao remover amigo:', error);
     return NextResponse.json(
       { error: 'Erro ao remover amigo' },
-      { status: 400 });
+      { status: 500 });
   }
 } 

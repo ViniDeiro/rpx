@@ -64,7 +64,7 @@ export async function GET(req) {
     
     // Obter informações dos jogadores
     const playerIds = matches.flatMap((match) => match.players || []);
-    const uniquePlayerIds = [...new Set(playerIds.map((player) => player.userId.toString()))].map(id => new ObjectId(id));
+    const uniquePlayerIds = [...new Set(playerIds.map((player) => player.userId ? player.userId.toString() : ""))].map(id => new ObjectId(id));
     
     const users = await db.collection('users')
       .find({ _id: { $in: uniquePlayerIds } })
@@ -72,14 +72,14 @@ export async function GET(req) {
     
     // Mapear ID para dados do usuário
     const userMap = users.reduce((acc, user) => {
-      acc[user._id.toString()] = user;
+      acc[user._id ? user._id.toString() : ""] = user;
       return acc;
     }, {});
     
     // Adicionar informações dos jogadores às partidas
     const matchesWithPlayerInfo = matches.map((match) => {
       const playersInfo = (match.players || []).map((player) => {
-        const user = userMap[player.userId.toString()];
+        const user = userMap[player.userId ? player.userId.toString() : ""];
         return user ? {
           _id: user._id,
           username: user.username,
@@ -139,7 +139,7 @@ export async function PUT(req) {
     }
     
     // Buscar a partida
-    const match = await db.collection('matches').findOne({ 
+    const match = await db.collection('matches').findOne({
       _id: new ObjectId(matchId)
     });
     

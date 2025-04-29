@@ -4,22 +4,21 @@ import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
-// Define tipo para retornar na resposta
-;
-  push: {
-    matches;
-    payments;
-    tournaments;
-    friends;
-    updates;
-  };
-}
-
 // Valores padrão para preferências
 const defaultPreferences = {
-  email,
-  push,
-    updates
+  email: {
+    matches: true,
+    payments: true,
+    tournaments: true,
+    friends: true,
+    updates: true
+  },
+  push: {
+    matches: true,
+    payments: true,
+    tournaments: true,
+    friends: true,
+    updates: true
   }
 };
 
@@ -32,7 +31,7 @@ export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success, error: 'Não autorizado' },
+        { success: false, error: 'Não autorizado' },
         { status: 400 });
     }
 
@@ -42,34 +41,34 @@ export async function GET(req) {
     
     if (!db) {
       return NextResponse.json(
-        { success, error: 'Erro de conexão com o banco de dados' },
+        { success: false, error: 'Erro de conexão com o banco de dados' },
         { status: 400 });
     }
 
     // Buscar preferências do usuário
     const userId = session.user.id;
     const userPreferences = await db.collection('userPreferences').findOne({
-      userId,
+      userId: userId,
       type: 'notifications'
     });
 
     // Se não existir, retornar valores padrão
     if (!userPreferences) {
       return NextResponse.json({
-        success,
-        preferences
+        success: true,
+        preferences: defaultPreferences
       });
     }
 
     // Retornar preferências encontradas
     return NextResponse.json({
-      success,
-      preferences.preferences: defaultPreferences
+      success: true,
+      preferences: userPreferences.preferences || defaultPreferences
     });
   } catch (error) {
     console.error('Erro ao buscar preferências de notificação:', error);
     return NextResponse.json(
-      { success, error: 'Erro ao processar requisição' },
+      { success: false, error: 'Erro ao processar requisição' },
       { status: 400 });
   }
 }
@@ -83,7 +82,7 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success, error: 'Não autorizado' },
+        { success: false, error: 'Não autorizado' },
         { status: 400 });
     }
 
@@ -92,9 +91,9 @@ export async function POST(req) {
     const { preferences } = body;
 
     // Validar dados
-    if (!preferences: !preferences.email: !preferences.push) {
+    if (!preferences || !preferences.email || !preferences.push) {
       return NextResponse.json(
-        { success, error: 'Preferências inválidas' },
+        { success: false, error: 'Preferências inválidas' },
         { status: 400 });
     }
 
@@ -104,7 +103,7 @@ export async function POST(req) {
     
     if (!db) {
       return NextResponse.json(
-        { success, error: 'Erro de conexão com o banco de dados' },
+        { success: false, error: 'Erro de conexão com o banco de dados' },
         { status: 400 });
     }
 
@@ -113,35 +112,37 @@ export async function POST(req) {
     
     // Usar upsert para criar ou atualizar
     const result = await db.collection('userPreferences').updateOne(
-      { userId, type: 'notifications' },
+      { userId: userId, type: 'notifications' },
       { 
-        $set,
+        $set: {
+          preferences: preferences,
           updatedAt: new Date()
         },
         $setOnInsert: { 
           createdAt: new Date()
         }
       },
-      { upsert }
+      { upsert: true }
     );
 
     // Registrar evento de atualização
     await db.collection('userActivity').insertOne({
-      userId,
+      userId: userId,
       action: 'update_notification_preferences',
       timestamp: new Date(),
-      data);
+      data: preferences
+    });
 
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Preferências de notificação salvas com sucesso',
-      updated.modifiedCount > 0,
-      created.upsertedCount > 0
+      updated: result.modifiedCount > 0,
+      created: result.upsertedCount > 0
     });
   } catch (error) {
     console.error('Erro ao salvar preferências de notificação:', error);
     return NextResponse.json(
-      { success, error: 'Erro ao processar requisição' },
+      { success: false, error: 'Erro ao processar requisição' },
       { status: 400 });
   }
 } 

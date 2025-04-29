@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(
   request,
-  { params }: { params) {
+  { params }) {
   console.log('API Lobby GET - Iniciando processamento da solicitação', params.id);
 
   try {
@@ -35,7 +35,7 @@ export async function GET(
     }
 
     // Obter usuário atual a partir do email
-    const user = await db.collection('users').findOne({ email });
+    const user = await db.collection('users').findOne({ email: userEmail });
     if (!user) {
       console.log(`API Lobby GET - Erroário não encontrado para o email ${userEmail}`);
       return NextResponse.json({
@@ -58,7 +58,7 @@ export async function GET(
     }
 
     // Buscar o lobby
-    const lobby = await db.collection('lobbies').findOne({ _id });
+    const lobby = await db.collection('lobbies').findOne({ _id: lobbyObjectId });
     if (!lobby) {
       console.log(`API Lobby GET - Erro não encontrado para o ID ${lobbyObjectId.toString()}`);
       return NextResponse.json({
@@ -67,12 +67,12 @@ export async function GET(
       }, { status: 400 });
     }
 
-    console.log(`API Lobby GET - Lobby encontrado: ${lobby.name: 'Sem nome'}`);
+    console.log(`API Lobby GET - Lobby encontrado: ${lobby.name || 'Sem nome'}`);
 
     // Verificar se o usuário está nos membros do lobby
     const userIdString = user._id ? user._id.toString() : "";
     const isUserMember = lobby.members && lobby.members.some((memberId) => 
-      (typeof memberId === 'object' ? memberId.toString() ) === userIdString
+      (typeof memberId === 'object' ? memberId.toString() : memberId) === userIdString
     );
 
     // Se o usuário não for membro, verificar se há um convite pendente
@@ -80,8 +80,8 @@ export async function GET(
       console.log(`API Lobby GET - Usuário ${userIdString} não é membro do lobby. Verificando convites...`);
       
       const pendingInvite = await db.collection('lobbyinvites').findOne({
-        lobbyId: { $in, lobbyObjectId.toString()] },
-        recipient: { $in._id, userIdString] },
+        lobbyId: { $in: [lobbyObjectId, lobbyObjectId.toString()] },
+        recipient: { $in: [user._id, userIdString] },
         status: 'pending'
       });
 
@@ -101,7 +101,7 @@ export async function GET(
     try {
       members = await db.collection('lobbymembers')
         .find({ 
-          lobbyId: { $in, lobbyObjectId.toString()] }
+          lobbyId: { $in: [lobbyObjectId, lobbyObjectId.toString()] }
         })
         .toArray();
       
@@ -117,9 +117,9 @@ export async function GET(
     try {
       chat = await db.collection('lobbychat')
         .find({ 
-          lobbyId: { $in, lobbyObjectId.toString()] }
+          lobbyId: { $in: [lobbyObjectId, lobbyObjectId.toString()] }
         })
-        .sort({ timestamp)
+        .sort({ timestamp: 1 })
         .limit(50)
         .toArray();
       
@@ -132,24 +132,24 @@ export async function GET(
 
     // Formatar resposta
     const formattedResponse = {
-      id: _id.toString(),
-      name: name,
-      type.lobbyType,
-      maxPlayers.maxPlayers,
-      gameMode.gameMode,
-      createdAt.createdAt,
-      status.status,
-      data: members.map(member => ({
+      id: lobby._id ? lobby._id.toString() : "",
+      name: lobby.name,
+      type: lobby.lobbyType,
+      maxPlayers: lobby.maxPlayers,
+      gameMode: lobby.gameMode,
+      createdAt: lobby.createdAt,
+      status: lobby.status,
+      members: members.map(member => ({
         ...member,
-        id: _id.toString(),
-        userId member.userId === 'object' ? member.userId ? member.userId.toString() : "" .userId,
-        lobbyId member.lobbyId === 'object' ? member.lobbyId ? member.lobbyId.toString() : "" .lobbyId
+        id: member._id ? member._id.toString() : "",
+        userId: typeof member.userId === 'object' ? (member.userId ? member.userId.toString() : "") : member.userId,
+        lobbyId: typeof member.lobbyId === 'object' ? (member.lobbyId ? member.lobbyId.toString() : "") : member.lobbyId
       })),
-      data: chat.map(msg => ({
+      chat: chat.map(msg => ({
         ...msg,
-        id: _id.toString(),
-        lobbyId msg.lobbyId === 'object' ? msg.lobbyId ? msg.lobbyId.toString() : "" .lobbyId,
-        userId.userId ? (typeof msg.userId === 'object' ? msg.userId ? msg.userId.toString() : "" .userId) 
+        id: msg._id ? msg._id.toString() : "",
+        lobbyId: typeof msg.lobbyId === 'object' ? (msg.lobbyId ? msg.lobbyId.toString() : "") : msg.lobbyId,
+        userId: msg.userId ? (typeof msg.userId === 'object' ? (msg.userId ? msg.userId.toString() : "") : msg.userId) : null
       }))
     };
 
@@ -157,13 +157,13 @@ export async function GET(
     
     return NextResponse.json({
       status: 'success',
-      data
+      data: formattedResponse
     });
   } catch (error) {
     console.error('API Lobby GET - Erro não tratado:', error);
     return NextResponse.json({
       status: 'error',
-      error: 'Erro ao buscar dados do lobby: ' + (error.message: 'Erro desconhecido')
+      error: 'Erro ao buscar dados do lobby: ' + (error.message || 'Erro desconhecido')
     }, { status: 400 });
   }
 } 

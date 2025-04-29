@@ -67,7 +67,7 @@ export async function GET(request) {
       status: 'success',
       data: badges.map(badge => ({
         ...badge,
-        id: badge._id.toString()
+        id: badge._id ? badge._id.toString() : ""
       })),
       categories,
       pagination: {
@@ -183,7 +183,7 @@ export async function POST(request) {
     if ('insertedId' in result) {
       // Caso de InsertOneResult
       operationSuccessful = !!result.acknowledged;
-      badgeId = result.insertedId.toString();
+      badgeId = result.insertedId ? result.insertedId.toString() : "";
     } else {
       // Caso de UpdateResult
       operationSuccessful = !!result.acknowledged && (result.matchedCount > 0);

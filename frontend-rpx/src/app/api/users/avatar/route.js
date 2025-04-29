@@ -8,15 +8,15 @@ import { getModels } from '@/lib/mongodb/models';
 
 
 
-const JWT_SECRET = process.env.JWT_SECRET: 'jwt_secret_dev_environment';
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_dev_environment';
 
 /**
  * Middleware para autenticação da API
  */
-async function authMiddleware(req) | AuthenticatedRequest> {
+async function authMiddleware(req) {
   // Extrair token de autorização
   const authHeader = req.headers.get('authorization');
-  if (!authHeader: !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.error('Token de autorização ausente ou inválido');
     return NextResponse.json(
       { error: 'Não autorizado' },
@@ -27,11 +27,11 @@ async function authMiddleware(req) | AuthenticatedRequest> {
   
   try {
     // Verificar o token JWT diretamente para garantir que temos o ID
-    const decodedToken = jwt.verify(token, JWT_SECRET) as any;
+    const decodedToken = jwt.verify(token, JWT_SECRET);
     console.log('Token decodificado:', decodedToken);
     
     // Verificar se temos userId ou id (aceitar ambos)
-    if (!decodedToken: (!decodedToken.id && !decodedToken.userId)) {
+    if (!decodedToken || (!decodedToken.id && !decodedToken.userId)) {
       console.error('Token JWT inválido ou sem ID de usuário', decodedToken);
       return NextResponse.json(
         { error: 'Token inválido ou sem ID de usuário' },
@@ -39,13 +39,13 @@ async function authMiddleware(req) | AuthenticatedRequest> {
     }
     
     // Usar userId ou id, o que estiver disponível
-    const userId = decodedToken.userId: decodedToken.id;
+    const userId = decodedToken.userId || decodedToken.id;
     console.log('ID do usuário extraído do token:', userId);
     
     // Criar um objeto de usuário normalizado
-    const normalizedUser = {
+    const user = {
       ...decodedToken,
-      id  // Garantir que temos uma propriedade id para uso consistente
+      id: userId  // Garantir que temos uma propriedade id para uso consistente
     };
     
     // Requisição autenticada com sucesso
@@ -76,14 +76,14 @@ export async function POST(req) {
   }
   
   // Usar a requisição autenticada
-  const authenticatedReq = authResult as AuthenticatedRequest;
+  const authenticatedReq = authResult;
   const userId = authenticatedReq.user.id; // Agora sempre teremos um id normalizado
   const token = authenticatedReq.token;
   
   if (!userId) {
     console.error('ID do usuário não encontrado no token decodificado');
     return NextResponse.json(
-      { success, message: 'ID do usuário não encontrado' },
+      { success: false, message: 'ID do usuário não encontrado' },
       { status: 400 });
   }
   
@@ -97,7 +97,7 @@ export async function POST(req) {
     if (!imageData) {
       console.error('Dados da imagem não fornecidos');
       return NextResponse.json(
-        { success, message: 'Dados da imagem não fornecidos' },
+        { success: false, message: 'Dados da imagem não fornecidos' },
         { status: 400 });
     }
     
@@ -109,7 +109,7 @@ export async function POST(req) {
     if (base64Size > 2000000) { // ~1.5MB em base64
       console.error('Imagem muito grande:', Math.round(base64Size / 1024), 'KB');
       return NextResponse.json(
-        { success, message: 'A imagem é muito grande. O tamanho máximo é 1.5MB.' },
+        { success: false, message: 'A imagem é muito grande. O tamanho máximo é 1.5MB.' },
         { status: 400 });
     }
     
@@ -117,7 +117,7 @@ export async function POST(req) {
     if (!imageData.startsWith('data/')) {
       console.error('Formato de imagem inválido');
       return NextResponse.json(
-        { success, message: 'Formato de imagem inválido. Envie uma imagem válida.' },
+        { success: false, message: 'Formato de imagem inválido. Envie uma imagem válida.' },
         { status: 400 });
     }
     
@@ -144,11 +144,11 @@ export async function POST(req) {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { 
-        $set,
+        $set: {
           updatedAt: new Date()
         } 
       },
-      { new } // Retornar o documento atualizado
+      { new: true } // Retornar o documento atualizado
     );
     
     if (!updatedUser) {
@@ -157,34 +157,35 @@ export async function POST(req) {
       // Tentar buscar por email como fallback
       if (authenticatedReq.user.email) {
         const userByEmail = await User.findOneAndUpdate(
-          { email.user.email },
+          { email: authenticatedReq.user.email },
           { 
-            $set,
+            $set: {
+              avatarUrl: imageData,
               updatedAt: new Date()
             } 
           },
-          { new }
+          { new: true }
         );
         
         if (userByEmail) {
           console.log('Usuário encontrado pelo email, avatar atualizado.');
           return NextResponse.json({
-            success,
+            success: true,
             message: 'Avatar atualizado com sucesso (via email)',
-            avatarUrl,
-            user
+            avatarUrl: userByEmail.avatarUrl,
+            user: userByEmail
           });
         }
       }
       
       return NextResponse.json(
-        { success, message: 'Usuário não encontrado' },
+        { success: false, message: 'Usuário não encontrado' },
         { status: 400 });
     }
     
     console.log(`Avatar atualizado com sucesso para o usuário ${userId}`);
     console.log('avatarUrl após atualização:', updatedUser.avatarUrl ? 'Presente' : 'Ausente');
-    console.log('Tamanho do avatarUrl após atualização:', updatedUser.avatarUrl ? Math.round(updatedUser.avatarUrl.length / 1024) , 'KB');
+    console.log('Tamanho do avatarUrl após atualização:', updatedUser.avatarUrl ? Math.round(updatedUser.avatarUrl.length / 1024) + ' KB' : '0 KB');
     
     // Força a sincronização com a base de dados
     try {
@@ -196,15 +197,15 @@ export async function POST(req) {
     
     // Retornar uma resposta de sucesso
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Avatar atualizado com sucesso',
-      avatarUrl,
-      user
+      avatarUrl: updatedUser.avatarUrl,
+      user: updatedUser
     });
   } catch (error) {
     console.error('Erro ao processar o upload do avatar:', error);
     return NextResponse.json(
-      { success, message: 'Ocorreu um erro ao processar o upload. Tente novamente mais tarde.' },
+      { success: false, message: 'Ocorreu um erro ao processar o upload. Tente novamente mais tarde.' },
       { status: 400 });
   }
 } 

@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error: 'Não autorizado'
@@ -19,13 +19,13 @@ export async function POST(request) {
     const searchParams = request.nextUrl.searchParams;
     const waitingId = searchParams.get('waitingId');
     
-    console.log(`Tentando cancelar matchmaking para usuário ${userId}, waitingId: ${waitingId: 'não fornecido'}`);
+    console.log(`Tentando cancelar matchmaking para usuário ${userId}, waitingId: ${waitingId || 'não fornecido'}`);
     
     // Conectar ao banco de dados
     const { db } = await connectToDatabase();
     
     // Critérios de busca
-    let query = { userId.toString() };
+    let query = { userId: userId.toString() };
     
     // Se tiver um ID de espera específico, usar ele como critério principal
     if (waitingId) {
@@ -33,13 +33,13 @@ export async function POST(request) {
         // Tentar converter para ObjectId (se for válido)
         if (ObjectId.isValid(waitingId)) {
           query = { 
-            $or
+            $or: [
               { _id: new ObjectId(waitingId) },
-              { waitingId }
+              { waitingId: waitingId }
             ]
           };
         } else {
-          query = { waitingId };
+          query = { waitingId: waitingId };
         }
       } catch (err) {
         console.error('Erro ao converter waitingId para ObjectId:', err);
@@ -59,12 +59,12 @@ export async function POST(request) {
     }
     
     console.log(`Registro encontrado para cancelar:`, {
-      id._id ? id._id.toString() : "",
-      userId.userId
+      id: queuedPlayer._id ? queuedPlayer._id ? queuedPlayer._id.toString() : "" : "",
+      userId: queuedPlayer.userId
     });
     
     // Remover o jogador da fila
-    const result = await db.collection('matchmaking_queue').deleteOne({ _id._id });
+    const result = await db.collection('matchmaking_queue').deleteOne({ _id: queuedPlayer._id });
     
     console.log(`Resultado da remoção: ${result.deletedCount} registro(s) removido(s)`);
     

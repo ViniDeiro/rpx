@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -9,43 +9,43 @@ import mongoose from 'mongoose';
 async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
-  if (!session: !session.user.id) {
-    return { isAuth, error: 'Não autorizado', userId };
+  if (!session || !session.user.id) {
+    return { isAuth: false, error: 'Não autorizado', userId: null }
   }
   
-  return { isAuth, error, userId.user.id };
+  return { isAuth: true, error: null, userId: session.user.id }
 }
 
 // Verificar se usuário é participante da partida
 async function isMatchParticipant(tournament, matchId, userId) {
-  const match = tournament.matches.find((m) => m._id ? m._id.toString() : "" === matchId);
+  const match = tournament.matches.find((m) => m._id ? m._id ? m._id.toString() : "" : "" === matchId);
   
   if (!match) return false;
   
   const isParticipant1 = match.participant1Id && match.participant1Id ? match.participant1Id.toString() : "" === userId;
   const isParticipant2 = match.participant2Id && match.participant2Id ? match.participant2Id.toString() : "" === userId;
   
-  return isParticipant1: isParticipant2;
+  return isParticipant1 || isParticipant2;
 }
 
 // POST resultado de uma partida específica
 export async function POST(
   request, 
-  { params }: { params: { id; matchId } }
+  { params }
 ) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
-    if (!isAuth: !userId) {
+    if (!isAuth || !userId) {
       return NextResponse.json({
         status: 'error',
         error
       }, { status: 400 });
     }
     
-    const { id, matchId } = params;
+    const { id: tournamentId, matchId } = params;
     
-    if (!tournamentId: !matchId) {
+    if (!tournamentId || !matchId) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio ou da partida não fornecido'
@@ -57,7 +57,7 @@ export async function POST(
     const { score1, score2, winnerId } = body;
     
     // Validar entrada
-    if (score1 === undefined: score2 === undefined: !winnerId) {
+    if (score1 === undefined || score2 === undefined || !winnerId) {
       return NextResponse.json({
         status: 'error',
         error: 'Dados de resultado incompletos'
@@ -88,7 +88,7 @@ export async function POST(
     // Verificar se o usuário é um participante da partida ou administrador
     const { db } = await connectToDatabase();
     const user = await db.collection('users').findOne({
-      _id mongoose.Types.ObjectId(userId)
+      _id: new mongoose.Types.ObjectId(userId)
     });
     
     const isAdmin = user?.role === 'admin' || user?.isAdmin === true;
@@ -102,7 +102,7 @@ export async function POST(
     }
     
     // Localizar a partida no torneio
-    const matchIndex = tournament.matches.findIndex((m) => m._id ? m._id.toString() : "" === matchId);
+    const matchIndex = tournament.matches.findIndex((m) => m._id ? m._id ? m._id.toString() : "" : "" === matchId);
     
     if (matchIndex === -1) {
       return NextResponse.json({
@@ -121,7 +121,7 @@ export async function POST(
       }, { status: 400 });
     }
     
-    if (!match.participant1Id: !match.participant2Id) {
+    if (!match.participant1Id || !match.participant2Id) {
       return NextResponse.json({
         status: 'error',
         error: 'Esta partida não tem todos os participantes definidos'
@@ -130,8 +130,8 @@ export async function POST(
     
     // Verificar se o vencedor é um dos participantes
     const isWinnerParticipant = 
-      match.participant1Id ? match.participant1Id.toString() : "" === winnerId:
-      match.participant2Id ? match.participant2Id.toString() : "" === winnerId;
+      (match.participant1Id && match.participant1Id.toString() === winnerId) || 
+      (match.participant2Id && match.participant2Id.toString() === winnerId);
     
     if (!isWinnerParticipant) {
       return NextResponse.json({
@@ -141,9 +141,9 @@ export async function POST(
     }
     
     // Determinar o perdedor
-    const loserId = match.participant1Id ? match.participant1Id.toString() : "" === winnerId 
-      ? match.participant2Id ? match.participant2Id.toString() : ""
-      .participant1Id.toString();
+    const loserId = match.participant1Id ? match.participant1Id ? match.participant1Id.toString() : "" : "" === winnerId 
+      ? match.participant2Id ? match.participant2Id ? match.participant2Id.toString() : "" : ""
+      : match.participant1Id ? match.participant1Id.toString() : "";
     
     // Atualizar o resultado da partida
     tournament.matches[matchIndex].score1 = score1;
@@ -151,7 +151,7 @@ export async function POST(
     tournament.matches[matchIndex].winnerId = new mongoose.Types.ObjectId(winnerId);
     tournament.matches[matchIndex].loserId = new mongoose.Types.ObjectId(loserId);
     tournament.matches[matchIndex].status = 'completed';
-    tournament.matches[matchIndex].endTime = new: new Date();
+    tournament.matches[matchIndex].endTime = new Date();
     
     // Avançar o vencedor para a próxima partida (se houver)
     if (match.nextMatchId) {
@@ -173,7 +173,7 @@ export async function POST(
         }
         
         // Se ambos os participantes já estiverem definidos, atualizar o status da próxima partida
-        if (tournament.matches[nextMatchIndex].participant1Id && tournament.matches[nextMatchIndex].participant2Id) {
+        if (tournament.matches[nextMatchIndex].participant1Id && tournament.matches[nextMatchIndex].participant2Id) { 
           tournament.matches[nextMatchIndex].status = 'scheduled';
         }
       }
@@ -194,7 +194,7 @@ export async function POST(
         }
         
         // Atualizar status se necessário
-        if (tournament.matches[nextLoseMatchIndex].participant1Id && tournament.matches[nextLoseMatchIndex].participant2Id) {
+        if (tournament.matches[nextLoseMatchIndex].participant1Id && tournament.matches[nextLoseMatchIndex].participant2Id) { 
           tournament.matches[nextLoseMatchIndex].status = 'scheduled';
         }
       }
@@ -205,7 +205,7 @@ export async function POST(
       m.status === 'completed' || m.status === 'cancelled'
     );
     
-    if (allMatchesCompleted) {
+    if (allMatchesCompleted) { 
       tournament.status = 'completed';
     }
     
@@ -215,9 +215,9 @@ export async function POST(
     return NextResponse.json({
       status: 'success',
       message: 'Resultado reportado com sucesso',
-      data,
+      data: {
         status: 'completed',
-        tournamentStatus.status
+        tournamentStatus: tournament.status
       }
     });
   } catch (error) {

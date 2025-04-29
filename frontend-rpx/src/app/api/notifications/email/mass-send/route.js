@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
@@ -21,13 +21,11 @@ import { EmailService } from '@/services/email/emailService';
 export async function POST(req) {
   try {
     // Verificar autenticação do usuário (apenas administradores)
-    const session = await getServerSession(authOptions) as Session | null;
+    const session = await getServerSession(authOptions);
     const isServer = req.headers.get('x-api-key') === process.env.API_SECRET_KEY;
     
-    if (!isServer && (!session?.user?.role: session.user.role !== 'admin')) {
-      return NextResponse.json(
-        { error: 'Não autorizado, apenas administradores podem usar esta API' },
-        { status: 400 });
+    if (!isServer && (!session?.user?.role || session.user.role !== 'admin')) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
     // Obter dados da requisição
@@ -43,7 +41,7 @@ export async function POST(req) {
     } = body;
 
     // Validar dados básicos
-    if (!subject: (!template && !html)) {
+    if (!subject || (!template && !html)) {
       return NextResponse.json(
         { error: 'Dados incompletos e conteúdo (template ou html) são obrigatórios' },
         { status: 400 });
@@ -64,7 +62,7 @@ export async function POST(req) {
     if (userIds && userIds.length > 0) {
       // Se tiver IDs específicos, buscar esses usuários
       users = await db.collection('users').find({
-        _id: { $data: in.map((id) => new mongoose.Types.ObjectId(id)) }
+        _id: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) }
       }).toArray();
     } else if (userFilter) {
       // Se tiver filtro, usar o filtro para encontrar usuários
@@ -88,18 +86,18 @@ export async function POST(req) {
     // Registrar o evento de envio de emails em massa
     await db.collection('emailCampaigns').insertOne({
       createdAt: new Date(),
-      createdBy?.user?.id: 'system',
-      userCount.length,
+      createdBy: session?.user?.id || 'system',
+      userCount: users.length,
       subject,
-      template: 'custom',
+      template: template || 'custom',
       testMode: !!testMode
     });
 
     // Resultados dos envios
     const results = {
-      total.length,
-      successful,
-      failed,
+      total: users.length,
+      successful: 0,
+      failed: 0,
       testMode: !!testMode
     };
 
@@ -110,9 +108,9 @@ export async function POST(req) {
           // Preparar dados personalizados para este usuário
           const personalizedData = {
             ...templateData,
-            name: name: user.username: 'Usuário',
-            username.username: user.name: 'Usuário',
-            email: email
+            name: user.name || user.username || 'Usuário',
+            username: user.username || user.name || 'Usuário',
+            email: user.email
           };
 
           // Decidir qual conteúdo HTML usar
@@ -120,76 +118,78 @@ export async function POST(req) {
           if (template) {
             // Usar template específico
             switch (template) {
-              case 'announcement' = `
-                  
-                    
-                      RPX.GG
-                    
-                    
-                      Olá, ${personalizedData.name}!
-                      ${templateData.title: 'Novidades na RPX.GG'}
-                      ${templateData.content: ''}
+              case 'announcement':
+                emailHtml = `
+                  <div>
+                    <header>
+                      <h1>RPX.GG</h1>
+                    </header>
+                    <main>
+                      <p>Olá, ${personalizedData.name}!</p>
+                      <h2>${templateData.title || 'Novidades na RPX.GG'}</h2>
+                      <p>${templateData.content || ''}</p>
                       ${templateData.callToAction ? `
-                        
-                          ${templateData.callToAction}
-                        
+                        <div>
+                          <a href="${templateData.callToActionUrl || '#'}">${templateData.callToAction}</a>
+                        </div>
                       ` : ''}
-                      Atenciosamente,Equipe RPX.GG
-                    
-                    
-                      © ${new: new Date().getFullYear()} RPX.GG. Todos os direitos reservados.
-                      Você recebeu este email porque está cadastrado na plataforma RPX.GG.
-                    
-                  
+                      <p>Atenciosamente,<br>Equipe RPX.GG</p>
+                    </main>
+                    <footer>
+                      <p>© ${new Date().getFullYear()} RPX.GG. Todos os direitos reservados.</p>
+                      <p>Você recebeu este email porque está cadastrado na plataforma RPX.GG.</p>
+                    </footer>
+                  </div>
                 `;
                 break;
-              case 'promotion' = `
-                  
-                    
-                      RPX.GG
-                    
-                    
-                      Olá, ${personalizedData.name}!
-                      ${templateData.promotionTitle: 'Promoção Especial'}
-                      
-                        ${templateData.promotionContent: ''}
+              case 'promotion':
+                emailHtml = `
+                  <div>
+                    <header>
+                      <h1>RPX.GG</h1>
+                    </header>
+                    <main>
+                      <p>Olá, ${personalizedData.name}!</p>
+                      <h2>${templateData.promotionTitle || 'Promoção Especial'}</h2>
+                      <div>
+                        <p>${templateData.promotionContent || ''}</p>
                         ${templateData.promotionCode ? `
-                          
-                            ${templateData.promotionCode}
-                          
+                          <div>
+                            <strong>${templateData.promotionCode}</strong>
+                          </div>
                         ` : ''}
                         ${templateData.expiryDate ? `
-                          Válido até: ${new Date(templateData.expiryDate).toLocaleDateString('pt-BR')}
+                          <p>Válido até: ${new Date(templateData.expiryDate).toLocaleDateString('pt-BR')}</p>
                         ` : ''}
-                      
-                      
-                        ${templateData.callToAction: 'Aproveitar Agora'}
-                      
-                      Atenciosamente,Equipe RPX.GG
-                    
-                    
-                      © ${new: new Date().getFullYear()} RPX.GG. Todos os direitos reservados.
-                      Você recebeu este email porque está cadastrado na plataforma RPX.GG.
-                    
-                  
+                      </div>
+                      <div>
+                        <a href="${templateData.callToActionUrl || '#'}">${templateData.callToAction || 'Aproveitar Agora'}</a>
+                      </div>
+                      <p>Atenciosamente,<br>Equipe RPX.GG</p>
+                    </main>
+                    <footer>
+                      <p>© ${new Date().getFullYear()} RPX.GG. Todos os direitos reservados.</p>
+                      <p>Você recebeu este email porque está cadastrado na plataforma RPX.GG.</p>
+                    </footer>
+                  </div>
                 `;
                 break;
               default:
                 // Template desconhecido, usar HTML padrão
-                emailHtml = html: `
-                  
-                    
-                      RPX.GG
-                    
-                    
-                      Olá, ${personalizedData.name}!
-                      ${subject}
-                      Atenciosamente,Equipe RPX.GG
-                    
-                    
-                      © ${new: new Date().getFullYear()} RPX.GG. Todos os direitos reservados.
-                    
-                  
+                emailHtml = html || `
+                  <div>
+                    <header>
+                      <h1>RPX.GG</h1>
+                    </header>
+                    <main>
+                      <p>Olá, ${personalizedData.name}!</p>
+                      <p>${subject}</p>
+                      <p>Atenciosamente,<br>Equipe RPX.GG</p>
+                    </main>
+                    <footer>
+                      <p>© ${new Date().getFullYear()} RPX.GG. Todos os direitos reservados.</p>
+                    </footer>
+                  </div>
                 `;
             }
           } else {
@@ -199,9 +199,9 @@ export async function POST(req) {
 
           // Enviar o email
           const success = await EmailService.sendEmail({
-            to.email,
+            to: user.email,
             subject,
-            html
+            html: emailHtml
           });
 
           // Registrar resultado
@@ -210,10 +210,10 @@ export async function POST(req) {
             
             // Registrar email enviado
             await db.collection('emailsSent').insertOne({
-              userId._id,
-              email: email,
+              userId: user._id,
+              email: user.email,
               subject,
-              template: 'custom',
+              template: template || 'custom',
               sentAt: new Date(),
               success
             });
@@ -222,10 +222,10 @@ export async function POST(req) {
             
             // Registrar falha no envio
             await db.collection('emailsSent').insertOne({
-              userId._id,
-              email: email,
+              userId: user._id,
+              email: user.email,
               subject,
-              template: 'custom',
+              template: template || 'custom',
               sentAt: new Date(),
               success
             });
@@ -239,8 +239,8 @@ export async function POST(req) {
     }
 
     return NextResponse.json({
-      success,
-      message ? 'Teste de envio concluído' : 'Envio de emails em massa concluído',
+      success: true,
+      message: testMode ? 'Teste de envio concluído' : 'Envio de emails em massa concluído',
       results
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -10,7 +10,7 @@ export async function PUT(req) {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json(
-        { success, error: 'Não autorizado' },
+        { success: false, error: 'Não autorizado' },
         { status: 400 });
     }
     
@@ -20,7 +20,7 @@ export async function PUT(req) {
     
     if (!id) {
       return NextResponse.json(
-        { success, error: 'ID da notificação não fornecido' },
+        { success: false, error: 'ID da notificação não fornecido' },
         { status: 400 });
     }
     
@@ -33,31 +33,31 @@ export async function PUT(req) {
       objectId = new ObjectId(id);
     } catch (error) {
       return NextResponse.json(
-        { success, error: 'ID de notificação inválido' },
+        { success: false, error: 'ID de notificação inválido' },
         { status: 400 });
     }
     
     // Atualizar a notificação para marcar como lida
     const result = await db.collection('notifications').updateOne(
-      { _id, userId.user.id },
-      { $set, updatedAt: new Date() } }
+      { _id: objectId, userId: session.user.id },
+      { $set: { isRead: true, updatedAt: new Date() } }
     );
     
     if (result.matchedCount === 0) {
       return NextResponse.json(
-        { success, error: 'Notificação não encontrada ou sem permissão' },
+        { success: false, error: 'Notificação não encontrada ou sem permissão' },
         { status: 400 });
     }
     
     return NextResponse.json({
-      success,
+      success: true,
       message: 'Notificação marcada como lida'
     });
     
   } catch (error) {
     console.error('Erro ao marcar notificação como lida:', error);
     return NextResponse.json(
-      { success, error: 'Erro interno do servidor' },
+      { success: false, error: 'Erro interno do servidor' },
       { status: 400 });
   }
 } 

@@ -70,7 +70,7 @@ export async function GET(request) {
     
     // Formatar os dados para a resposta
     const formattedMatch = {
-      id: match._id.toString(),
+      id: match._id ? match._id.toString() : "",
       title: match.title,
       status: match.status,
       startTime: match.startTime,
@@ -84,9 +84,9 @@ export async function GET(request) {
     };
     
     const formattedBets = bets.map(bet => ({
-      id: bet._id.toString(),
+      id: bet._id ? bet._id.toString() : "",
       userId: bet.userId,
-      userInfo: users.find(u => u._id.toString() === bet.userId) || null,
+      userInfo: users.find(u => u._id ? u._id.toString() : "" === bet.userId) || null,
       amount: bet.amount,
       odd: bet.odd,
       potentialWin: bet.potentialWin,

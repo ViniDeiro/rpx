@@ -115,7 +115,7 @@ export async function POST(request) {
     // Se for válido e distribuir recompensas estiver ativado, calcular e distribuir recompensas
     if (isValid && distributeRewards && winnerTeamId) {
       // Encontrar o time vencedor
-      const winnerTeam = match.teams.find((team) => team.lobbyId.toString() === winnerTeamId);
+      const winnerTeam = match.teams.find((team) => team.lobbyId ? team.lobbyId.toString() : "" === winnerTeamId);
       
       if (winnerTeam && winnerTeam.members) {
         // Distribuir recompensas para cada membro do time vencedor

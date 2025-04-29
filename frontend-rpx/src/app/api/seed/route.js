@@ -25,7 +25,7 @@ export async function GET() {
     const adminUser = new User({
       username: 'admin',
       email: 'admin@rpx.com',
-      password,
+      password: hashedPassword,
       role: 'admin',
       profile: {
         name: 'Administrador',
@@ -33,7 +33,8 @@ export async function GET() {
         bio: 'Administrador do sistema'
       },
       wallet: {
-        balance,
+        balance: 1000
+      },
       status: 'active'
     });
 
@@ -41,7 +42,7 @@ export async function GET() {
     const regularUser = new User({
       username: 'usuario',
       email: 'usuario@rpx.com',
-      password,
+      password: hashedPassword,
       role: 'user',
       profile: {
         name: 'Usuário Teste',
@@ -49,7 +50,8 @@ export async function GET() {
         bio: 'Usuário para testes'
       },
       wallet: {
-        balance,
+        balance: 500
+      },
       status: 'active'
     });
 
@@ -59,9 +61,9 @@ export async function GET() {
 
     return NextResponse.json({
       message: 'Dados iniciais criados com sucesso',
-      users
-        { username.username, email: email },
-        { username.username, email: email }
+      users: [
+        { username: adminUser.username, email: adminUser.email },
+        { username: regularUser.username, email: regularUser.email }
       ]
     });
   } catch (error) {

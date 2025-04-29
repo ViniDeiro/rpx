@@ -29,7 +29,7 @@ export async function GET(request) {
           query = { _id: new ObjectId(id) };
         } catch (idError) {
           console.error('ID inválido:', idError);
-          return NextResponse.json({ error: 'ID de produto inválido' }, { status);
+          return NextResponse.json({ error: 'ID de produto inválido' }, { status: 400 });
         }
       }
       
@@ -48,7 +48,7 @@ export async function GET(request) {
         
         if (!product) {
           console.log(`Produto com ID ${id} não encontrado`);
-          return NextResponse.json({ error: 'Produto não encontrado' }, { status);
+          return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
         }
         
         console.log('Produto encontrado com sucesso');
@@ -68,7 +68,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar produtos', details,
-      { status);
+      { error: 'Erro ao buscar produtos', details: error.message },
+      { status: 400 });
   }
 } 

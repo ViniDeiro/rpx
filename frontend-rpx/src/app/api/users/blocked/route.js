@@ -34,7 +34,7 @@ export async function GET(req) {
     
     // Retornar a lista de usuários bloqueados
     return NextResponse.json({
-      blockedUsers.blockedUsers: []
+      blockedUsers: currentUser.blockedUsers || []
     });
   } catch (error) {
     console.error('Erro ao listar usuários bloqueados:', error);

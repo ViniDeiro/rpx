@@ -9,8 +9,9 @@ export async function POST(request, { params }) {
     const { isAuth, error, userId } = await isAuthenticated();
     if (!isAuth || !userId) {
       return NextResponse.json(
-        { status: 'error', error || 'Não autorizado' },
-        { status);
+        { status: 'error', error: error || 'Não autorizado' },
+        { status: 401 }
+      );
     }
 
     // Obter ID do lobby
@@ -19,7 +20,8 @@ export async function POST(request, { params }) {
     if (!lobbyId) {
       return NextResponse.json(
         { status: 'error', error: 'ID do lobby não fornecido' },
-        { status);
+        { status: 400 }
+      );
     }
 
     console.log(`Usuário ${userId} saindo do lobby ${lobbyId}`);
@@ -34,17 +36,20 @@ export async function POST(request, { params }) {
     } catch (error) {
       return NextResponse.json(
         { status: 'error', error: 'ID de lobby inválido' },
-        { status);
+        { status: 400 }
+      );
     }
 
     // Buscar o lobby
     const lobby = await db.collection('lobbies').findOne({
-      _id);
+      _id: lobbyObjectId
+    });
 
     if (!lobby) {
       return NextResponse.json(
         { status: 'error', error: 'Lobby não encontrado' },
-        { status);
+        { status: 404 }
+      );
     }
 
     // Verificar se o usuário é membro do lobby
@@ -55,15 +60,16 @@ export async function POST(request, { params }) {
     if (!isMember) {
       return NextResponse.json(
         { status: 'error', error: 'Você não é membro deste lobby' },
-        { status);
+        { status: 403 }
+      );
     }
 
-    const isOwner = lobby.owner.toString() === userId.toString();
+    const isOwner = lobby.owner ? lobby.owner.toString() : "" === userId.toString();
 
     if (isOwner) {
       // Se o usuário é o dono, fechar o lobby
       await db.collection('lobbies').updateOne(
-        { _id,
+        { _id: lobbyObjectId },
         { 
           $set: { 
             status: 'closed',
@@ -75,11 +81,12 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'success',
         message: 'Lobby fechado com sucesso',
-        closed);
+        closed: true
+      });
     } else {
       // Se não for o dono, remover o usuário do lobby
       await db.collection('lobbies').updateOne(
-        { _id,
+        { _id: lobbyObjectId },
         { 
           $pull: { 
             members: new ObjectId(userId),
@@ -99,6 +106,7 @@ export async function POST(request, { params }) {
     console.error('Erro ao sair do lobby:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro interno do servidor' },
-      { status);
+      { status: 500 }
+    );
   }
 } 

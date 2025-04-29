@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
@@ -7,7 +7,7 @@ import { getModels } from '@/lib/mongodb/models';
 // POST - Adicionar membro à equipe (convite)
 export async function POST(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -51,7 +51,7 @@ export async function POST(
     // Validar role
     if (role !== 'member' && role !== 'admin') {
       return NextResponse.json(
-        { error: 'Função inválida. Funções permitidas, admin' },
+        { error: 'Função inválida. Funções permitidas: member, admin' },
         { status: 400 });
     }
     
@@ -67,7 +67,7 @@ export async function POST(
     
     // Buscar equipe pelo ID
     const team = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!team) {
@@ -79,7 +79,7 @@ export async function POST(
     // Verificar se o usuário é dono ou administrador da equipe
     const memberInfo = team.members.find((member) => member.userId === userId);
     
-    if (!memberInfo: (memberInfo.role !== 'owner' && memberInfo.role !== 'admin')) {
+    if (!memberInfo || (memberInfo.role !== 'owner' && memberInfo.role !== 'admin')) {
       return NextResponse.json(
         { error: 'Você não tem permissão para adicionar membros à equipe' },
         { status: 400 });
@@ -96,7 +96,7 @@ export async function POST(
     const { User } = await getModels();
     
     // Buscar usuário pelo nome de usuário
-    const targetUser = await User.findOne({ username: { $regex RegExp(`^${username}$`, 'i') } });
+    const targetUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
     
     if (!targetUser) {
       return NextResponse.json(
@@ -104,7 +104,7 @@ export async function POST(
         { status: 400 });
     }
     
-    const targetUserId = targetUser._id ? targetUser._id.toString() : "";
+    const targetUserId = targetUser._id ? targetUser._id ? targetUser._id.toString() : "" : "";
     
     // Verificar se o usuário já é membro da equipe
     if (team.members.some((member) => member.userId === targetUserId)) {
@@ -122,7 +122,7 @@ export async function POST(
     
     // Verificar se o usuário está em muitas equipes
     const userTeamsCount = await db.collection('teams').countDocuments({
-      'members.userId'
+      'members.userId': targetUserId
     });
     
     if (userTeamsCount >= 3) {
@@ -134,30 +134,30 @@ export async function POST(
     // Criar convite de equipe
     const invitation = {
       teamId,
-      teamName.name,
-      teamTag.tag,
-      invitedById,
-      invitedByUsername.username,
+      teamName: team.name,
+      teamTag: team.tag,
+      invitedById: userId,
+      invitedByUsername: memberInfo.username,
       status: 'pending',
       role,
       createdAt: new Date(),
-      expiresAt Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 dias
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 dias
     };
     
     // Inserir o convite no banco de dados
     await db.collection('teamInvitations').insertOne({
       ...invitation,
-      userId
+      userId: targetUserId
     });
     
     // Criar notificação para o usuário alvo
     await db.collection('notifications').insertOne({
-      userId,
+      userId: targetUserId,
       title: 'Convite para equipe',
       message: `Você foi convidado para se juntar à equipe ${team.name} [${team.tag}]`,
       type: 'team_invitation',
-      isRead,
-      relatedId,
+      isRead: false,
+      relatedId: teamId,
       relatedType: 'team',
       createdAt: new Date()
     });
@@ -165,8 +165,12 @@ export async function POST(
     // Retornar sucesso
     return NextResponse.json({
       message: 'Convite enviado com sucesso',
-      invitation,
-        targetUser,
+      invitation: {
+        ...invitation,
+        targetUser: {
+          id: targetUserId,
+          username: targetUser.username
+        },
         status: 'pending'
       }
     });
@@ -181,7 +185,7 @@ export async function POST(
 // DELETE - Remover membro da equipe
 export async function DELETE(
   req,
-  { params }: { params) {
+  { params }) {
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
@@ -234,7 +238,7 @@ export async function DELETE(
     
     // Buscar equipe pelo ID
     const team = await db.collection('teams').findOne(
-      { _id mongoose.Types.ObjectId(teamId) }
+      { _id: new mongoose.Types.ObjectId(teamId) }
     );
     
     if (!team) {
@@ -248,69 +252,100 @@ export async function DELETE(
     
     if (targetMemberIndex === -1) {
       return NextResponse.json(
-        { error: 'Usuário não é membro desta equipe' },
+        { error: 'Usuário não é membro da equipe' },
         { status: 400 });
     }
     
-    const targetMember = team.members[targetMemberIndex];
+    // Verificar permissões
+    const requestingMember = team.members.find((member) => member.userId === userId);
     
-    // Verificar permissões: 
-    // 1. Um usuário pode sair voluntariamente (userId === targetUserId)
-    // 2. Dono pode remover qualquer um
-    // 3. Admin pode remover membros regulares
-    const actingMember = team.members.find((member) => member.userId === userId);
-    
-    // Caso seja saída voluntária
-    if (userId === targetUserId) {
-      // Não permitir que o dono saia da equipe (deve transferir propriedade primeiro)
-      if (targetMember.role === 'owner') {
-        return NextResponse.json(
-          { error: 'O dono não pode sair da equipe. Transfira a propriedade primeiro' },
-          { status: 400 });
-      }
-    } 
-    // Caso seja remoção por administrador
-    else {
-      // Verificar se o usuário tem permissão
-      if (!actingMember: (actingMember.role !== 'owner' && actingMember.role !== 'admin')) {
-        return NextResponse.json(
-          { error: 'Você não tem permissão para remover membros desta equipe' },
-          { status: 400 });
-      }
-      
-      // Admin não pode remover dono ou outro admin
-      if (actingMember.role === 'admin' && 
-          (targetMember.role === 'owner' || targetMember.role === 'admin')) {
-        return NextResponse.json(
-          { error: 'Administradores não podem remover o dono ou outros administradores' },
-          { status: 400 });
-      }
+    // Se o usuário que está fazendo a requisição não está na equipe
+    if (!requestingMember) {
+      return NextResponse.json(
+        { error: 'Você não é membro desta equipe' },
+        { status: 400 });
     }
     
-    // Remover o membro da equipe
-    await db.collection('teams').updateOne(
-      { _id mongoose.Types.ObjectId(teamId) },
-      { $pull: { members);
+    // Pegar informações do membro alvo
+    const targetMember = team.members[targetMemberIndex];
     
-    // Criar notificação para o usuário removido (se não for saída voluntária)
-    if (userId !== targetUserId) {
+    // Verificar condições:
+    // 1. Um membro comum não pode remover ninguém
+    // 2. Um admin pode remover apenas membros comuns
+    // 3. O dono pode remover qualquer um
+    // 4. Um usuário sempre pode sair (remover a si mesmo)
+    
+    const isSelfRemoval = userId === targetUserId;
+    const isOwner = requestingMember.role === 'owner';
+    const isAdmin = requestingMember.role === 'admin';
+    const isTargetOwner = targetMember.role === 'owner';
+    const isTargetAdmin = targetMember.role === 'admin';
+    
+    if (!isSelfRemoval && !isOwner && (!isAdmin || isTargetAdmin)) {
+      return NextResponse.json(
+        { error: 'Você não tem permissão para remover este membro' },
+        { status: 400 });
+    }
+    
+    // Não permitir que o dono saia se ainda houver outros membros
+    if (isSelfRemoval && isOwner && team.members.length > 1) {
+      return NextResponse.json(
+        { error: 'O dono não pode sair da equipe enquanto houver outros membros' },
+        { status: 400 });
+    }
+    
+    // Remover membro da equipe
+    const updatedMembers = team.members.filter((member) => member.userId !== targetUserId);
+    
+    // Atualizar equipe
+    await db.collection('teams').updateOne(
+      { _id: new mongoose.Types.ObjectId(teamId) },
+      { $set: { members: updatedMembers } }
+    );
+    
+    // Se o usuário saiu por conta própria, criar notificação para o dono
+    if (isSelfRemoval && !isOwner) {
+      const owner = team.members.find((member) => member.role === 'owner');
+      
+      if (owner) {
+        await db.collection('notifications').insertOne({
+          userId: owner.userId,
+          title: 'Membro saiu da equipe',
+          message: `${requestingMember.username} saiu da equipe ${team.name}`,
+          type: 'team_update',
+          isRead: false,
+          relatedId: teamId,
+          relatedType: 'team',
+          createdAt: new Date()
+        });
+      }
+    } 
+    // Se foi removido por alguém, notificar o usuário removido
+    else if (!isSelfRemoval) {
       await db.collection('notifications').insertOne({
-        userId,
+        userId: targetUserId,
         title: 'Removido da equipe',
-        message: `Você foi removido da equipe ${team.name} [${team.tag}]`,
-        type: 'team_removed',
-        isRead,
-        relatedId,
+        message: `Você foi removido da equipe ${team.name}`,
+        type: 'team_update',
+        isRead: false,
+        relatedId: teamId,
         relatedType: 'team',
         createdAt: new Date()
       });
     }
     
-    // Retornar sucesso
+    // Se era o último membro, excluir a equipe
+    if (updatedMembers.length === 0) {
+      await db.collection('teams').deleteOne({ _id: new mongoose.Types.ObjectId(teamId) });
+      return NextResponse.json({
+        message: 'Equipe excluída pois não restaram membros',
+        deleted: true
+      });
+    }
+    
     return NextResponse.json({
-      message === targetUserId 
-        ? 'Você saiu da equipe com sucesso' 
-        : 'Membro removido da equipe com sucesso'
+      message: isSelfRemoval ? 'Você saiu da equipe' : 'Membro removido com sucesso',
+      removed: targetMember
     });
   } catch (error) {
     console.error('Erro ao remover membro da equipe:', error);

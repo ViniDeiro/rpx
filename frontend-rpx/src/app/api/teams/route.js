@@ -1,4 +1,4 @@
-import { request, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { authMiddleware, getUserId } from '@/lib/auth/middleware';
@@ -26,9 +26,9 @@ export async function GET(req) {
     
     if (search) {
       filter.$or = [
-        { name: { $regex, $options: 'i' } },
-        { tag: { $regex, $options: 'i' } },
-        { description: { $regex, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { tag: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
       ];
     }
     
@@ -54,31 +54,34 @@ export async function GET(req) {
     const total = await db.collection('teams').countDocuments(filter);
     
     // Processar equipes para resposta
-    const formattedTeams = data: teams.map((team) => ({
-      id._id ? id._id.toString() : "",
-      name: name,
-      tag.tag,
-      logo.logo,
-      ownerId.ownerId,
-      members.data: members.map((member) => ({
-        userId.userId,
-        username.username,
-        role.role,
-        joinedAt.joinedAt
+    const formattedTeams = teams.map((team) => ({
+      id: team._id ? team._id ? team._id.toString() : "" : "",
+      name: team.name,
+      tag: team.tag,
+      logo: team.logo,
+      ownerId: team.ownerId,
+      members: team.members.map((member) => ({
+        userId: member.userId,
+        username: member.username,
+        role: member.role,
+        joinedAt: member.joinedAt
       })),
-      description.description,
-      createdAt.createdAt,
-      updatedAt.updatedAt,
-      totalMatches.stats?.totalMatches: 0,
-      wins.stats?.wins: 0,
-      losses.stats?.losses: 0
+      description: team.description,
+      createdAt: team.createdAt,
+      updatedAt: team.updatedAt,
+      totalMatches: team.stats?.totalMatches || 0,
+      wins: team.stats?.wins || 0,
+      losses: team.stats?.losses || 0
     }));
     
     // Retornar dados
     return NextResponse.json({
-      teams,
-      pagination,
-        pages.ceil(total / limit)
+      teams: formattedTeams,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -117,13 +120,13 @@ export async function POST(req) {
     const { name, tag, logo, description } = body;
     
     // Validar dados da equipe
-    if (!name: name.length  30) {
+    if (!name || name.length < 3 || name.length > 30) {
       return NextResponse.json(
         { error: 'Nome da equipe deve ter entre 3 e 30 caracteres' },
         { status: 400 });
     }
     
-    if (!tag: tag.length  5) {
+    if (!tag || tag.length < 2 || tag.length > 5) {
       return NextResponse.json(
         { error: 'Tag da equipe deve ter entre 2 e 5 caracteres' },
         { status: 400 });
@@ -141,9 +144,9 @@ export async function POST(req) {
     
     // Verificar se já existe uma equipe com o mesmo nome ou tag
     const existingTeam = await db.collection('teams').findOne({
-      $or
-        { name: { $regex RegExp(`^${name}$`, 'i') } },
-        { tag: { $regex RegExp(`^${tag}$`, 'i') } }
+      $or: [
+        { name: { $regex: new RegExp(`^${name}$`, 'i') } },
+        { tag: { $regex: new RegExp(`^${tag}$`, 'i') } }
       ]
     });
     
@@ -175,8 +178,8 @@ export async function POST(req) {
     
     // Verificar se o usuário já tem uma equipe
     const userTeam = await db.collection('teams').findOne({
-      'members.userId',
-      'members.role': { $in'owner', 'admin'] }
+      'members.userId': userId,
+      'members.role': { $in: ['owner', 'admin'] }
     });
     
     if (userTeam) {
@@ -187,8 +190,8 @@ export async function POST(req) {
     
     // Preparar dados do membro proprietário
     const ownerMember = {
-      userId,
-      username.username,
+      userId: userId,
+      username: user.username,
       role: 'owner',
       joinedAt: new Date()
     };
@@ -196,16 +199,16 @@ export async function POST(req) {
     // Criar objeto da equipe
     const team = {
       name,
-      tag.toUpperCase(),
-      logo,
-      ownerId,
-      members,
-      description,
+      tag: tag.toUpperCase(),
+      logo: logo || null,
+      ownerId: userId,
+      members: [ownerMember],
+      description: description || '',
       createdAt: new Date(),
       updatedAt: new Date(),
       stats: {
-        totalMatches,
-        wins,
+        totalMatches: 0,
+        wins: 0,
         losses: 0
       }
     };
@@ -215,13 +218,13 @@ export async function POST(req) {
     
     // Formatar equipe para resposta
     const formattedTeam = {
-      id.insertedId ? id.insertedId.toString() : "",
+      id: result.insertedId ? result.insertedId ? result.insertedId.toString() : "" : "",
       name,
-      tag.toUpperCase(),
-      logo,
-      ownerId,
-      members,
-      description,
+      tag: tag.toUpperCase(),
+      logo: logo || null,
+      ownerId: userId,
+      members: [ownerMember],
+      description: description || '',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -229,7 +232,7 @@ export async function POST(req) {
     // Retornar dados da equipe criada
     return NextResponse.json({
       message: 'Equipe criada com sucesso',
-      team
+      team: formattedTeam
     });
   } catch (error) {
     console.error('Erro ao criar equipe:', error);
