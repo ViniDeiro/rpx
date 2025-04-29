@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { ObjectId } from 'mongodb';
 
 // PUT - Atualizar detalhes da partida pelo admin
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request, { params }) {
   try {
     // Verificar se o usuário é admin
     const session = await getServerSession(authOptions);
@@ -52,7 +49,7 @@ export async function PUT(
     }
 
     // Dados para atualização
-    const updateData: Record<string, any> = {
+    const updateData = {
       updatedAt: new Date(),
       lastAdminAction: {
         adminId: session.user.id || session.user.email,
@@ -123,7 +120,7 @@ export async function PUT(
       updates: updateData
     });
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao atualizar partida:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao atualizar partida: ' + (error.message || 'Erro desconhecido') },

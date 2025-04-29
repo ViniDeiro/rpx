@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -17,7 +17,7 @@ async function isAuthenticated() {
 }
 
 // POST: Inscrever usuário em um torneio
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request, { params }) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
     
     // Verificar se o usuário já está inscrito
-    const existingParticipant = tournament.participants.find((p: any) => 
+    const existingParticipant = tournament.participants.find(p => 
       p.userId.toString() === userId.toString()
     );
     
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           paymentStatus: tournament.entryFee > 0 ? 'pending' : 'completed'
         }
       });
-    } catch (addError: any) {
+    } catch (addError) {
       return NextResponse.json({
         status: 'error',
         error: addError.message || 'Erro ao processar inscrição'
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 // DELETE: Cancelar inscrição em um torneio
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request, { params }) {
   try {
     const { isAuth, error, userId } = await isAuthenticated();
     
@@ -163,7 +163,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
     
     // Verificar se o usuário está inscrito
-    const participantIndex = tournament.participants.findIndex((p: any) => 
+    const participantIndex = tournament.participants.findIndex(p => 
       p.userId.toString() === userId.toString()
     );
     

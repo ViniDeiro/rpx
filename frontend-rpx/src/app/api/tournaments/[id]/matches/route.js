@@ -1,21 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb/connect';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import Tournament from '@/models/Tournament';
 import mongoose from 'mongoose';
-
-// Interface para o tipo do torneio após lean()
-interface TournamentDocument {
-  _id: mongoose.Types.ObjectId;
-  name: string;
-  bracketType: string;
-  status: string;
-  participants: any[];
-  minParticipants: number;
-  matches?: any[];
-  [key: string]: any;
-}
 
 // Middleware para verificar autenticação
 async function isAuthenticated() {
@@ -29,7 +17,7 @@ async function isAuthenticated() {
 }
 
 // GET: Obter todas as partidas de um torneio
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request, { params }) {
   try {
     const tournamentId = params.id;
     
@@ -69,10 +57,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
     
     // Tratando os dados do torneio de forma segura
-    const tournament = tournamentData as any;
+    const tournament = tournamentData;
     
     // Organizar matches por rodadas
-    const matchesByRound: any = {};
+    const matchesByRound = {};
     
     // Verificar se o torneio tem a propriedade matches
     if (!tournament.matches || !Array.isArray(tournament.matches)) {
@@ -87,7 +75,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       });
     }
     
-    tournament.matches.forEach((match: any) => {
+    tournament.matches.forEach((match) => {
       if (!matchesByRound[match.roundNumber]) {
         matchesByRound[match.roundNumber] = [];
       }
@@ -97,7 +85,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     
     // Classificar matches de cada rodada por número da partida
     Object.keys(matchesByRound).forEach(round => {
-      matchesByRound[round].sort((a: any, b: any) => a.matchNumber - b.matchNumber);
+      matchesByRound[round].sort((a, b) => a.matchNumber - b.matchNumber);
     });
     
     return NextResponse.json({
@@ -119,7 +107,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // POST: Gerar o bracket do torneio
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request, { params }) {
   try {
     // Verificar autenticação de admin (usando a função existente)
     const { isAuth, error, userId } = await isAuthenticated();
@@ -168,38 +156,35 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 404 });
     }
     
-    // Converter para tipo seguro
-    const tournament = tournamentData as any;
-    
     // Verificar se o torneio está pronto para gerar o bracket
-    if (tournament.status !== 'registration') {
+    if (tournamentData.status !== 'registration') {
       return NextResponse.json({
         status: 'error',
         error: 'O torneio não está em fase de inscrição'
       }, { status: 400 });
     }
     
-    if (tournament.participants.length < tournament.minParticipants) {
+    if (tournamentData.participants.length < tournamentData.minParticipants) {
       return NextResponse.json({
         status: 'error',
-        error: `O torneio precisa de pelo menos ${tournament.minParticipants} participantes confirmados`
+        error: `O torneio precisa de pelo menos ${tournamentData.minParticipants} participantes confirmados`
       }, { status: 400 });
     }
     
     // Gerar o bracket
     try {
-      await tournament.generateBracket();
+      await tournamentData.generateBracket();
       
       return NextResponse.json({
         status: 'success',
         message: 'Bracket gerado com sucesso',
         data: {
-          tournamentId: tournament._id,
+          tournamentId: tournamentData._id,
           status: 'in_progress',
-          matchCount: tournament.matches?.length || 0
+          matchCount: tournamentData.matches?.length || 0
         }
       });
-    } catch (genError: any) {
+    } catch (genError) {
       return NextResponse.json({
         status: 'error',
         error: genError.message || 'Erro ao gerar bracket'
