@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
     const friends = await User.find({ 
       _id: { $in: friendIds } 
     })
-    .select('_id username avatarUrl profile.level stats.wins stats.matches')
+    .select('_id username avatarUrl profile.level stats.wins stats.matches rank')
     .exec();
     
     // Transformar resultado em formato amigável
@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
         matches: friend.stats?.matches || 0,
         winRate: friend.stats?.matches ? Math.round((friend.stats.wins / friend.stats.matches) * 100) : 0
       },
+      rank: friend.rank || { tier: 'unranked', division: null, points: 0 },
       status: 'online' // Por padrão, mostrar como online
     }));
     

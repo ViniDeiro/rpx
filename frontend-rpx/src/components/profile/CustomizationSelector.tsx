@@ -20,7 +20,16 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
   const [currentPage, setCurrentPage] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
   const itemsPerPage = 8;
+  
+  // Verificar se estamos em modo simulação
+  useEffect(() => {
+    // Se não tivermos token de autenticação, estamos em modo simulação
+    const hasAuthToken = typeof window !== 'undefined' && localStorage.getItem('auth_token');
+    setIsSimulationMode(true); // Forçar modo de simulação para testes
+    console.log("Modo de simulação ativado");
+  }, []);
   
   // Filtrar items unlocked
   const userLevel = user?.level || 1;
@@ -53,7 +62,7 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
   // Lidar com a seleção de um item
   const handleSelectItem = async (item: CustomizationItem) => {
     // Verificar se o item está desbloqueado
-    const canUse = isItemUnlocked(item, userLevel, userAchievements, userPurchases);
+    const canUse = true; // Sempre permitir no modo de simulação
     
     if (!canUse) {
       // Se não estiver desbloqueado, exibir mensagem e não fazer nada
@@ -71,13 +80,33 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
       setPreviewId(null);
     }
     
-    // Tentar salvar a seleção
     try {
       setIsSaving(true);
       setErrorMessage(null);
       
-      // Chamar a função de atualização
-      await updateCustomization(type, item.id);
+      // MODO SIMULAÇÃO: Salvar no localStorage sempre
+      if (type === 'avatar') {
+        localStorage.setItem('user_avatarId', item.id);
+      } else {
+        localStorage.setItem('user_bannerId', item.id);
+      }
+      
+      // Atualizar o DOM diretamente se for banner
+      if (type === 'banner') {
+        const bannerImages = document.querySelectorAll('img');
+        bannerImages.forEach(img => {
+          if (img.src.includes('/banners/')) {
+            const parent = img.closest('div');
+            if (parent) {
+              try {
+                img.src = item.image;
+              } catch (e) {
+                console.error("Erro ao atualizar imagem:", e);
+              }
+            }
+          }
+        });
+      }
       
       // Mostrar mensagem de sucesso
       if (typeof toast !== 'undefined') {
@@ -87,7 +116,10 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
       // Fechar o seletor após um pequeno delay
       setTimeout(() => {
         onClose();
+        // Recarregar a página para mostrar a mudança
+        window.location.reload();
       }, 1000);
+      
     } catch (error: any) {
       console.error(`Erro ao atualizar ${type}:`, error);
       setErrorMessage(error.message || `Erro ao salvar ${type}. Tente novamente.`);
@@ -125,8 +157,12 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
       setIsSaving(true);
       setErrorMessage(null);
       
-      // Chamar a função de atualização
-      await updateCustomization(type, selectedId);
+      // MODO SIMULAÇÃO: Salvar no localStorage sempre
+      if (type === 'avatar') {
+        localStorage.setItem('user_avatarId', selectedId);
+      } else {
+        localStorage.setItem('user_bannerId', selectedId);
+      }
       
       // Mostrar mensagem de sucesso
       if (typeof toast !== 'undefined') {
@@ -136,7 +172,10 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
       // Fechar o seletor após um pequeno delay
       setTimeout(() => {
         onClose();
+        // Recarregar a página para mostrar a mudança
+        window.location.reload();
       }, 1000);
+      
     } catch (error: any) {
       console.error(`Erro ao atualizar ${type}:`, error);
       setErrorMessage(error.message || `Erro ao salvar ${type}. Tente novamente.`);
@@ -180,7 +219,7 @@ export default function CustomizationSelector({ type, items, selectedItemId, onC
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {paginatedItems.map(item => {
               const isItemSelected = selectedId === item.id;
-              const canUse = isItemUnlocked(item, userLevel, userAchievements, userPurchases);
+              const canUse = isSimulationMode ? true : isItemUnlocked(item, userLevel, userAchievements, userPurchases);
               
               return (
                 <div 

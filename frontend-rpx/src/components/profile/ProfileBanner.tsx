@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Edit } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,19 +8,37 @@ import CustomizationSelector from './CustomizationSelector';
 export default function ProfileBanner() {
   const { user } = useAuth();
   const [showSelector, setShowSelector] = useState(false);
+  const [bannerId, setBannerId] = useState('default');
   
-  // Encontrar o banner correto com base no ID do usuário
+  // Verificar se temos um banner salvo no localStorage (modo simulação)
+  useEffect(() => {
+    // Tentar obter do localStorage primeiro
+    const storedBannerId = localStorage.getItem('user_bannerId');
+    console.log("Banner ID do localStorage:", storedBannerId);
+    
+    if (storedBannerId) {
+      setBannerId(storedBannerId);
+    } else if (user?.bannerId) {
+      setBannerId(user.bannerId);
+    }
+  }, [user?.bannerId]);
+  
+  // Encontrar o banner correto
   const defaultBannerId = 'default';
-  const bannerId = user?.bannerId || defaultBannerId;
-  const banner = BANNERS.find(b => b.id === bannerId) || BANNERS.find(b => b.id === defaultBannerId)!;
+  const banner = BANNERS.find(b => b.id === bannerId);
+  
+  // Se não encontrar o banner, usar o padrão
+  const finalBanner = banner || BANNERS.find(b => b.id === defaultBannerId)!;
+  
+  console.log("Banner atual:", finalBanner?.name, finalBanner?.image);
   
   return (
     <div className="w-full flex justify-center bg-[#0D0A2A]">
       <div className="w-full max-w-[73.5%] h-56 sm:h-60 md:h-72 relative overflow-hidden mb-0">
         {/* Banner image */}
         <Image
-          src={banner.image}
-          alt={banner.name}
+          src={finalBanner.image}
+          alt={finalBanner.name}
           fill
           priority
           sizes="(max-width: 768px) 100vw, 73.5vw"
@@ -45,7 +63,11 @@ export default function ProfileBanner() {
             type="banner"
             items={BANNERS}
             selectedItemId={bannerId}
-            onClose={() => setShowSelector(false)}
+            onClose={() => {
+              setShowSelector(false);
+              // Forçar recarregamento da página para mostrar o novo banner
+              window.location.reload();
+            }}
           />
         )}
       </div>

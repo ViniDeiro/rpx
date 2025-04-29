@@ -54,112 +54,368 @@ export const BANNERS: CustomizationItem[] = [
     unlockValue: 0
   },
   
-  // Banners desbloqueáveis por nível
+  // Banners PNG disponíveis
   {
-    id: 'stars',
-    name: 'Estrelas Noturnas',
-    description: 'Um céu estrelado para seu perfil',
-    image: '/images/banners/stars.svg',
+    id: 'banner_1',
+    name: 'Banner 1',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (1).png',
     rarity: 'raro',
-    unlockMethod: 'level',
-    unlockCondition: 'atingir nível',
-    unlockValue: 5
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   {
-    id: 'geometric',
-    name: 'Geométrico',
-    description: 'Padrões geométricos modernos',
-    image: '/images/banners/geometric.svg',
+    id: 'banner_2',
+    name: 'Banner 2',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (2).png',
     rarity: 'raro',
-    unlockMethod: 'level',
-    unlockCondition: 'atingir nível',
-    unlockValue: 10
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   {
-    id: 'neon',
-    name: 'Neon',
-    description: 'Luzes neon vibrantes',
-    image: '/images/banners/neon.svg',
-    rarity: 'épico',
-    unlockMethod: 'level',
-    unlockCondition: 'atingir nível',
-    unlockValue: 15
+    id: 'banner_3',
+    name: 'Banner 3',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (3).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   {
-    id: 'cyber',
-    name: 'Cyberpunk',
-    description: 'Design futurista cyberpunk',
-    image: '/images/banners/cyber.svg',
+    id: 'banner_4',
+    name: 'Banner 4',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (4).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_7',
+    name: 'Banner 7',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (7).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_8',
+    name: 'Banner 8',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (8).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_9',
+    name: 'Banner 9',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (9).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_10',
+    name: 'Banner 10',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (10).png',
+    rarity: 'raro',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_11',
+    name: 'Banner 11',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (11).png',
     rarity: 'épico',
-    unlockMethod: 'level',
-    unlockCondition: 'atingir nível',
-    unlockValue: 20
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_12',
+    name: 'Banner 12',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (12).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_14',
+    name: 'Banner 14',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (14).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_15',
+    name: 'Banner 15',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (15).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_17',
+    name: 'Banner 17',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (17).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_18',
+    name: 'Banner 18',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (18).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_19',
+    name: 'Banner 19',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (19).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_20',
+    name: 'Banner 20',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (20).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_22',
+    name: 'Banner 22',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (22).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_23',
+    name: 'Banner 23',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (23).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_24',
+    name: 'Banner 24',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (24).png',
+    rarity: 'épico',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_25',
+    name: 'Banner 25',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (25).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_26',
+    name: 'Banner 26',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (26).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_27',
+    name: 'Banner 27',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (27).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_28',
+    name: 'Banner 28',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (28).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_29',
+    name: 'Banner 29',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (29).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_31',
+    name: 'Banner 31',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (31).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_32',
+    name: 'Banner 32',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (32).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_33',
+    name: 'Banner 33',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (33).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_35',
+    name: 'Banner 35',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (35).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'banner_36',
+    name: 'Banner 36',
+    description: 'Banner temático especial',
+    image: '/images/banners/Banner (36).png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   
-  // Banners desbloqueáveis por conquistas
+  // Banners com nomes personalizados
   {
-    id: 'champion',
-    name: 'Campeão',
-    description: 'Reservado para verdadeiros campeões',
-    image: '/images/banners/champion.svg',
-    rarity: 'épico',
-    unlockMethod: 'conquista',
-    unlockCondition: 'vencer torneio regional',
-    unlockValue: 1
-  },
-  {
-    id: 'golden',
-    name: 'Dourado',
-    description: 'O brilho do ouro para os vencedores',
-    image: '/images/banners/golden.svg',
+    id: 'coringa',
+    name: 'Coringa',
+    description: 'Banner temático do Coringa',
+    image: '/images/banners/coringa.png',
     rarity: 'lendário',
-    unlockMethod: 'conquista',
-    unlockCondition: 'vencer torneio nacional',
-    unlockValue: 1
-  },
-  
-  // Banners temáticos (torneios)
-  {
-    id: 'worldcup',
-    name: 'Copa do Mundo',
-    description: 'Temático da Copa do Mundo',
-    image: '/images/banners/worldcup.svg',
-    rarity: 'épico',
-    unlockMethod: 'torneio',
-    unlockCondition: 'participar do evento da Copa',
-    unlockValue: 1
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   {
-    id: 'league',
-    name: 'Liga dos Campeões',
-    description: 'Temático da Liga dos Campeões',
-    image: '/images/banners/league.svg',
-    rarity: 'épico',
-    unlockMethod: 'torneio',
-    unlockCondition: 'participar do evento da Liga',
-    unlockValue: 1
-  },
-  
-  // Banners exclusivos (compráveis)
-  {
-    id: 'vip',
-    name: 'VIP',
-    description: 'Banner exclusivo para membros VIP',
-    image: '/images/banners/vip.svg',
+    id: 'dosh',
+    name: 'Dosh',
+    description: 'Banner temático Dosh',
+    image: '/images/banners/dosh.png',
     rarity: 'lendário',
-    unlockMethod: 'compra',
-    unlockCondition: 'adquirir na loja por',
-    unlockValue: 5000
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   },
   {
-    id: 'diamond',
-    name: 'Diamante',
-    description: 'Luxo e exclusividade',
-    image: '/images/banners/diamond.svg',
+    id: 'girl_samurai',
+    name: 'Samurai Feminina',
+    description: 'Banner temático de samurai feminina',
+    image: '/images/banners/girl_samurai.png',
     rarity: 'lendário',
-    unlockMethod: 'compra',
-    unlockCondition: 'adquirir na loja por',
-    unlockValue: 10000
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'goku',
+    name: 'Goku',
+    description: 'Banner temático de Goku',
+    image: '/images/banners/goku.png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'josh',
+    name: 'Josh',
+    description: 'Banner temático Josh',
+    image: '/images/banners/josh.png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'samurai',
+    name: 'Samurai',
+    description: 'Banner temático de samurai',
+    image: '/images/banners/samurai.png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
+  },
+  {
+    id: 'zosh',
+    name: 'Zosh',
+    description: 'Banner temático Zosh',
+    image: '/images/banners/zosh.png',
+    rarity: 'lendário',
+    unlockMethod: 'inicial',
+    unlockCondition: 'disponível desde o início',
+    unlockValue: 0
   }
 ];
 

@@ -22,6 +22,58 @@ import ProfileComments from '@/components/profile/ProfileComments';
 import { RankTier } from '@/utils/ranking';
 import ProfileAvatar from '@/components/profile/ProfileAvatar';
 
+// Mapeamento fixo de usuários para ranks
+const USER_RANKS: Record<string, {tier: RankTier, name: string, points: number, nextRank: string}> = {
+  'joao': {
+    tier: 'bronze',
+    name: 'Bronze',
+    points: 150,
+    nextRank: 'Silver'
+  },
+  'julia': {
+    tier: 'silver',
+    name: 'Silver',
+    points: 350,
+    nextRank: 'Gold'
+  },
+  'bianca': {
+    tier: 'gold',
+    name: 'Gold',
+    points: 750,
+    nextRank: 'Platinum'
+  },
+  'yuri': {
+    tier: 'platinum',
+    name: 'Platinum',
+    points: 950,
+    nextRank: 'Diamond'
+  },
+  'dacruz': {
+    tier: 'diamond',
+    name: 'Diamond',
+    points: 1350,
+    nextRank: 'Legend'
+  },
+  'vini': {
+    tier: 'legend',
+    name: 'Legend',
+    points: 1600,
+    nextRank: 'Challenger'
+  },
+  'ygorx': {
+    tier: 'challenger',
+    name: 'Challenger',
+    points: 2100,
+    nextRank: 'Top 10'
+  },
+  'luiz': {
+    tier: 'unranked',
+    name: 'Unranked',
+    points: 0,
+    nextRank: 'Bronze'
+  }
+};
+
 export default function FriendProfile({ params }: { params: { username: string } }) {
   const router = useRouter();
   const { username } = params;
@@ -72,12 +124,12 @@ export default function FriendProfile({ params }: { params: { username: string }
                 selfData.user.stats = {};
               }
               
-              // DADOS SIMULADOS: Platinum
-              selfData.user.stats.rankTier = 'platinum';
-              selfData.user.stats.rankName = 'Platinum 2';
-              selfData.user.stats.rankPoints = 1050;
-              selfData.user.stats.nextRank = 'Platinum 3';
-              selfData.user.stats.rankProgress = 50;
+              // Usar o rank real do usuário
+              if (selfData.user.rank) {
+                selfData.user.stats.rankTier = selfData.user.rank.tier;
+                selfData.user.stats.rankName = selfData.user.rank.tier.charAt(0).toUpperCase() + selfData.user.rank.tier.slice(1);
+                selfData.user.stats.rankPoints = selfData.user.rank.points;
+              }
               
               setProfile(selfData.user);
               setFriendStatus('self'); // Indicando que é o perfil do próprio usuário
@@ -112,12 +164,12 @@ export default function FriendProfile({ params }: { params: { username: string }
               friendData.user.stats = {};
             }
             
-            // DADOS SIMULADOS: Platinum
-            friendData.user.stats.rankTier = 'platinum';
-            friendData.user.stats.rankName = 'Platinum 2';
-            friendData.user.stats.rankPoints = 1050;
-            friendData.user.stats.nextRank = 'Platinum 3';
-            friendData.user.stats.rankProgress = 50;
+            // Usar o rank real do usuário
+            if (friendData.user.rank) {
+              friendData.user.stats.rankTier = friendData.user.rank.tier;
+              friendData.user.stats.rankName = friendData.user.rank.tier.charAt(0).toUpperCase() + friendData.user.rank.tier.slice(1);
+              friendData.user.stats.rankPoints = friendData.user.rank.points;
+            }
             
             setProfile(friendData.user);
             
@@ -149,7 +201,7 @@ export default function FriendProfile({ params }: { params: { username: string }
             if (friend) {
               console.log("Amigo encontrado na lista de amigos");
               
-              // Dados do usuário amigo com rank simulado
+              // Dados do usuário amigo com rank real
               const friendProfile = {
                 id: friend.id,
                 username: friend.username,
@@ -162,17 +214,22 @@ export default function FriendProfile({ params }: { params: { username: string }
                 stats: {
                   matches: friend.matches || 0,
                   wins: friend.wins || 0,
-                  // DADOS SIMULADOS: Platinum
-                  rankTier: 'platinum',
-                  rankName: 'Platinum 2',
-                  rankPoints: 1050,
-                  nextRank: 'Platinum 3',
-                  rankProgress: 50
+                  rankTier: undefined,
+                  rankName: undefined,
+                  rankPoints: 0
                 },
+                rank: friend.rank || { tier: 'unranked', division: null, points: 0 },
                 createdAt: friend.since || new Date().toISOString(),
                 achievements: [],
                 recentMatches: []
               };
+              
+              // Usar o rank real do amigo
+              if (friendProfile.rank) {
+                friendProfile.stats.rankTier = friendProfile.rank.tier;
+                friendProfile.stats.rankName = friendProfile.rank.tier.charAt(0).toUpperCase() + friendProfile.rank.tier.slice(1);
+                friendProfile.stats.rankPoints = friendProfile.rank.points;
+              }
               
               setProfile(friendProfile);
               setFriendStatus('friend');
@@ -205,13 +262,12 @@ export default function FriendProfile({ params }: { params: { username: string }
             stats: {
               matches: 0,
               wins: 0,
-              // DADOS SIMULADOS: Platinum
-              rankTier: 'platinum',
-              rankName: 'Platinum 2',
-              rankPoints: 1050,
-              nextRank: 'Platinum 3',
-              rankProgress: 50
+              rankTier: 'unranked',
+              rankName: 'Unranked',
+              rankPoints: 0,
+              rankProgress: 0
             },
+            rank: { tier: 'unranked', division: null, points: 0 },
             createdAt: new Date().toISOString(),
             achievements: [],
             recentMatches: [],
@@ -248,28 +304,10 @@ export default function FriendProfile({ params }: { params: { username: string }
           const isFriend = friendsData.friends.some((friend: any) => friend.id === userId);
           if (isFriend) {
             setFriendStatus('friend');
-            return;
           }
-          
-          // Verificar se enviou solicitação
-          const hasSent = friendsData.sent.some((request: any) => request.id === userId);
-          if (hasSent) {
-            setFriendStatus('sent');
-            return;
-          }
-          
-          // Verificar se recebeu solicitação
-          const hasReceived = friendsData.requests.some((request: any) => request.id === userId);
-          if (hasReceived) {
-            setFriendStatus('received');
-            return;
-          }
-          
-          setFriendStatus('none');
         }
       } catch (error) {
         console.error('Erro ao verificar status de amizade:', error);
-        setFriendStatus('none');
       }
     };
     
@@ -434,6 +472,9 @@ export default function FriendProfile({ params }: { params: { username: string }
     return null;
   }
   
+  // Obter os dados de rank fixos para este usuário, se existirem
+  const userRankData = USER_RANKS[profile.username];
+  
   return (
     <div className="bg-[#0D0A2A] min-h-screen text-white">
       <div className="container mx-auto px-4 py-8">
@@ -538,7 +579,7 @@ export default function FriendProfile({ params }: { params: { username: string }
             </div>
           </div>
           
-          {/* Rank do Jogador - VERSÃO ESTÁTICA SEM CONDICIONAIS */}
+          {/* Rank do Jogador - Agora usando o mapeamento fixo */}
           <div className="bg-[#171335] rounded-lg shadow-md p-6 border border-[#3D2A85]/20">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
               <Shield className="mr-2 text-[#8860FF]" size={20} />
@@ -547,38 +588,56 @@ export default function FriendProfile({ params }: { params: { username: string }
             
             <div className="flex flex-col md:flex-row md:items-center">
               <div className="mb-4 md:mb-0 md:mr-6 flex justify-center">
-                {/* Componente de avatar com moldura de rank fixa */}
+                {/* Componente de avatar com moldura de rank */}
                 <ProfileAvatar 
                   size="lg" 
-                  rankTier="platinum" 
                   avatarUrl={profile.avatarUrl}
+                  username={profile.username}
                 />
               </div>
               
               <div className="flex-1">
-                {/* Informações do rank - VALORES FIXOS */}
+                {/* Emblema e nome do rank - Usando o mapeamento fixo */}
+                <div className="w-full mb-4 flex flex-col items-center">
+                  <div className="w-24 h-24 mb-2">
+                    <Image 
+                      src={`/images/ranks/${USER_RANKS[profile.username]?.tier || userRankData?.tier || 'unranked'}.png`}
+                      alt={USER_RANKS[profile.username]?.name || userRankData?.name || "Unranked"}
+                      width={96}
+                      height={96}
+                      className="object-contain"
+                    />
+                  </div>
+                  <div className="text-2xl font-bold text-center" style={{ color: '#14b8a6' }}>
+                    {USER_RANKS[profile.username]?.name || userRankData?.name || profile.stats?.rankName || 'Unranked'}
+                  </div>
+                </div>
+                
+                {/* Informações do rank - Agora usando o mapeamento fixo */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="bg-[#232048] p-4 rounded-lg">
                     <div className="text-sm text-[#A89ECC]">Rank Atual</div>
                     <div className="text-xl font-bold" style={{ color: '#14b8a6' }}>
-                      Platinum 2
+                      {USER_RANKS[profile.username]?.name || userRankData?.name || profile.stats?.rankName || 'Unranked'}
                     </div>
                   </div>
                   
                   <div className="bg-[#232048] p-4 rounded-lg">
                     <div className="text-sm text-[#A89ECC]">Pontos de Rank</div>
-                    <div className="text-xl font-bold text-white">1050</div>
+                    <div className="text-xl font-bold text-white">
+                      {userRankData?.points || profile.stats?.rankPoints || 0}
+                    </div>
                   </div>
                   
                   <div className="bg-[#232048] p-4 rounded-lg">
                     <div className="text-sm text-[#A89ECC]">Próximo Rank</div>
                     <div className="text-xl font-bold text-white">
-                      Platinum 3
+                      {userRankData?.nextRank || profile.stats?.nextRank || 'Unranked'}
                     </div>
                   </div>
                 </div>
                 
-                {/* Barra de progresso - FIXA */}
+                {/* Barra de progresso - Fixa em 50% */}
                 <div className="bg-[#232048] p-4 rounded-lg">
                   <div className="flex justify-between mb-1">
                     <span className="text-[#A89ECC]">Progresso para o próximo rank</span>

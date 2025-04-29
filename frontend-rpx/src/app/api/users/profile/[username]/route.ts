@@ -29,7 +29,7 @@ export async function GET(
     
     // Buscar o usuário pelo username
     const user = await User.findOne({ username })
-      .select('_id username email avatarUrl profile stats createdAt friends recentMatches achievements')
+      .select('_id username email avatarUrl profile stats createdAt friends recentMatches achievements rank')
       .exec();
     
     if (!user) {
@@ -74,6 +74,7 @@ export async function GET(
         matches: user.stats?.matches || 0,
         wins: user.stats?.wins || 0
       },
+      rank: user.rank || { tier: 'unranked', division: null, points: 0 },
       createdAt: user.createdAt,
       achievements: isSelf || isFriend ? user.achievements || [] : [],
       recentMatches: isSelf || isFriend ? user.recentMatches || [] : []

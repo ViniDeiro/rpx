@@ -499,8 +499,7 @@ export default function ProfilePage() {
                     onClick={() => setShowAvatarUploader(true)}
                   >
                     <ProfileAvatar 
-                      size="lg" 
-                      rankTier={userRank.tier as RankTier}
+                      size="lg"
                     />
                     {/* Overlay ao passar o mouse */}
                     <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200 z-30">
