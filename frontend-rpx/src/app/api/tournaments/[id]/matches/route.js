@@ -10,10 +10,10 @@ async function isAuthenticated() {
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user.id) {
-    return { isAuth: false, error: 'Não autorizado', userId: null };
+    return { isAuth, error: 'Não autorizado', userId: null };
   }
   
-  return { isAuth: true, error: null, userId: session.user.id };
+  return { isAuth, error, userId: session.user.id };
 }
 
 // GET: Obter todas as partidas de um torneio
@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio não fornecido'
-      }, { status: 400 });
+      }, { status);
     }
     
     // Conectar ao banco de dados
@@ -53,7 +53,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
-      }, { status: 404 });
+      }, { status);
     }
     
     // Tratando os dados do torneio de forma segura
@@ -70,9 +70,7 @@ export async function GET(request, { params }) {
           tournamentName: tournament.name || 'Torneio',
           bracketType: tournament.bracketType || 'single',
           status: tournament.status || 'unknown',
-          matches: {}
-        }
-      });
+          matches);
     }
     
     tournament.matches.forEach((match) => {
@@ -91,18 +89,16 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       status: 'success',
       data: {
-        tournamentName: tournament.name,
-        bracketType: tournament.bracketType,
-        status: tournament.status,
-        matches: matchesByRound
-      }
-    });
+        tournamentName,
+        bracketType,
+        status,
+        matches);
   } catch (error) {
     console.error('Erro ao buscar partidas do torneio:', error);
     return NextResponse.json({
       status: 'error',
       error: 'Erro ao buscar partidas'
-    }, { status: 500 });
+    }, { status);
   }
 }
 
@@ -116,7 +112,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error
-      }, { status: 401 });
+      }, { status);
     }
     
     const tournamentId = params.id;
@@ -125,7 +121,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'ID do torneio não fornecido'
-      }, { status: 400 });
+      }, { status);
     }
     
     // Conectar ao banco de dados
@@ -143,7 +139,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Acesso restrito a administradores'
-      }, { status: 403 });
+      }, { status);
     }
     
     // Buscar o torneio
@@ -153,7 +149,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'Torneio não encontrado'
-      }, { status: 404 });
+      }, { status);
     }
     
     // Verificar se o torneio está pronto para gerar o bracket
@@ -161,14 +157,14 @@ export async function POST(request, { params }) {
       return NextResponse.json({
         status: 'error',
         error: 'O torneio não está em fase de inscrição'
-      }, { status: 400 });
+      }, { status);
     }
     
     if (tournamentData.participants.length < tournamentData.minParticipants) {
       return NextResponse.json({
         status: 'error',
         error: `O torneio precisa de pelo menos ${tournamentData.minParticipants} participantes confirmados`
-      }, { status: 400 });
+      }, { status);
     }
     
     // Gerar o bracket
@@ -179,22 +175,20 @@ export async function POST(request, { params }) {
         status: 'success',
         message: 'Bracket gerado com sucesso',
         data: {
-          tournamentId: tournamentData._id,
+          tournamentId,
           status: 'in_progress',
-          matchCount: tournamentData.matches?.length || 0
-        }
-      });
+          matchCount);
     } catch (genError) {
       return NextResponse.json({
         status: 'error',
-        error: genError.message || 'Erro ao gerar bracket'
-      }, { status: 400 });
+        error.message || 'Erro ao gerar bracket'
+      }, { status);
     }
   } catch (error) {
     console.error('Erro ao gerar bracket do torneio:', error);
     return NextResponse.json({
       status: 'error',
       error: 'Erro ao processar requisição'
-    }, { status: 500 });
+    }, { status);
   }
 } 

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb/connect';
+import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-// GET - Listar todos os produtos da loja
+// GET - Listar todos os itens da loja
 export async function GET(request) {
   try {
     // Verificar se o usuário é admin
@@ -18,55 +18,45 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const skip = (page - 1) * limit;
-
+    const featured = searchParams.get('featured') === 'true';
+    const available = searchParams.get('available') !== 'false'; // Default true
+    
     // Conectar ao banco de dados
     const { db } = await connectToDatabase();
-
-    // Construir query
+    
+    // Construir query baseada nos parâmetros
     const query = {};
-    if (category) {
-      query.category = category;
-    }
-
-    // Obter total de produtos para paginação
-    const total = await db.collection('shop_items').countDocuments(query);
-
-    // Buscar produtos com paginação
+    if (category) query.category = category;
+    if (featured) query.featured = true;
+    if (available !== undefined) query.available = available;
+    
+    // Buscar itens
     const items = await db.collection('shop_items')
       .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
+      .sort({ featured: -1, category: 1, name: 1 })
       .toArray();
-
+    
+    // Formatar resposta
+    const formattedItems = items.map(item => ({
+      ...item,
+      _id: item._id.toString()
+    }));
+    
     return NextResponse.json({
       status: 'success',
-      data: {
-        items: items.map(item => ({
-          ...item,
-          _id: item._id.toString()
-        })),
-        pagination: {
-          total,
-          page,
-          limit,
-          pages: Math.ceil(total / limit)
-        }
-      }
+      count: formattedItems.length,
+      data: formattedItems
     });
   } catch (error) {
-    console.error('Erro ao listar produtos da loja:', error);
+    console.error('Erro ao listar itens da loja:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao listar produtos: ' + (error.message || 'Erro desconhecido') },
+      { status: 'error', error: 'Erro ao listar itens: ' + error.message },
       { status: 500 }
     );
   }
 }
 
-// POST - Adicionar novo produto à loja
+// POST - Criar um novo item na loja
 export async function POST(request) {
   try {
     // Verificar se o usuário é admin
@@ -77,73 +67,76 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-
+    
     const body = await request.json();
-    const {
-      name,
-      description,
-      price,
-      category,
-      imageUrl,
-      available,
-      featured,
-      attributes
-    } = body;
-
+    const { name, description, price, category, imageUrl, tags } = body;
+    
     // Validar dados obrigatórios
-    if (!name || !price || !category || !imageUrl) {
+    if (!name || !description || price === undefined || !category || !imageUrl) {
       return NextResponse.json(
-        { status: 'error', error: 'Dados insuficientes. Nome, preço, categoria e imagem são obrigatórios.' },
+        { status: 'error', error: 'Dados insuficientes. Nome, descrição, preço, categoria e imagem são obrigatórios.' },
         { status: 400 }
       );
     }
-
+    
     // Conectar ao banco de dados
     const { db } = await connectToDatabase();
-
-    // Criar objeto do produto
-    const shopItem = {
-      name,
-      description: description || '',
-      price: parseFloat(price),
-      category,
-      imageUrl,
-      available: available !== false, // true por padrão
-      featured: featured === true,    // false por padrão
-      attributes: attributes || {},
-      sales: 0,
-      createdBy: session.user.id || session.user.email,
+    
+    // Verificar se já existe um item com o mesmo nome na mesma categoria
+    const existingItem = await db.collection('shop_items').findOne({
+      name: name,
+      category: category
+    });
+    
+    if (existingItem) {
+      return NextResponse.json(
+        { status: 'error', error: `Já existe um item chamado "${name}" na categoria "${category}".` },
+        { status: 409 }
+      );
+    }
+    
+    // Criar o item
+    const newItem = {
+      name: name,
+      description: description,
+      price: Number(price),
+      category: category,
+      imageUrl: imageUrl,
+      tags: tags || [],
+      available: body.available !== false,
+      featured: body.featured === true,
       createdAt: new Date(),
+      createdBy: session.user.id,
       updatedAt: new Date()
     };
-
-    // Inserir no banco de dados
-    const result = await db.collection('shop_items').insertOne(shopItem);
-
-    // Registrar log de auditoria
+    
+    const result = await db.collection('shop_items').insertOne(newItem);
+    
+    if (!result.insertedId) {
+      throw new Error('Falha ao criar item na loja');
+    }
+    
+    // Registrar atividade do admin
     await db.collection('admin_logs').insertOne({
-      adminId: session.user.id || session.user.email,
-      adminEmail: session.user.email,
+      adminId: session.user.id,
       action: 'create_shop_item',
-      entity: 'shop_item',
-      entityId: result.insertedId.toString(),
-      details: {
-        itemName: name,
-        price,
-        category
-      },
+      itemId: result.insertedId.toString(),
+      details: newItem,
       timestamp: new Date()
     });
-
+    
     return NextResponse.json({
       status: 'success',
-      message: 'Produto adicionado com sucesso',
-      itemId: result.insertedId.toString()
+      message: 'Item criado com sucesso',
+      item: {
+        _id: result.insertedId.toString(),
+        ...newItem
+      }
     }, { status: 201 });
   } catch (error) {
-    console.error('Erro ao adicionar produto à loja:', error);
+    console.error('Erro ao criar item na loja:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao adicionar produto: ' + (error.message || 'Erro desconhecido') },
+      { status: 'error', error: 'Erro ao criar item: ' + error.message },
       { status: 500 }
     );
   }

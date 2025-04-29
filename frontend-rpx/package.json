@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --no-lint && node scripts/update-firebase-sw.js",
+    "build:windows": "cross-env NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 next build --no-lint && (IF EXIST scripts\\update-firebase-sw.js node scripts/update-firebase-sw.js)",
     "start": "next start",
     "lint": "next lint",
     "dev:prod": "cross-env NODE_ENV=production next dev",

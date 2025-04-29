@@ -20,8 +20,7 @@ export async function DELETE(request, { params }) {
       console.log('Requisição sem token de autorização válido');
       return NextResponse.json(
         { error: 'Token de autorização não fornecido' },
-        { status: 401 }
-      );
+        { status);
     }
 
     // Extrair o token
@@ -40,8 +39,7 @@ export async function DELETE(request, { params }) {
         console.error('Falha ao obter instância do banco de dados');
         return NextResponse.json(
           { error: 'Erro de conexão com o banco de dados' },
-          { status: 500 }
-        );
+          { status);
       }
       
       // Validar o commentId
@@ -52,18 +50,16 @@ export async function DELETE(request, { params }) {
         console.error('ID de comentário inválido:', e);
         return NextResponse.json(
           { error: 'ID de comentário inválido' },
-          { status: 400 }
-        );
+          { status);
       }
       
       // Obter o comentário
-      const comment = await db.collection('profilecomments').findOne({ _id: commentId });
+      const comment = await db.collection('profilecomments').findOne({ _id);
       
       if (!comment) {
         return NextResponse.json(
           { error: 'Comentário não encontrado' },
-          { status: 404 }
-        );
+          { status);
       }
       
       // Verificar se o usuário tem permissão para excluir o comentário
@@ -77,12 +73,11 @@ export async function DELETE(request, { params }) {
       if (!isAdmin && !isProfileOwner && !isCommentAuthor) {
         return NextResponse.json(
           { error: 'Sem permissão para excluir este comentário' },
-          { status: 403 }
-        );
+          { status);
       }
       
       // Excluir o comentário
-      await db.collection('profilecomments').deleteOne({ _id: commentId });
+      await db.collection('profilecomments').deleteOne({ _id);
       
       return NextResponse.json({
         message: 'Comentário excluído com sucesso'
@@ -92,15 +87,13 @@ export async function DELETE(request, { params }) {
       console.error('Erro ao verificar token:', tokenError);
       return NextResponse.json(
         { error: 'Token inválido ou expirado' },
-        { status: 401 }
-      );
+        { status);
     }
   } catch (error) {
     console.error('Erro ao excluir comentário:', error);
     return NextResponse.json(
       { error: 'Erro ao processar a requisição' },
-      { status: 500 }
-    );
+      { status);
   }
 }
 
@@ -117,8 +110,7 @@ export async function PATCH(request, { params }) {
       console.log('Requisição sem token de autorização válido');
       return NextResponse.json(
         { error: 'Token de autorização não fornecido' },
-        { status: 401 }
-      );
+        { status);
     }
 
     // Extrair o token
@@ -137,8 +129,7 @@ export async function PATCH(request, { params }) {
         console.error('Falha ao obter instância do banco de dados');
         return NextResponse.json(
           { error: 'Erro de conexão com o banco de dados' },
-          { status: 500 }
-        );
+          { status);
       }
       
       // Validar o commentId
@@ -149,18 +140,16 @@ export async function PATCH(request, { params }) {
         console.error('ID de comentário inválido:', e);
         return NextResponse.json(
           { error: 'ID de comentário inválido' },
-          { status: 400 }
-        );
+          { status);
       }
       
       // Obter o comentário
-      const comment = await db.collection('profilecomments').findOne({ _id: commentId });
+      const comment = await db.collection('profilecomments').findOne({ _id);
       
       if (!comment) {
         return NextResponse.json(
           { error: 'Comentário não encontrado' },
-          { status: 404 }
-        );
+          { status);
       }
       
       // Verificar se o usuário tem permissão para moderar o comentário
@@ -173,8 +162,7 @@ export async function PATCH(request, { params }) {
       if (!isAdmin && !isProfileOwner) {
         return NextResponse.json(
           { error: 'Sem permissão para moderar este comentário' },
-          { status: 403 }
-        );
+          { status);
       }
       
       const { isHidden } = await request.json();
@@ -182,21 +170,16 @@ export async function PATCH(request, { params }) {
       if (typeof isHidden !== 'boolean') {
         return NextResponse.json(
           { error: 'Parâmetro isHidden deve ser um booleano' },
-          { status: 400 }
-        );
+          { status);
       }
       
       // Atualizar o status oculto do comentário
       await db.collection('profilecomments').updateOne(
-        { _id: commentId },
+        { _id,
         { 
-          $set: { 
-            isHidden,
+          $set,
             moderatedAt: new Date(),
-            moderatedBy: currentUserId
-          }
-        }
-      );
+            moderatedBy);
       
       return NextResponse.json({
         message: `Comentário ${isHidden ? 'ocultado' : 'exibido'} com sucesso`
@@ -206,14 +189,12 @@ export async function PATCH(request, { params }) {
       console.error('Erro ao verificar token:', tokenError);
       return NextResponse.json(
         { error: 'Token inválido ou expirado' },
-        { status: 401 }
-      );
+        { status);
     }
   } catch (error) {
     console.error('Erro ao moderar comentário:', error);
     return NextResponse.json(
       { error: 'Erro ao processar a requisição' },
-      { status: 500 }
-    );
+      { status);
   }
 } 

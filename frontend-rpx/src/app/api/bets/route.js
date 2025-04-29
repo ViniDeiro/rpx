@@ -61,7 +61,7 @@ export async function GET(req) {
     }
     
     // Buscar apostas do usuário
-    const bets = await db.collection('bets')
+    const userBets = await db.collection('bets')
       .find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -72,7 +72,7 @@ export async function GET(req) {
     const total = await db.collection('bets').countDocuments(filter);
     
     // Processar apostas para resposta
-    const formattedBets = bets.map((bet) => ({
+    const formattedBets = userBets.map((bet) => ({
       id: bet._id.toString(),
       userId: bet.userId,
       matchId: bet.matchId,
@@ -91,9 +91,6 @@ export async function GET(req) {
     return NextResponse.json({
       bets: formattedBets,
       pagination: {
-        total,
-        page,
-        limit,
         pages: Math.ceil(total / limit)
       }
     });
@@ -224,7 +221,7 @@ export async function POST(req) {
       await User.findByIdAndUpdate(
         userId,
         { $inc: { balance: -amount } },
-        { session, new: true }
+        { session: session, new: true }
       );
       
       // Criar nova aposta
@@ -264,8 +261,7 @@ export async function POST(req) {
         { 
           $addToSet: { betUsers: userId },
           $inc: { totalBets: 1, betAmount: amount }
-        },
-        { session }
+        }
       );
       
       // Concluir transação
@@ -277,8 +273,7 @@ export async function POST(req) {
         message: 'Aposta realizada com sucesso',
         bet: {
           id: result.insertedId.toString(),
-          ...newBet,
-          _id: undefined
+          ...newBet
         }
       }, { status: 201 });
       

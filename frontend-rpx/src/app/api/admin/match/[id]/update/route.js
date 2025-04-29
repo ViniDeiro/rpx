@@ -12,16 +12,14 @@ export async function PUT(request, { params }) {
     if (!session?.user?.isAdmin) {
       return NextResponse.json(
         { status: 'error', error: 'Apenas administradores podem acessar este recurso' },
-        { status: 403 }
-      );
+        { status: 403 });
     }
 
     const matchId = params.id;
     if (!matchId) {
       return NextResponse.json(
         { status: 'error', error: 'ID da partida não fornecido' },
-        { status: 400 }
-      );
+        { status: 400 });
     }
 
     const body = await request.json();
@@ -44,15 +42,14 @@ export async function PUT(request, { params }) {
     if (!match) {
       return NextResponse.json(
         { status: 'error', error: 'Partida não encontrada' },
-        { status: 404 }
-      );
+        { status: 404 });
     }
 
     // Dados para atualização
     const updateData = {
       updatedAt: new Date(),
       lastAdminAction: {
-        adminId: session.user.id || session.user.email,
+        adminId: session.user.id,
         action: 'update',
         timestamp: new Date()
       }
@@ -84,7 +81,7 @@ export async function PUT(request, { params }) {
             type: 'match_room',
             matchId: matchId,
             roomId: roomId,
-            roomPassword: roomPassword
+            roomPassword: roomPassword,
           },
           createdAt: new Date()
         });
@@ -99,17 +96,16 @@ export async function PUT(request, { params }) {
     // Atualizar a partida
     await db.collection('matches').updateOne(
       { _id: new ObjectId(matchId) },
-      { $set: updateData }
-    );
+      { $set: updateData });
 
     // Registrar log de auditoria
     await db.collection('admin_logs').insertOne({
-      adminId: session.user.id || session.user.email,
+      adminId: session.user.id,
       adminEmail: session.user.email,
       action: 'match_update',
       entity: 'match',
       entityId: matchId,
-      changes: updateData,
+      changes: body,
       timestamp: new Date()
     });
 
@@ -124,7 +120,6 @@ export async function PUT(request, { params }) {
     console.error('Erro ao atualizar partida:', error);
     return NextResponse.json(
       { status: 'error', error: 'Erro ao atualizar partida: ' + (error.message || 'Erro desconhecido') },
-      { status: 500 }
-    );
+      { status: 500 });
   }
 } 

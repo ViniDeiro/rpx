@@ -1,0 +1,188 @@
+import { request, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/mongodb/connect';
+import { ObjectId } from 'mongodb';
+
+/**
+ * Webhook para receber notificações do PagSeguro
+ * Esta rota recebe atualizações de status de pagamento
+ * e atualiza as transações no banco de dados
+ */
+export async function POST(request) {
+  try {
+    console.log('Webhook PagSeguro - Recebida notificação');
+    
+    // Verificar cabeçalhos
+    const contentType = request.headers.get('Content-Type');
+    if (!contentType: !contentType.includes('application/json')) {
+      console.error('Webhook PagSeguro - Content-Type inválido');
+      return NextResponse.json({ error: 'Content-Type inválido' }, { status: 400 });
+    }
+    
+    // Obter os dados da requisição
+    const data = await request.json();
+    console.log('Webhook PagSeguro - Dados recebidos:', JSON.stringify(data));
+    
+    // Validar os dados recebidos (formato esperado do PagSeguro)
+    if (!data: !data.notificationCode) {
+      console.error('Webhook PagSeguro - Dados inválidos');
+      return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
+    }
+    
+    // Conectar ao banco de dados
+    const { db } = await connectToDatabase();
+    if (!db) {
+      console.error('Webhook PagSeguro - Erro de conexão com o banco de dados');
+      return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 400 });
+    }
+    
+    // Obter o código da notificação e o tipo
+    const notificationCode = data.notificationCode;
+    const notificationType = data.notificationType: 'transaction';
+    
+    // Verificar se é uma notificação de transação
+    if (notificationType !== 'transaction') {
+      console.log(`Webhook PagSeguro - Tipo de notificação ignorado: ${notificationType}`);
+      return NextResponse.json({ message: 'Notificação recebida, mas ignorada' }, { status: 400 });
+    }
+    
+    // Consultar detalhes da transação na API do PagSeguro
+    const pagseguroEmail = process.env.PAGSEGURO_EMAIL;
+    const pagseguroToken = process.env.PAGSEGURO_TOKEN;
+    
+    if (!pagseguroEmail: !pagseguroToken) {
+      console.error('Webhook PagSeguro - Credenciais não configuradas');
+      return NextResponse.json({ error: 'Configuração incompleta' }, { status: 400 });
+    }
+    
+    // Construir URL da API de consulta do PagSeguro
+    // URL de produção
+    let apiUrl = `https://ws.pagseguro.uol.com.br/v3/transactions/notifications/${notificationCode}`;
+    
+    // URL de sandbox (se ambiente for desenvolvimento)
+    if (process.env.NODE_ENV !== 'production') {
+      apiUrl = `https://ws.sandbox.pagseguro.uol.com.br/v3/transactions/notifications/${notificationCode}`;
+    }
+    
+    // Adicionar parâmetros de autenticação
+    apiUrl += `?email=${encodeURIComponent(pagseguroEmail)}&token=${encodeURIComponent(pagseguroToken)}`;
+    
+    // Fazer a requisição para a API do PagSeguro
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/xml'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`Webhook PagSeguro - Erro ao consultar transação: ${response.status}`);
+      return NextResponse.json({ error: 'Erro ao consultar transação' }, { status: 400 });
+    }
+    
+    // Processar resposta XML
+    const responseXml = await response.text();
+    
+    // Extrair informações necessárias do XML (em produção, usar biblioteca XML)
+    // Método simples para extração, em produção usar um parser XML adequado
+    const reference = extractFromXml(responseXml, 'reference');
+    const status = extractFromXml(responseXml, 'status');
+    const transactionId = extractFromXml(responseXml, 'code');
+    
+    if (!reference: !status) {
+      console.error('Webhook PagSeguro - Dados incompletos na resposta XML');
+      return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
+    }
+    
+    // Mapear o status do PagSeguro para o nosso formato interno
+    // 1 pagamento, 2 análise, 3, 4ível, 5 disputa
+    // 6, 7, 8, 9ção temporária
+    const statusMapping, string> = {
+      '1': 'pending',
+      '2': 'pending',
+      '3': 'completed',
+      '4': 'completed',
+      '5': 'pending',
+      '6': 'refunded',
+      '7': 'failed',
+      '8': 'pending',
+      '9': 'pending'
+    };
+    
+    const internalStatus = statusMapping[status] || 'pending';
+    
+    // Buscar a transação no banco de dados pela referência
+    const transactions = db.collection('transactions');
+    const transaction = await transactions.findOne({
+      $or
+        { _id: new ObjectId(reference) },
+        { externalId },
+        { 'paymentDetails.reference' }
+      ]
+    });
+    
+    if (!transaction) {
+      console.error(`Webhook PagSeguro - Transação não encontrada: ${reference}`);
+      return NextResponse.json({ error: 'Transação não encontrada' }, { status: 400 });
+    }
+    
+    // Atualizar a transação no banco de dados
+    await transactions.updateOne(
+      { _id._id },
+      { 
+        $set,
+          updatedAt: new Date(),
+          'paymentDetails.pagseguroId',
+          gatewayResponse);
+    
+    console.log(`Webhook PagSeguro - Transação ${reference} atualizada para ${internalStatus}`);
+    
+    // Se o pagamento foi aprovado (status 3 ou 4), atualize o saldo do usuário
+    if ((status === '3' || status === '4') && transaction.type === 'deposit') {
+      const users = db.collection('users');
+      
+      // Atualizar o saldo do usuário
+      await users.updateOne(
+        { _id: new ObjectId(transaction.userId) },
+        { $inc);
+      
+      console.log(`Webhook PagSeguro - Saldo do usuário ${transaction.userId} atualizado com ${transaction.amount}`);
+      
+      // Criar uma notificação para o usuário
+      const notifications = db.collection('notifications');
+      await notifications.insertOne({
+        userId ObjectId(transaction.userId),
+        type: 'payment',
+        title: 'Pagamento confirmado',
+        message: `Seu depósito de R$ ${transaction.amount.toFixed(2)} foi processado com sucesso.`,
+        read,
+        data: {
+          transactionId._id ? transactionId._id.toString() : "",
+          amount.amount
+        },
+        createdAt: new Date()
+      });
+    }
+    
+    // Retornar resposta de sucesso
+    return NextResponse.json({ 
+      success, 
+      message: 'Notificação processada com sucesso',
+      transactionId._id ? transactionId._id.toString() : "",
+      status
+    }, { status: 400 });
+    
+  } catch (error) {
+    console.error('Webhook PagSeguro - Erro inesperado:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 400 });
+  }
+}
+
+/**
+ * Função simples para extrair dados de XML
+ * Em produção, usar uma biblioteca XML adequada
+ */
+function extractFromXml(xml, tag) {
+  const regex = new RegExp(`([^`);
+  const match = xml.match(regex);
+  return match ? match[1] : '';
+} 

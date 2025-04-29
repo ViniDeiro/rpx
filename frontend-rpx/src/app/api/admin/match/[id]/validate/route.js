@@ -6,31 +6,31 @@ import { ObjectId } from 'mongodb';
 
 // Pontos ganhos por vitória com base no modo
 const POINTS_BY_MODE = {
-  casual: 50,
-  ranked: 75,
+  casual: 25,
+  ranked: 50,
   tournament: 100
 };
 
 // Níveis de ranking e pontos necessários
 const RANKS = [
   { name: 'Novato', threshold: 0 },
-  { name: 'Bronze 1', threshold: 50 },
-  { name: 'Bronze 2', threshold: 100 },
-  { name: 'Bronze 3', threshold: 200 },
-  { name: 'Prata 1', threshold: 350 },
+  { name: 'Bronze 1', threshold: 100 },
+  { name: 'Bronze 2', threshold: 200 },
+  { name: 'Bronze 3', threshold: 300 },
+  { name: 'Prata 1', threshold: 400 },
   { name: 'Prata 2', threshold: 500 },
-  { name: 'Prata 3', threshold: 700 },
-  { name: 'Ouro 1', threshold: 950 },
-  { name: 'Ouro 2', threshold: 1250 },
-  { name: 'Ouro 3', threshold: 1600 },
-  { name: 'Platina 1', threshold: 2000 },
-  { name: 'Platina 2', threshold: 2500 },
-  { name: 'Platina 3', threshold: 3100 },
-  { name: 'Diamante 1', threshold: 3800 },
-  { name: 'Diamante 2', threshold: 4600 },
-  { name: 'Diamante 3', threshold: 5500 },
-  { name: 'Mestre', threshold: 6500 },
-  { name: 'Grão-Mestre', threshold: 8000 },
+  { name: 'Prata 3', threshold: 600 },
+  { name: 'Ouro 1', threshold: 700 },
+  { name: 'Ouro 2', threshold: 800 },
+  { name: 'Ouro 3', threshold: 900 },
+  { name: 'Platina 1', threshold: 1000 },
+  { name: 'Platina 2', threshold: 1250 },
+  { name: 'Platina 3', threshold: 1500 },
+  { name: 'Diamante 1', threshold: 2000 },
+  { name: 'Diamante 2', threshold: 2500 },
+  { name: 'Diamante 3', threshold: 3000 },
+  { name: 'Mestre', threshold: 4000 },
+  { name: 'Grão-Mestre', threshold: 5000 },
   { name: 'Desafiante', threshold: 10000 }
 ];
 
@@ -42,16 +42,14 @@ export async function POST(request, { params }) {
     if (!session?.user?.isAdmin) {
       return NextResponse.json(
         { status: 'error', error: 'Apenas administradores podem acessar este recurso' },
-        { status: 403 }
-      );
+        { status: 403 });
     }
 
     const matchId = params.id;
     if (!matchId) {
       return NextResponse.json(
         { status: 'error', error: 'ID da partida não fornecido' },
-        { status: 400 }
-      );
+        { status: 400 });
     }
 
     const body = await request.json();
@@ -64,8 +62,7 @@ export async function POST(request, { params }) {
     if (!winnerId || !winnerType) {
       return NextResponse.json(
         { status: 'error', error: 'Dados do vencedor não fornecidos' },
-        { status: 400 }
-      );
+        { status: 400 });
     }
 
     // Conectar ao banco de dados
@@ -79,16 +76,14 @@ export async function POST(request, { params }) {
     if (!match) {
       return NextResponse.json(
         { status: 'error', error: 'Partida não encontrada' },
-        { status: 404 }
-      );
+        { status: 404 });
     }
 
     // Verificar se a partida está aguardando validação
     if (match.status !== 'awaiting_validation') {
       return NextResponse.json(
         { status: 'error', error: `Não é possível validar uma partida com status ${match.status}` },
-        { status: 400 }
-      );
+        { status: 400 });
     }
 
     // Buscar as apostas para a partida
@@ -113,8 +108,7 @@ export async function POST(request, { params }) {
     if (winnerUserIds.length === 0) {
       return NextResponse.json(
         { status: 'error', error: 'Não foi possível determinar os usuários vencedores' },
-        { status: 400 }
-      );
+        { status: 400 });
     }
 
     // Calcular o valor total das apostas
@@ -197,7 +191,7 @@ export async function POST(request, { params }) {
       { 
         matchId: matchId, 
         status: 'active',
-        userId: { $nin: winnerUserIds }
+        userId: { $nin: allWinnerIds }
       },
       { 
         $set: { 
@@ -206,36 +200,26 @@ export async function POST(request, { params }) {
         }
       }
     );
-
-    // Registrar taxa da plataforma
-    await db.collection('platform_revenue').insertOne({
-      source: 'match_fee',
-      matchId: matchId,
-      amount: platformFee,
-      createdAt: new Date()
-    });
-
-    // Atualizar pontos de ranking para os vencedores
+    
+    // Atualizar ranking dos jogadores participantes
+    const rankingUpdates = [];
+    
+    // Determinar o tipo de partida para atribuição de pontos
     const gameMode = match.gameMode || 'casual';
-    const pointsEarned = POINTS_BY_MODE[gameMode] || POINTS_BY_MODE.casual;
+    const pointsToAward = POINTS_BY_MODE[gameMode] || POINTS_BY_MODE.casual;
     
-    const rankUpdates = [];
-    
-    for (const userId of winnerUserIds) {
-      // Buscar usuário e seu ranking atual
-      const user = await db.collection('users').findOne(
-        { _id: new ObjectId(userId) },
-        { projection: { rankPoints: 1, rank: 1 } }
-      );
+    // Adicionar pontos de ranking aos vencedores
+    for (const winnerId of winnerUserIds) {
+      const user = await db.collection('users').findOne({ _id: new ObjectId(winnerId) });
       
       if (!user) continue;
       
-      const currentPoints = user.rankPoints || 0;
-      const newPoints = currentPoints + pointsEarned;
+      // Calcular novos pontos de ranking
+      const currentPoints = user.rankingPoints || 0;
+      const newPoints = currentPoints + pointsToAward;
       
-      // Determinar o novo ranking
+      // Determinar o novo ranking com base nos pontos
       let newRank = 'Novato';
-      
       for (let i = RANKS.length - 1; i >= 0; i--) {
         if (newPoints >= RANKS[i].threshold) {
           newRank = RANKS[i].name;
@@ -243,113 +227,129 @@ export async function POST(request, { params }) {
         }
       }
       
-      // Atualizar pontos e rank do usuário
+      // Atualizar ranking do usuário
       await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
+        { _id: new ObjectId(winnerId) },
         { 
           $set: { 
-            rankPoints: newPoints,
-            rank: newRank,
+            rankingPoints: newPoints,
+            currentRank: newRank,
             updatedAt: new Date()
+          },
+          $inc: { 
+            'stats.wins': 1,
+            'stats.matches': 1
           }
         }
       );
       
-      // Se o rank mudou, enviar notificação
-      if (user.rank !== newRank) {
-        await db.collection('notifications').insertOne({
-          userId: userId,
-          type: 'rank_up',
-          title: 'Você subiu de rank!',
-          message: `Parabéns! Você agora é ${newRank}.`,
-          isRead: false,
-          createdAt: new Date()
-        });
-        
-        rankUpdates.push({
-          userId: userId,
-          oldRank: user.rank || 'Sem Rank',
-          newRank: newRank,
-          pointsEarned: pointsEarned
-        });
-      }
-    }
-    
-    // Enviar notificações para todos os apostadores
-    for (const bet of bets) {
-      const isWinner = allWinnerIds.includes(bet.userId);
-      const winDetails = isWinner 
-        ? paymentResults.find(p => p.userId === bet.userId)
-        : null;
+      // Adicionar ao resultado
+      rankingUpdates.push({
+        userId: winnerId,
+        previousPoints: currentPoints,
+        newPoints: newPoints,
+        previousRank: user.currentRank || 'Novato',
+        newRank: newRank,
+        pointsAwarded: pointsToAward
+      });
       
+      // Criar notificação para o usuário
       await db.collection('notifications').insertOne({
-        userId: bet.userId,
-        type: isWinner ? 'bet_win' : 'bet_loss',
-        title: isWinner ? 'Aposta vencedora!' : 'Aposta perdida',
-        message: isWinner 
-          ? `Você ganhou ${winDetails?.winAmount || 0} moedas na partida ${match.title || matchId}!`
-          : `Sua aposta de ${bet.amount} moedas na partida ${match.title || matchId} foi perdida.`,
-        isRead: false,
+        userId: winnerId,
+        type: 'match_result',
+        title: 'Vitória na partida!',
+        message: `Você ganhou ${pointsToAward} pontos de ranking por vencer a partida.`,
+        read: false,
+        data: {
+          matchId: matchId,
+          result: 'win',
+          pointsAwarded: pointsToAward
+        },
         createdAt: new Date()
       });
     }
     
-    // Atualizar status da partida para validada
+    // Atualizar estatísticas para os perdedores
+    const loserUserIds = match.players
+      ? match.players.filter(player => !winnerUserIds.includes(player.userId)).map(player => player.userId)
+      : [];
+    
+    for (const loserId of loserUserIds) {
+      // Atualizar estatísticas
+      await db.collection('users').updateOne(
+        { _id: new ObjectId(loserId) },
+        { 
+          $inc: { 'stats.matches': 1 },
+          $set: { updatedAt: new Date() }
+        }
+      );
+      
+      // Criar notificação para o usuário
+      await db.collection('notifications').insertOne({
+        userId: loserId,
+        type: 'match_result',
+        title: 'Resultado da partida',
+        message: 'Você perdeu a partida. Continue tentando!',
+        read: false,
+        data: {
+          matchId: matchId,
+          result: 'loss'
+        },
+        createdAt: new Date()
+      });
+    }
+    
+    // Atualizar status da partida para completed
     await db.collection('matches').updateOne(
       { _id: new ObjectId(matchId) },
       { 
         $set: { 
-          status: 'validated',
+          status: 'completed', 
           result: {
             winnerId: winnerId,
             winnerType: winnerType,
-            validatedAt: new Date(),
-            validatedBy: session.user.id,
-            validationNotes: validationNotes || ''
+            validationNotes: validationNotes || '',
+            winnerUserIds: winnerUserIds,
+            totalBetAmount: totalBetAmount,
+            platformFee: platformFee,
+            prizePool: prizePool
           },
+          validatedAt: new Date(),
+          validatedBy: session.user.id,
           updatedAt: new Date()
         }
       }
     );
-
-    // Registrar ação de validação em logs de admin
+    
+    // Registrar log de auditoria
     await db.collection('admin_logs').insertOne({
       adminId: session.user.id,
-      action: 'validate_match',
+      adminEmail: session.user.email,
+      action: 'match_validate',
+      entity: 'match',
+      entityId: matchId,
       details: {
-        matchId: matchId,
         winnerId: winnerId,
         winnerType: winnerType,
-        totalBets: bets.length,
-        totalBetAmount: totalBetAmount,
-        platformFee: platformFee,
-        prizePool: prizePool,
-        payments: paymentResults,
-        rankUpdates: rankUpdates
+        validationNotes: validationNotes || '',
+        paymentResults: paymentResults,
+        rankingUpdates: rankingUpdates
       },
-      createdAt: new Date()
+      timestamp: new Date()
     });
-
-    // Retornar resultado da validação
+    
     return NextResponse.json({
       status: 'success',
       message: 'Partida validada com sucesso',
-      data: {
-        matchId: matchId,
-        totalBets: bets.length,
-        totalBetAmount: totalBetAmount,
-        platformFee: platformFee,
-        prizePool: prizePool,
-        winningBets: winningBets.length,
-        paymentResults: paymentResults,
-        rankUpdates: rankUpdates
-      }
+      matchId: matchId,
+      paymentResults: paymentResults,
+      rankingUpdates: rankingUpdates
     });
+    
   } catch (error) {
     console.error('Erro ao validar partida:', error);
     return NextResponse.json(
-      { status: 'error', error: 'Erro ao processar validação da partida' },
-      { status: 500 }
-    );
+      { status: 'error', error: 'Erro ao validar partida: ' + (error.message || 'Erro desconhecido') },
+      { status: 500 });
   }
 } 
