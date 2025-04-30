@@ -982,18 +982,18 @@ export default function RankingPage() {
           <div className="space-y-3">
             {/* Pódio melhorado para os 3 primeiros */}
             {filteredPlayers.length > 0 && (
-              <div className="relative mb-10 rounded-xl bg-indigo-950 border border-indigo-800 overflow-hidden">
+              <div className="relative mb-10 rounded-xl bg-gradient-to-br from-[#120821] to-[#1E1046] border border-[#3D2A85] overflow-hidden">
                 {/* Container principal do pódio com layout em grid para garantir alinhamento */}
                 <div className="grid grid-cols-3 gap-4 p-8">
                   {/* Segundo lugar */}
                   <div className="flex flex-col items-center justify-end">
                     {/* Número da posição */}
-                    <div className="w-8 h-8 bg-blue-600 rounded-full border border-blue-400 flex items-center justify-center mb-2">
+                    <div className="w-8 h-8 bg-[#3D2A85] rounded-full border border-[#6E56CF] flex items-center justify-center mb-2">
                       <span className="text-white font-bold">2</span>
                     </div>
                     
                     {/* Avatar */}
-                    <div className="w-20 h-20 rounded-full border-2 border-blue-400 overflow-hidden">
+                    <div className="w-20 h-20 rounded-full border-2 border-[#6E56CF] overflow-hidden">
                       <img 
                         src={getAvatarUrl(filteredPlayers[1] || {})} 
                         alt={filteredPlayers[1]?.username || "Jogador"} 
@@ -1016,9 +1016,9 @@ export default function RankingPage() {
                     </div>
                     
                     {/* Estatísticas */}
-                    <div className="mt-4 pt-2 pb-4 px-4 bg-blue-900 border-t-2 border-blue-500 rounded-t-lg w-full">
+                    <div className="mt-4 pt-2 pb-4 px-4 bg-[#2C2A5E] border-t-2 border-[#6E56CF] rounded-t-lg w-full">
                       <div className="text-center">
-                        <div className="text-blue-200 uppercase text-xs font-semibold">Vitórias</div>
+                        <div className="text-[#C4B5FD] uppercase text-xs font-semibold">Vitórias</div>
                         <div className="text-2xl font-bold text-white mt-1">
                           {filteredPlayers[1]?.victories || filteredPlayers[1]?.wins || 0}
                         </div>
@@ -1031,20 +1031,15 @@ export default function RankingPage() {
                     </div>
                   </div>
                   
-                  {/* Primeiro lugar */}
-                  <div className="flex flex-col items-center justify-end">
-                    {/* Coroa */}
-                    <div className="mb-2">
-                      <Crown size={32} className="text-yellow-400" />
-                    </div>
-                    
+                  {/* Primeiro lugar (centro) */}
+                  <div className="flex flex-col items-center -mt-8">
                     {/* Número da posição */}
-                    <div className="w-10 h-10 bg-yellow-600 rounded-full border border-yellow-400 flex items-center justify-center mb-3">
+                    <div className="w-10 h-10 bg-[#9A5FF0] rounded-full border border-[#B894F9] flex items-center justify-center mb-2">
                       <span className="text-white font-bold text-lg">1</span>
                     </div>
                     
-                    {/* Avatar */}
-                    <div className="w-28 h-28 rounded-full border-2 border-yellow-400 overflow-hidden">
+                    {/* Avatar do jogador maior para o 1º lugar */}
+                    <div className="w-28 h-28 rounded-full border-4 border-[#B894F9] overflow-hidden">
                       <img 
                         src={getAvatarUrl(filteredPlayers[0] || {})} 
                         alt={filteredPlayers[0]?.username || "Campeão"} 
@@ -1067,9 +1062,9 @@ export default function RankingPage() {
                     </div>
                     
                     {/* Estatísticas */}
-                    <div className="mt-4 pt-4 pb-6 px-4 bg-amber-800 border-t-2 border-yellow-500 rounded-t-lg w-full">
+                    <div className="mt-4 pt-4 pb-6 px-4 bg-[#4E379E] border-t-2 border-[#9A5FF0] rounded-t-lg w-full">
                       <div className="text-center">
-                        <div className="text-yellow-200 uppercase text-sm font-semibold">Vitórias</div>
+                        <div className="text-[#C4B5FD] uppercase text-xs font-semibold">Vitórias</div>
                         <div className="text-3xl font-bold text-white mt-2">
                           {filteredPlayers[0]?.victories || filteredPlayers[0]?.wins || 0}
                         </div>
@@ -1117,9 +1112,9 @@ export default function RankingPage() {
                     </div>
                     
                     {/* Estatísticas */}
-                    <div className="mt-4 pt-2 pb-4 px-4 bg-amber-900 border-t-2 border-amber-600 rounded-t-lg w-full">
+                    <div className="mt-4 pt-2 pb-4 px-4 bg-[#232048] border-t-2 border-[#3D2A85] rounded-t-lg w-full">
                       <div className="text-center">
-                        <div className="text-amber-200 uppercase text-xs font-semibold">Vitórias</div>
+                        <div className="text-[#C4B5FD] uppercase text-xs font-semibold">Vitórias</div>
                         <div className="text-2xl font-bold text-white mt-1">
                           {filteredPlayers[2]?.victories || filteredPlayers[2]?.wins || 0}
                         </div>
@@ -1206,7 +1201,22 @@ export default function RankingPage() {
                                 {player.username}
                               </div>
                               <div className={`text-sm truncate ${getRankColor(player.rank)}`}>
-                                {typeof player.rank === 'string' ? player.rank : `Rank #${player.rank}`}
+                                <div className="font-medium capitalize flex items-center gap-2">
+                                  {player.rank && typeof player.rank === 'string' && (
+                                    <div className="relative w-6 h-6 overflow-hidden">
+                                      <Image 
+                                        src={`/images/ranks/${player.rank.toLowerCase().split(' ')[0]}.png`}
+                                        alt={player.rank}
+                                        width={24}
+                                        height={24}
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                  <span className={getRankColor(player.rank)}>
+                                    {player.rank}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>

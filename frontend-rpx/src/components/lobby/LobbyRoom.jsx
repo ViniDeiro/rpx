@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { 
   Users, Clock, Settings, ChevronRight, Play, Share2, 
-  MessageCircle, DollarSign, Copy, UserPlus, X, UserX
+  MessageCircle, DollarSign, Copy, UserPlus, X, UserX, FileText
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import CharacterDisplay, { PLAYER_TYPES } from './CharacterDisplay';
@@ -32,8 +32,9 @@ export default function LobbyRoom({
   const [timeLeft, setTimeLeft] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
   
   // Carregar jogadores da API
   useEffect(() => {
@@ -197,18 +198,18 @@ export default function LobbyRoom({
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
-    if (!messageInput.trim()) return;
+    if (!message.trim()) return;
     
     const newMessage = {
       id: Date.now(),
       username: user?.username || 'Você',
-      message: messageInput,
+      message: message,
       type: 'player',
     };
     
     // Atualização otimista
     setChatMessages([...chatMessages, newMessage]);
-    setMessageInput('');
+    setMessage('');
     
     try {
       await fetch(`/api/lobbies/${matchId}/chat`, {
@@ -217,7 +218,7 @@ export default function LobbyRoom({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          message: messageInput,
+          message: message,
           playerId: user?.id,
           username: user?.username
         }),
@@ -306,6 +307,13 @@ export default function LobbyRoom({
             >
               <MessageCircle size={14} />
               Chat
+            </button>
+            <button 
+              onClick={() => setIsRulesOpen(!isRulesOpen)}
+              className="btn-secondary btn-sm flex items-center gap-1"
+            >
+              <FileText size={14} />
+              Regras
             </button>
             {isCaptain && (
               <button 
@@ -520,8 +528,8 @@ export default function LobbyRoom({
             <form onSubmit={handleSendMessage} className="flex gap-2">
               <input 
                 type="text"
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="Digite sua mensagem..."
                 className="flex-1 bg-card-hover rounded-lg px-3 py-2 text-sm"
               />
@@ -609,6 +617,68 @@ export default function LobbyRoom({
                   Expulsar
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de regras */}
+      {isRulesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-4 border-b border-border flex justify-between items-center sticky top-0 bg-card z-10">
+              <h3 className="font-bold text-lg flex items-center">
+                <FileText size={18} className="mr-2 text-primary" />
+                Regras da Partida
+              </h3>
+              <button 
+                onClick={() => setIsRulesOpen(false)}
+                className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <h4 className="font-bold text-primary mb-2">Regras Gerais</h4>
+                <ul className="list-disc ml-5 space-y-1 text-gray-300">
+                  <li>É proibido o uso de qualquer tipo de programa de trapaça (hack, cheat)</li>
+                  <li>Respeite os outros jogadores e não use linguagem ofensiva</li>
+                  <li>Jogadores devem estar prontos dentro do tempo estipulado</li>
+                  <li>O não cumprimento das regras resultará em eliminação</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-primary mb-2">Formato da Partida</h4>
+                <ul className="list-disc ml-5 space-y-1 text-gray-300">
+                  <li>Modo de jogo: {matchDetails.mode}</li>
+                  <li>Formato: {matchDetails.teamSize}x{matchDetails.teamSize}</li>
+                  <li>Mapa: Bermuda</li>
+                  <li>Duração máxima: 20 minutos</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-primary mb-2">Pontuação</h4>
+                <ul className="list-disc ml-5 space-y-1 text-gray-300">
+                  <li>Vitória: 15 pontos</li>
+                  <li>Top 3: 10 pontos</li>
+                  <li>Top 5: 5 pontos</li>
+                  <li>Cada eliminação: 1 ponto</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-primary mb-2">Premiação</h4>
+                <p className="text-gray-300">
+                  Valor do prêmio por jogador: <span className="text-primary font-bold">R$ {matchDetails.prize}</span>
+                </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Os valores serão creditados automaticamente na carteira após a conclusão da partida.
+                </p>
+              </div>
             </div>
           </div>
         </div>

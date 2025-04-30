@@ -8,7 +8,7 @@ import {
   User, Lock, Shield, Activity, LogOut, Edit, ChevronRight, 
   Clock, Award, Star, Calendar, Gift, Settings, Zap,
   PieChart, TrendingUp, Users, MessageCircle, Cpu, Bookmark, X, Check,
-  Instagram, Twitter, Facebook, Youtube, Twitch, MessageSquare
+  Instagram, Twitter, Facebook, Youtube, Twitch, MessageSquare, ShoppingCart
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Medal } from '@/components/ui/icons';
@@ -18,6 +18,7 @@ import ProfileAvatar from '@/components/profile/ProfileAvatar';
 import FileUploadAvatar from '@/components/profile/FileUploadAvatar';
 import FriendRequests from '@/components/profile/FriendRequests';
 import { BANNERS } from '@/data/customization';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ExtendedStats {
   matches?: number;
@@ -131,7 +132,7 @@ const defaultRank: Rank = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user: authUser, isAuthenticated, isLoading, logout, updateUserAvatar } = useAuth();
+  const { user: authUser, isAuthenticated, isLoading, logout, updateUserAvatar, updateCustomization } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
   const [activeTab, setActiveTab] = useState<'resumo' | 'estatísticas' | 'conquistas' | 'amigos'>('resumo');
   const [showAvatarUploader, setShowAvatarUploader] = useState(false);
@@ -248,6 +249,27 @@ export default function ProfilePage() {
       console.error('Erro ao fazer upload da imagem:', error);
       // Mostrar mensagem de erro
       setToastMessage("Erro ao atualizar foto de perfil. Tente novamente.");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // Função para selecionar avatar predefinido
+  const handleSelectAvatar = async (avatarId: string) => {
+    try {
+      setIsUploadingAvatar(true);
+      await updateCustomization('avatar', avatarId);
+      setShowAvatarUploader(false);
+      
+      // Mostrar mensagem de sucesso
+      setToastMessage("Avatar atualizado com sucesso!");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Erro ao selecionar avatar:', error);
+      setToastMessage("Erro ao atualizar avatar. Tente novamente.");
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } finally {
@@ -500,6 +522,9 @@ export default function ProfilePage() {
                   >
                     <ProfileAvatar 
                       size="lg"
+                      rankTier={typeof user?.rank === 'object' ? (user?.rank as any)?.tier as RankTier || "unranked" : "unranked"}
+                      avatarUrl={user?.avatarUrl}
+                      showRankFrame={true}
                     />
                     {/* Overlay ao passar o mouse */}
                     <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200 z-30">
@@ -896,38 +921,37 @@ export default function ProfilePage() {
         </div>
       </div>
       
-      {/* Modal de upload de avatar */}
+      {/* Modal para foto de perfil */}
       {showAvatarUploader && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#171335] rounded-xl w-full max-w-md p-6 animate-fade-up shadow-2xl shadow-purple-900/20 border border-[#3D2A85]/30">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Atualizar foto de perfil</h2>
-              <button 
-                onClick={() => setShowAvatarUploader(false)}
-                className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <FileUploadAvatar 
-              onFileSelected={handleFileSelected} 
-              currentImageUrl={user?.avatarUrl}
-            />
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button 
-                onClick={() => setShowAvatarUploader(false)}
-                className="bg-[#232048] hover:bg-[#2c295c] text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div 
+            className="bg-[#171335] rounded-xl overflow-hidden shadow-xl border border-[#3D2A85]/20 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Alterar Foto de Perfil</h2>
+                <button 
+                  onClick={() => setShowAvatarUploader(false)}
+                  className="text-white/60 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <h3 className="text-base font-medium mb-4">Upload de imagem personalizada:</h3>
+                <FileUploadAvatar 
+                  onFileSelected={handleFileSelected}
+                  currentImageUrl={user?.avatarUrl}
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
       
-      {/* Toast de mensagem */}
+      {/* Toast de notificação */}
       {showToast && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#171335] text-white p-4 rounded-lg shadow-xl border border-[#3D2A85] animate-fade-up">
           <div className="flex items-center gap-2">

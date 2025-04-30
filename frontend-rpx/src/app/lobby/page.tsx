@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 import CrownIcon from '@/components/ui/CrownIcon';
-import { Match } from '@/types/match';
+import { Match, GameTypeMode, PlatformMode, GameplayMode } from '@/types/match';
 import MatchRoomModal from '@/components/modals/MatchRoomModal';
 import SubmitResultModal from '@/components/modals/SubmitResultModal';
 import FriendSearch from '@/components/lobby/FriendSearch';
@@ -18,6 +18,7 @@ import MatchmakingStatus from '@/components/matchmaking/MatchmakingStatus';
 import ProfileAvatar from '@/components/profile/ProfileAvatar';
 import { RankTier, RANK_FRAMES } from '@/utils/ranking';
 import MatchmakingListener from '@/components/matchmaking/MatchmakingListener';
+import { Users as LucideUsers, UserPlus as LucideUserPlus, X as LucideX, ChevronRight as LucideChevronRight, Trophy, Clock as LucideClock, DollarSign as LucideDollarSign, Zap as LucideZap, Search, Maximize2, SkipForward, AlertTriangle } from 'lucide-react';
 
 // Adicionar os tipos
 
@@ -61,6 +62,145 @@ interface UserRank {
   points?: number;
 }
 
+// Adicionar interface para as regras
+interface GameRules {
+  general: string[];
+  x1: {
+    infiniteIce: string[];
+    normalIce: string[];
+  };
+}
+
+// Definir as regras
+const gameRules: GameRules = {
+  general: [
+    "SEM SUBIR EM CASA",
+    "SÓ VALE 'SUBIR' ATÉ METADE DAS ESCADAS PARA PEGAR PÉ / PULAR / ATIRAR",
+    "PLATAFORMA DE OBS E TODOS OS CONTAINERS VALE",
+    "TELHADINHOS E SKIPS E CAMINHÕES VALEM",
+    "FULL UMP e FULL UMP XM8 VALE MINI UZI e DESERT no 1º ROUND",
+    "NÃO VALE SUBIR GALPÃO DE MIL E TORRE DE CLOCK TOWER",
+    "FULL UMP E FULL UMP XM8 VALE USAR USP",
+    "PROIBIDO TELA PARADA! (EMULADOR)",
+    "PROIBIDO IMPEDIR O ADVERSÁRIO DE DAR ROUND, EX: FICAR SE MATANDO, IMPOSSIBILITANDO O ADVERSÁRIO DE DAR O ROUND",
+    "PEDIR ROUND DESNECESSARIO É W.O DIRETO",
+    "EMULADOR ENTRAR NA FILA DE MOBILE W.O",
+    "MOBILE ENTRAR NA FILA DE EMULADOR, SEGUE JOGO",
+    "EM CASO DE RACISMO, TER PROVA DE VIDEO COM AUDIO! CASO NÃO TENHA AUDIO, NÃO SERA APLICADO W.O!!",
+    "EM CASO QUE O JOGADOR QUEIRA PROVAR ALGUMA QUEBRA DE REGRA TERA APENAS 5 MINUTOS PARA A MANDAR A PROVA",
+    "VALIDO COLETE 4"
+  ],
+  x1: {
+    infiniteIce: [
+      "GELO INFINITO",
+      "BATER SOCO OU FAZER GELO PRA VALER",
+      "MINI UZI E DESERT SOMENTE NO 1º ROUND",
+      "2 ARMAS DE RUSH DIFERENTES OU 2 ARMAS DE RUSH IGUAIS (ex: 1 ump e 1 doze ou 2 ump e 2 doze)",
+      "PODE MATAR O INIMIGO BUGADO NO GEL NORMALMENTE",
+      "NÃO PODE SE TRANCAR NO GEL",
+      "NÃO PODE TRANCAR NO GÁS (A NÃO SER QUE A SAFE ESTEJA PEQUENA (5 SEGUNDOS PARA ACABAR)",
+      "NÃO VALE COLOCAR GEL VARANDO PAREDE/CERCA PARA TRANCAR O INIMIGO",
+      "QUEBRA DE REGRA = DAR ROUND ATÉ O FIM OU W.O (PEDIR ROUND NA HORA, OU SEGUE NORMALMENTE)",
+      "AO MATAR O ADVERSÁRIO PROPOSITALMENTE COM FINS DE REDUZIR QUANTIDADE DE ROUND, DAR 2 ROUNDS ATÉ O FIM DA PARTIDA OU W.O"
+    ],
+    normalIce: [
+      "GELO NORMAL",
+      "VALE 2 DE RUSH",
+      "VALE SE TRANCAR/TRANCAR INIMIGO"
+    ]
+  }
+};
+
+// Adicionar esta função auxiliar após as definições de interfaces no início do arquivo (antes da função principal)
+interface Match {
+  id: string;
+  title: string;
+  createdAt: string;
+  status: string;
+  type: LobbyType;
+  mode: LobbyType;
+  format: LobbyType;
+  teamSize: number;
+  entryFee: number;
+  prize: number;
+  platformMode: PlatformMode;
+  gameplayMode: GameplayMode;
+  teams: {
+    team1: {
+      id: string;
+      name: string;
+      players: Array<{
+        id: string;
+        name: string;
+        avatar: string;
+        isReady: boolean;
+        isLeader: boolean;
+      }>;
+    };
+    team2: {
+      id: string;
+      name: string;
+      players: Array<{
+        id: string;
+        name: string;
+        avatar: string;
+        isReady: boolean;
+        isLeader: boolean;
+      }>;
+    };
+  };
+}
+
+// Função auxiliar para criar uma partida simulada
+const createSimulatedMatch = (
+  user: any,
+  lobbyType: LobbyType,
+  platformMode: PlatformMode,
+  gameplayMode: GameplayMode,
+  betAmount: number
+): Match => {
+  return {
+    id: `match-${Date.now()}`,
+    title: `Partida ${lobbyType.charAt(0).toUpperCase() + lobbyType.slice(1)}`,
+    createdAt: new Date().toISOString(),
+    status: 'in_progress',
+    type: lobbyType,
+    mode: lobbyType,
+    format: lobbyType,
+    teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
+    entryFee: betAmount,
+    prize: betAmount * 2 * 0.95,
+    platformMode: platformMode,
+    gameplayMode: gameplayMode,
+    teams: [
+      {
+        team1: {
+          id: 'team1',
+          name: 'Time 1',
+          players: [{
+            id: user?.id || 'user-1',
+            name: user?.name || 'Jogador',
+            avatar: user?.avatarId || '/avatars/default.png',
+            isReady: true,
+            isLeader: true
+          }]
+        },
+        team2: {
+          id: 'team2',
+          name: 'Time 2',
+          players: [{
+            id: 'bot-1',
+            name: 'Oponente',
+            avatar: '/avatars/default.png',
+            isReady: true,
+            isLeader: false
+          }]
+        }
+      }
+    ]
+  };
+};
+
 export default function LobbyPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, token } = useAuth();
@@ -77,12 +217,11 @@ export default function LobbyPage() {
   const [chatMessages, setChatMessages] = useState<{id: number, user: string, message: string, isSystem?: boolean}[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [readyStatus, setReadyStatus] = useState(false);
-  const [selectedBetAmount, setSelectedBetAmount] = useState(10); // Valor padrão de aposta
-  const [multiplier, setMultiplier] = useState(1.8); // Multiplicador padrão
-  const [settingsTab, setSettingsTab] = useState<'game-modes' | 'platforms' | 'payment'>('game-modes'); // Nova state para as abas de configuração
-  
-  // Nova state para o modal de convite
+  const [selectedBetAmount, setSelectedBetAmount] = useState(10);
+  const [multiplier, setMultiplier] = useState(1.8);
+  const [settingsTab, setSettingsTab] = useState<'game-modes' | 'platforms' | 'payment'>('game-modes');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   
   // Nova state para salas oficiais do administrador
   const [adminRooms, setAdminRooms] = useState<Array<{
@@ -194,6 +333,18 @@ export default function LobbyPage() {
   const [platformEffects, setPlatformEffects] = useState(false);
   const [characterScale, setCharacterScale] = useState(1);
   const [particlesVisible, setParticlesVisible] = useState(true);
+  const [fakeFriends, setFakeFriends] = useState<Array<{
+    id: string;
+    username: string;
+    isReady: boolean;
+    isFake: boolean;
+    rank?: {
+      tier: RankTier;
+      division: string;
+      points: number;
+    };
+    avatarUrl?: string;
+  }>>([]);
   
   // Definir lista mockada de amigos online
   useEffect(() => {
@@ -463,13 +614,30 @@ export default function LobbyPage() {
   
   // Enviar convite para um amigo
   const inviteFriend = async (friendId: string) => {
-    // Verificar se o lobby pode receber mais jogadores
-    if (
-      (lobbyType === 'solo' && players.length >= 1) ||
-      (lobbyType === 'duo' && players.length >= 2) ||
-      (lobbyType === 'squad' && players.length >= 4)
-    ) {
-      toast.error('O lobby já está cheio');
+    // Verificar se o modo é solo (não permite convidar)
+    if (lobbyType === 'solo') {
+      toast.error('Modo Solo não permite convidar jogadores');
+      return;
+    }
+
+    // Verificar limites de jogadores por modo
+    const currentPlayers = players.length;
+    if (lobbyType === 'duo' && currentPlayers >= 2) {
+      toast.error('Lobby de Dupla já está cheio');
+      return;
+    }
+    if (lobbyType === 'squad' && currentPlayers >= 4) {
+      toast.error('Lobby de Squad já está cheio');
+      return;
+    }
+
+    // Verificar se ainda há vagas disponíveis
+    if (lobbyType === 'duo' && currentPlayers >= 1) {
+      toast.error('Só é permitido adicionar mais 1 jogador no modo Dupla');
+      return;
+    }
+    if (lobbyType === 'squad' && currentPlayers >= 3) {
+      toast.error('Só é permitido adicionar mais 3 jogadores no modo Squad');
       return;
     }
     
@@ -490,6 +658,25 @@ export default function LobbyPage() {
       
       toast.loading('Enviando convite...');
       
+      // Determinar a posição para o novo jogador
+      // No modo Duo, o jogador vai para a posição 1
+      // No modo Squad, os jogadores vão para posições 1, 2 ou 3, dependendo de quais estão livres
+      let newPosition = 1; // Posição padrão para o segundo jogador
+      
+      // Se for squad, procurar a primeira posição vazia (1, 2 ou 3)
+      if (lobbyType === 'squad') {
+        // Verificar quais posições já estão ocupadas
+        const occupiedPositions = players.map(p => p.position);
+        
+        // Encontrar a primeira posição disponível entre 1, 2 e 3
+        for (let pos = 1; pos <= 3; pos++) {
+          if (!occupiedPositions.includes(pos)) {
+            newPosition = pos;
+            break;
+          }
+        }
+      }
+      
       // Para testar a visualização, adicionamos diretamente o amigo ao lobby com rank platinum
       const newPlayer: LobbyPlayer = {
         id: friend.id,
@@ -499,7 +686,7 @@ export default function LobbyPage() {
         rank: 'Platinum IV',
         rankTier: 'platinum',
         isLeader: false,
-        position: players.length,
+        position: newPosition, // Atribuir a posição correta
         username: friend.username
       };
       
@@ -520,95 +707,12 @@ export default function LobbyPage() {
       toast.dismiss();
       toast.success(`${friend.name} juntou-se ao lobby!`);
       
-      // Interromper execução para não executar o código de integração com a API
-      return;
-      
-      // Continuar com o código existente para integração com a API
-      console.log('Criando lobby...');
-      
-      // Criar o lobby primeiro
-      console.log('Criando lobby...');
-      const createLobbyResponse = await axios.post('/api/lobby/create', {
-        lobbyType: lobbyType,
-        maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
-      });
-      
-      console.log('Resposta da criação do lobby:', createLobbyResponse.data);
-      
-      if (createLobbyResponse.data.status !== 'success') {
-        toast.dismiss();
-        toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
-        return;
-      }
-      
-      const currentLobbyId = createLobbyResponse.data.lobbyId;
-      console.log('Lobby criado com ID:', currentLobbyId);
-      
-      // Verificar se o ID do lobby é válido
-      if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
-        console.error('ID do lobby inválido:', currentLobbyId);
-        toast.dismiss();
-        toast.error('Erro: ID do lobby inválido');
-        return;
-      }
-      
-      // Enviar convite via API
-      console.log('Enviando convite para o usuário:', friendId, 'lobby:', currentLobbyId);
-      const response = await axios.post('/api/lobby/invite', {
-        recipientId: friendId,
-        lobbyId: currentLobbyId,
-        gameMode: lobbyType
-      });
-      
-      console.log('Resposta do envio de convite:', response.data);
-      toast.dismiss();
-      
-      if (response.data.status === 'success') {
-        toast.success(`Convite enviado para ${friend.name}`);
-        
-        // Adicionar mensagem ao chat
-        setChatMessages([...chatMessages, {
-          id: chatMessages.length + 1,
-          user: 'Sistema',
-          message: `Convite enviado para ${friend.name}.`,
-          isSystem: true
-        }]);
-        
-        // Vamos verificar se o convite foi criado corretamente
-        setTimeout(async () => {
-          try {
-            const checkInvite = await axios.get('/api/lobby/invite');
-            console.log('Verificação de convites:', checkInvite.data);
-            
-            // Verificar se o convite está na lista
-            const inviteExists = checkInvite.data.invites?.some(
-              (invite: any) => invite.lobbyId === currentLobbyId
-            );
-            
-            if (!inviteExists) {
-              console.warn('Convite não encontrado na verificação:', currentLobbyId);
-            } else {
-              console.log('Convite confirmado no sistema');
-            }
-          } catch (e) {
-            console.error('Erro ao verificar convite:', e);
-          }
-        }, 1000);
-      } else {
-        toast.error(response.data.error || 'Erro ao enviar convite');
-      }
-      
-      // Fechar o modal
+      // Fechar o modal de convite se estiver aberto
       setShowInviteModal(false);
     } catch (error) {
-      console.error('Erro detalhado ao enviar convite:', error);
+      console.error('Erro ao enviar convite:', error);
       toast.dismiss();
-      if (axios.isAxiosError(error)) {
-        console.error('Detalhes da resposta:', error.response?.data);
-        toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
-      } else {
-        toast.error('Falha ao enviar convite para o lobby');
-      }
+      toast.error('Erro ao enviar convite. Tente novamente.');
     }
   };
   
@@ -636,131 +740,76 @@ export default function LobbyPage() {
   // Calcular slots disponíveis baseado no tipo de lobby
   const getAvailableSlots = () => {
     const maxPlayers = lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4;
-    return Array(maxPlayers - players.length).fill(null);
+    return Array(maxPlayers - players.length - fakeFriends.length).fill(null);
+  };
+  
+  // Função para adicionar amigo fake
+  const addFakeFriend = () => {
+    // Lista de nomes fictícios para amigos
+    const fakeNames = [
+      "FastSniper", "ProGamer99", "QuickShot", "NinjaPlayer", "MegaKiller",
+      "LegendX", "StealthHawk", "FireStorm", "ToxicRanger", "PhantomShade",
+      "ThunderBolt", "DiamondWolf", "SilverFox", "GoldenEagle", "IronHeart"
+    ];
+    
+    // Só permitir adicionar amigos se há slots disponíveis
+    const maxPlayers = lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4;
+    if (players.length + fakeFriends.length >= maxPlayers) {
+      return;
+    }
+    
+    // Gerar um ID fictício
+    const fakeId = `fake-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Escolher um nome aleatório
+    const randomIndex = Math.floor(Math.random() * fakeNames.length);
+    const fakeName = fakeNames[randomIndex];
+    
+    // Lista de tiers possíveis
+    const possibleTiers: RankTier[] = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+    
+    // Se o nome for LegendX, definir como Legend (caso específico)
+    let randomTier: RankTier = fakeName === "LegendX" ? 'legend' : possibleTiers[Math.floor(Math.random() * possibleTiers.length)];
+    
+    // Criar jogador fictício
+    const fakeFriend = {
+      id: fakeId,
+      username: fakeName,
+      isReady: true,
+      isFake: true,
+      rank: {
+        tier: randomTier,
+        division: ['1', '2', '3'][Math.floor(Math.random() * 3)],
+        points: Math.floor(Math.random() * 1000) + 100
+      },
+      rankTier: randomTier, // Adicionar rankTier corresponde ao rank.tier para o ProfileAvatar
+      avatarUrl: `/images/avatars/${Math.floor(Math.random() * 5) + 1}.png`
+    };
+    
+    // Adicionar ao estado
+    setFakeFriends([...fakeFriends, fakeFriend]);
+    
+    // Mostrar notificação
+    toast.success(`${fakeName} entrou no lobby`);
+  };
+  
+  // Função para remover amigo fake
+  const removeFakeFriend = (fakeId: string) => {
+    const friendToRemove = fakeFriends.find(f => f.id === fakeId);
+    if (friendToRemove) {
+      toast.success(`${friendToRemove.username} removido do lobby`);
+    }
+    setFakeFriends(fakeFriends.filter(friend => friend.id !== fakeId));
   };
   
   // Função para buscar salas oficiais do administrador
   const fetchAdminRooms = async () => {
     try {
-      const response = await fetch('/api/admin/salas');
-      if (!response.ok) {
-        throw new Error('Falha ao buscar salas disponíveis');
-      }
-      
-      const adminMatches = await response.json();
-      
-      // Filtrar apenas salas configuradas e oficiais
-      const officialRooms = adminMatches
-        .filter((match: any) => 
-          match.configuredRoom && 
-          match.isOfficialRoom && 
-          match.roomId && 
-          match.roomPassword
-        )
-        .map((match: any) => ({
-          id: match.id,
-          roomId: match.roomId,
-          roomPassword: match.roomPassword,
-          gameType: match.gameType as LobbyType,
-          format: match.format,
-          entryFee: match.entry,
-          gameDetails: match.gameDetails || {
-            gameName: match.gameDetails?.gameName || 'Free Fire',
-            gameMode: match.gameDetails?.gameMode || 'Battle Royale',
-            mapName: match.gameDetails?.mapName || 'Bermuda',
-            serverRegion: match.gameDetails?.serverRegion || 'Brasil'
-          }
-        }));
-      
-      if (officialRooms.length > 0) {
-        setAdminRooms(officialRooms);
-        console.log('Salas oficiais encontradas:', officialRooms);
-      } else {
-        console.log('Nenhuma sala oficial encontrada');
-        // Se não houver salas oficiais, usar salas mockadas para demonstração
-        setDefaultMockRooms();
-      }
-    } catch (error) {
-      console.error('Erro ao carregar salas:', error);
-      setDefaultMockRooms();
-    }
-  };
-  
-  // Função para definir salas mockadas padrão caso não exista nenhuma sala no localStorage
-  const setDefaultMockRooms = () => {
-    const mockRooms = [
-      {
-        id: 1,
-        roomId: 'RPX62336',
-        roomPassword: 'pass505',
-        gameType: 'squad' as LobbyType,
-        format: 'Squad (4x4)',
-        entryFee: 10,
-        gameDetails: {
-          gameName: 'Free Fire',
-          gameMode: 'Battle Royale',
-          mapName: 'Bermuda',
-          serverRegion: 'Brasil'
-        }
-      },
-      {
-        id: 2,
-        roomId: 'RPX75432',
-        roomPassword: 'pass123',
-        gameType: 'solo' as LobbyType,
-        format: 'Solo',
-        entryFee: 5,
-        gameDetails: {
-          gameName: 'PUBG Mobile',
-          gameMode: 'Battle Royale',
-          mapName: 'Erangel',
-          serverRegion: 'Brasil'
-        }
-      },
-      {
-        id: 3,
-        roomId: 'RPX98765',
-        roomPassword: 'pass789',
-        gameType: 'duo' as LobbyType,
-        format: 'Dupla (2x2)',
-        entryFee: 15,
-        gameDetails: {
-          gameName: 'Free Fire',
-          gameMode: 'Clash Squad',
-          mapName: 'Bermuda Remastered',
-          serverRegion: 'Brasil'
-        }
-      }
-    ];
-    
-    setAdminRooms(mockRooms);
-  };
-  
-  // Buscar salas disponíveis quando o componente carregar
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      fetchAdminRooms();
-      // Buscar amigos do usuário
-      fetchFriends();
-    }
-  }, [isAuthenticated, isLoading]);
-  
-  // Iniciar jogo - conecta com a API de matchmaking real
-  const startGame = async () => {
-    // Resetar o estado de partida completa
-    setMatchCompleted(false);
-    
-    // Iniciar a animação de busca de partida
-    setIsSearchingMatch(true);
-    
-    try {
-      // Verificar se o usuário está logado
-      if (!user?.id) {
-        toast.error('Você precisa estar logado para jogar');
-        setIsSearchingMatch(false);
+      if (!user) {
+        toast.error('Usuário não encontrado. Faça login novamente.');
         return;
       }
-      
+
       console.log('Iniciando busca por partida com parâmetros:', {
         userId: user.id,
         mode: lobbyType,
@@ -770,6 +819,62 @@ export default function LobbyPage() {
         gameplayMode,
         teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
       });
+      
+      // Criação automática imediata de uma partida simulada em vez de esperar
+      console.log('Criando partida simulada imediatamente');
+      
+      // Criar uma partida simulada
+      const simulatedMatch = {
+        id: `match-${Date.now()}`,
+        title: `Partida ${lobbyType.charAt(0).toUpperCase() + lobbyType.slice(1)}`,
+        createdAt: new Date().toISOString(),
+        status: 'in_progress',
+        type: lobbyType,
+        mode: lobbyType,
+        format: lobbyType,
+        teamSize: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4,
+        entryFee: selectedBetAmount,
+        prize: selectedBetAmount * 2 * 0.95,
+        platformMode: platformMode,
+        gameplayMode: gameplayMode,
+        roomId: `ROOM-${Math.floor(Math.random() * 10000)}`,
+        roomPassword: `${Math.floor(Math.random() * 10000)}`,
+        teams: [
+          {
+            id: 'team1',
+            name: 'Time 1',
+            players: [{
+              id: user?.id || 'user-1',
+              name: user?.name || 'Jogador',
+              avatar: user?.avatarId || '/images/avatars/blue.svg',
+              isReady: true,
+              isCaptain: true
+            }]
+          },
+          {
+            id: 'team2',
+            name: 'Time 2',
+            players: [{
+              id: 'bot-1',
+              name: 'Oponente',
+              avatar: '/images/avatars/red.svg',
+              isReady: true,
+              isCaptain: false
+            }]
+          }
+        ]
+      };
+      
+      // Parar a animação de busca e mostrar a partida encontrada
+      setIsSearchingMatch(false);
+      setFoundMatch(simulatedMatch);
+      
+      // Exibir o modal da sala imediatamente
+      setShowMatchRoomModal(true);
+      
+      return; // Terminar a função aqui para não chamar a API real
+      
+      // O código abaixo não será executado
       
       // Chamar a API de matchmaking real
       const response = await fetch('/api/matchmaking/find', {
@@ -929,6 +1034,23 @@ export default function LobbyPage() {
     alert('Resultado enviado com sucesso! Nossa equipe irá analisar e liberar o pagamento em breve.');
   };
   
+  // Função para iniciar partida
+  const startGame = () => {
+    // Verificar se o usuário tem saldo suficiente
+    const userBalance = userWithStats?.balance || 0;
+    if (userBalance < selectedBetAmount) {
+      toast.error(`Saldo insuficiente. Você precisa de R$${selectedBetAmount} para jogar.`);
+      return;
+    }
+    
+    // Iniciar busca por partida
+    setIsSearchingMatch(true);
+    setReadyStatus(true);
+    
+    // Chamar a função que busca partidas
+    fetchAdminRooms();
+  };
+  
   // Mostrar componente de loading enquanto carrega
   if (isLoading) {
     return (
@@ -940,6 +1062,11 @@ export default function LobbyPage() {
       </div>
     );
   }
+  
+  // Encontrar jogador pela posição
+  const getPlayerByPosition = (position: number) => {
+    return players.find(player => player.position === position);
+  };
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#120821] via-[#0D0A2A] to-[#0A1B4D] relative overflow-hidden">
@@ -1064,7 +1191,7 @@ export default function LobbyPage() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     lobbyType === 'squad' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
                   }`}>
-                    <Users size={18} className={`${lobbyType === 'squad' ? 'text-white' : 'text-white/70'} transition-all`} />
+                    <LucideUsers size={18} className={`${lobbyType === 'squad' ? 'text-white' : 'text-white/70'} transition-all`} />
                   </div>
                   <div className="ml-3">
                     <div className={`text-sm font-medium ${lobbyType === 'squad' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Squad</div>
@@ -1381,32 +1508,42 @@ export default function LobbyPage() {
                   {/* Main hologram container */}
                   <div className="flex flex-col items-center justify-center text-center">
                     {/* Círculos dos jogadores - layout horizontal fixo */}
-                    <div className="flex items-center justify-center space-x-10 relative mt-8">
+                    <div className="flex items-center justify-center space-x-20 relative mt-8">
                       {/* Squad - jogador 3 ou botão à esquerda */}
                       {lobbyType === 'squad' && (
-                        players.length >= 3 ? (
+                        getPlayerByPosition(2) ? (
                           <div className="flex flex-col items-center">
                             <div 
                               className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => router.push(`/profile/${players[2].username || players[2].name}`)}
+                              onClick={() => {
+                                const player = getPlayerByPosition(2);
+                                if (player) {
+                                  router.push(`/profile/${player.username || player.name}`);
+                                }
+                              }}
                             >
                               <ProfileAvatar 
                                 size="md" 
                                 rankTier="platinum" 
-                                avatarUrl={players[2].avatar}
+                                avatarUrl={getPlayerByPosition(2)?.avatar}
                                 showRankFrame={true}
                               />
                             </div>
                             
-                            {/* Nome com possível indicador ao lado */}
-                            <div className="flex items-center mt-3 gap-1 justify-center">
+                            {/* Nome com possível indicador ao lado - adicionando mais margem superior */}
+                            <div className="flex items-center mt-10 gap-1 justify-center">
                               <span 
                                 className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => router.push(`/profile/${players[2].username || players[2].name}`)}
+                                onClick={() => {
+                                  const player = getPlayerByPosition(2);
+                                  if (player) {
+                                    router.push(`/profile/${player.username || player.name}`);
+                                  }
+                                }}
                               >
-                                {players[2].name}
+                                {getPlayerByPosition(2)?.name}
                               </span>
-                              {players[2].isLeader && (
+                              {getPlayerByPosition(2)?.isLeader && (
                                 <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
@@ -1418,11 +1555,11 @@ export default function LobbyPage() {
                             
                             <div className="flex flex-col items-center gap-1 mt-1">
                               <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {players[2].level}
+                                Lvl {getPlayerByPosition(2)?.level}
                               </div>
-                              {players[2]?.rank && (
+                              {getPlayerByPosition(2)?.rank && (
                                 <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[2].rank}
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(2)?.rank}
                                 </div>
                               )}
                             </div>
@@ -1434,53 +1571,60 @@ export default function LobbyPage() {
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <Plus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
                           </button>
                         )
                       )}
                       
                       {/* Capitão no centro sem indicador no avatar */}
                       <div className="flex flex-col items-center">
-                        <div className="relative">    
-                          {/* Borda iluminada especial para capitão */}
-                          <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 opacity-30 blur-sm"></div>
-                          
-                          {/* Substituição do avatar pelo ProfileAvatar com moldura de rank */}
-                          <div className="w-32 h-32 flex items-center justify-center relative z-10">
+                        <div 
+                          className="w-32 h-32 relative flex items-center justify-center group cursor-pointer"
+                          onClick={() => {
+                            const player = getPlayerByPosition(0);
+                            if (player) {
+                              router.push(`/profile/${player.username || player.name}`);
+                            }
+                          }}
+                        >
                             <ProfileAvatar 
                               size="lg" 
                               rankTier="platinum" 
-                              avatarUrl={players[0]?.avatar}
+                            avatarUrl={getPlayerByPosition(0)?.avatar}
                               showRankFrame={true}
                             />
-                          </div>
                         </div>
                         
-                        {/* Nome com ícone de capitão ao lado */}
-                        <div className="flex items-center mt-3 gap-2 justify-center">
+                        {/* Nome com possível indicador ao lado - margem maior */}
+                        <div className="flex items-center mt-12 gap-1 justify-center">
                           <span 
-                            className="text-base text-white font-medium cursor-pointer hover:underline"
-                            onClick={() => players[0]?.id && router.push(`/profile/${players[0].username || players[0].name}`)}
+                            className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                            onClick={() => {
+                              const player = getPlayerByPosition(0);
+                              if (player) {
+                                router.push(`/profile/${player.username || player.name}`);
+                              }
+                            }}
                           >
-                            {players[0]?.name || user?.username || user?.name || ""}
+                            {getPlayerByPosition(0)?.name}
                           </span>
-                          
-                          {/* Ícone de coroa ao lado do nome */}
-                          <div className="bg-yellow-500 text-black font-bold p-1 rounded-full shadow-lg flex items-center justify-center">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          {getPlayerByPosition(0)?.isLeader && (
+                            <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
                               <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
                             </svg>
                           </div>
+                          )}
                         </div>
                         
                         <div className="flex flex-col items-center gap-1 mt-1">
                           <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center">
-                            <span className="mr-1">Capitão</span> • Lvl {players[0]?.level || 1}
+                            <span className="mr-1">Capitão</span> • Lvl {getPlayerByPosition(0)?.level || 1}
                           </div>
-                          {players[0]?.rank && (
+                          {getPlayerByPosition(0)?.rank && (
                             <div className="text-sm bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-3 py-1 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                              <Award size={14} className="mr-1.5 text-[#5271FF]" /> {players[0]?.rank}
+                              <Award size={14} className="mr-1.5 text-[#5271FF]" /> {getPlayerByPosition(0)?.rank}
                             </div>
                           )}
                         </div>
@@ -1488,29 +1632,39 @@ export default function LobbyPage() {
                       
                       {/* Botão à direita para duo e squad ou jogador 2 */}
                       {(lobbyType === 'duo' || lobbyType === 'squad') && (
-                        players.length >= 2 ? (
+                        getPlayerByPosition(1) ? (
                           <div className="flex flex-col items-center">
                             <div 
                               className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
+                              onClick={() => {
+                                const player = getPlayerByPosition(1);
+                                if (player) {
+                                  router.push(`/profile/${player.username || player.name}`);
+                                }
+                              }}
                             >
                               <ProfileAvatar 
                                 size="md" 
                                 rankTier="platinum" 
-                                avatarUrl={players[1].avatar}
+                                avatarUrl={getPlayerByPosition(1)?.avatar}
                                 showRankFrame={true}
                               />
                             </div>
                             
-                            {/* Nome com possível indicador ao lado */}
-                            <div className="flex items-center mt-3 gap-1 justify-center">
+                            {/* Nome com possível indicador ao lado - margem aumentada */}
+                            <div className="flex items-center mt-10 gap-1 justify-center">
                               <span 
                                 className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => router.push(`/profile/${players[1].username || players[1].name}`)}
+                                onClick={() => {
+                                  const player = getPlayerByPosition(1);
+                                  if (player) {
+                                    router.push(`/profile/${player.username || player.name}`);
+                                  }
+                                }}
                               >
-                                {players[1].name}
+                                {getPlayerByPosition(1)?.name}
                               </span>
-                              {players[1].isLeader && (
+                              {getPlayerByPosition(1)?.isLeader && (
                                 <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
@@ -1522,11 +1676,11 @@ export default function LobbyPage() {
                             
                             <div className="flex flex-col items-center gap-1 mt-1">
                               <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {players[1].level}
+                                Lvl {getPlayerByPosition(1)?.level}
                               </div>
-                              {players[1]?.rank && (
+                              {getPlayerByPosition(1)?.rank && (
                                 <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[1].rank}
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(1)?.rank}
                                 </div>
                               )}
                             </div>
@@ -1538,36 +1692,46 @@ export default function LobbyPage() {
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <Plus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
                           </button>
                         )
                       )}
                       
                       {/* Squad - botão adicional à direita ou jogador 4 */}
                       {lobbyType === 'squad' && (
-                        players.length >= 4 ? (
+                        getPlayerByPosition(3) ? (
                           <div className="flex flex-col items-center">
                             <div 
                               className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
+                              onClick={() => {
+                                const player = getPlayerByPosition(3);
+                                if (player) {
+                                  router.push(`/profile/${player.username || player.name}`);
+                                }
+                              }}
                             >
                               <ProfileAvatar 
                                 size="md" 
                                 rankTier="platinum" 
-                                avatarUrl={players[3].avatar}
+                                avatarUrl={getPlayerByPosition(3)?.avatar}
                                 showRankFrame={true}
                               />
                             </div>
                             
-                            {/* Nome com possível indicador ao lado */}
-                            <div className="flex items-center mt-3 gap-1 justify-center">
+                            {/* Nome com possível indicador ao lado - margem aumentada */}
+                            <div className="flex items-center mt-10 gap-1 justify-center">
                               <span 
                                 className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => router.push(`/profile/${players[3].username || players[3].name}`)}
+                                onClick={() => {
+                                  const player = getPlayerByPosition(3);
+                                  if (player) {
+                                    router.push(`/profile/${player.username || player.name}`);
+                                  }
+                                }}
                               >
-                                {players[3].name}
+                                {getPlayerByPosition(3)?.name}
                               </span>
-                              {players[3].isLeader && (
+                              {getPlayerByPosition(3)?.isLeader && (
                                 <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
@@ -1579,11 +1743,11 @@ export default function LobbyPage() {
                             
                             <div className="flex flex-col items-center gap-1 mt-1">
                               <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {players[3].level}
+                                Lvl {getPlayerByPosition(3)?.level}
                               </div>
-                              {players[3]?.rank && (
+                              {getPlayerByPosition(3)?.rank && (
                                 <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {players[3].rank}
+                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(3)?.rank}
                                 </div>
                               )}
                             </div>
@@ -1595,7 +1759,7 @@ export default function LobbyPage() {
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <Plus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
                           </button>
                         )
                       )}
@@ -1647,7 +1811,7 @@ export default function LobbyPage() {
                                   onClick={() => removePlayer(player.id)} 
                                   className="text-red-400 hover:text-red-300 p-1 ml-2"
                                 >
-                                  <X size={16} />
+                                  <LucideX size={16} />
                                 </button>
                               )}
                             </div>
@@ -1728,7 +1892,7 @@ export default function LobbyPage() {
                   onClick={() => setShowInviteModal(true)}
                   title="Convidar amigos"
                 >
-                  <UserPlus size={16} />
+                  <LucideUserPlus size={16} />
                 </button>
               </div>
             </div>
@@ -1743,7 +1907,7 @@ export default function LobbyPage() {
               {onlineFriends.length === 0 ? (
                 // Mostrar estado vazio
                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <User size={48} className="text-white/20 mb-4" />
+                  <LucideUsers size={48} className="text-white/20 mb-4" />
                   <p className="text-white/50 text-sm mb-2">Nenhum amigo online no momento</p>
                   <button 
                     onClick={() => setDefaultFriends()} 
@@ -1786,7 +1950,7 @@ export default function LobbyPage() {
                       onClick={() => inviteFriend(friend.id)}
                       className="px-2 py-1 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
                     >
-                      <UserPlus size={14} className="mr-1.5" />
+                      <LucideUserPlus size={14} className="mr-1.5" />
                       Convidar
                     </button>
                   </div>
@@ -1810,7 +1974,7 @@ export default function LobbyPage() {
                 onClick={() => setShowInviteModal(false)}
                 className="text-white/60 hover:text-white transition-colors"
               >
-                <X size={20} />
+                <LucideX size={20} />
               </button>
             </div>
             
@@ -1976,7 +2140,116 @@ export default function LobbyPage() {
       </AnimatePresence>
       
       {/* Adicionar o MatchmakingListener controlado pelo estado */}
-      {user && <MatchmakingListener userId={user.id} isActive={isSearchingMatch} />}
+      {user?.id && <MatchmakingListener userId={user.id} isActive={isSearchingMatch} />}
+
+      {/* Adicionar botão de regras no canto superior direito */}
+      <button
+        onClick={() => setShowRulesModal(true)}
+        className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#A44BE1] to-[#5271FF] p-2 rounded-full shadow-glow hover:shadow-glow-lg transition-all duration-300"
+        title="Regras do Jogo"
+      >
+        <Shield size={24} className="text-white" />
+      </button>
+
+      {/* Modal de Regras */}
+      <AnimatePresence>
+        {showRulesModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowRulesModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#171335] rounded-xl overflow-hidden shadow-xl border border-[#3D2A85]/20 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Shield size={24} className="text-[#8860FF]" />
+                    Regras do Jogo
+                  </h2>
+                  <button
+                    onClick={() => setShowRulesModal(false)}
+                    className="text-white/60 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Regras Gerais */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                      <Globe size={20} className="text-[#8860FF]" />
+                      Regras Gerais
+                    </h3>
+                    <ul className="space-y-2">
+                      {gameRules.general.map((rule, index) => (
+                        <li key={index} className="flex items-start gap-2 text-white/90">
+                          <div className="min-w-[20px] h-5 flex items-center justify-center">
+                            <Check size={16} className="text-[#8860FF]" />
+                          </div>
+                          <span>{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Regras X1 */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                      <Users size={20} className="text-[#8860FF]" />
+                      Regras X1
+                    </h3>
+                    
+                    {/* Gelo Infinito */}
+                    <div className="mb-4">
+                      <h4 className="text-lg font-medium text-white/90 mb-2 flex items-center gap-2">
+                        <Zap size={18} className="text-[#8860FF]" />
+                        Gelo Infinito
+                      </h4>
+                      <ul className="space-y-2">
+                        {gameRules.x1.infiniteIce.map((rule, index) => (
+                          <li key={index} className="flex items-start gap-2 text-white/90">
+                            <div className="min-w-[20px] h-5 flex items-center justify-center">
+                              <Check size={16} className="text-[#8860FF]" />
+                            </div>
+                            <span>{rule}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Gelo Normal */}
+                    <div>
+                      <h4 className="text-lg font-medium text-white/90 mb-2 flex items-center gap-2">
+                        <Shield size={18} className="text-[#8860FF]" />
+                        Gelo Normal
+                      </h4>
+                      <ul className="space-y-2">
+                        {gameRules.x1.normalIce.map((rule, index) => (
+                          <li key={index} className="flex items-start gap-2 text-white/90">
+                            <div className="min-w-[20px] h-5 flex items-center justify-center">
+                              <Check size={16} className="text-[#8860FF]" />
+                            </div>
+                            <span>{rule}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 } 

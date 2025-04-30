@@ -6,8 +6,6 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import { getModels } from '@/lib/mongodb/models';
 
-
-
 const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_dev_environment';
 
 /**
@@ -20,7 +18,7 @@ async function authMiddleware(req) {
     console.error('Token de autorização ausente ou inválido');
     return NextResponse.json(
       { error: 'Não autorizado' },
-      { status: 400 });
+      { status: 401 });
   }
   
   const token = authHeader.split(' ')[1];
@@ -35,7 +33,7 @@ async function authMiddleware(req) {
       console.error('Token JWT inválido ou sem ID de usuário', decodedToken);
       return NextResponse.json(
         { error: 'Token inválido ou sem ID de usuário' },
-        { status: 400 });
+        { status: 401 });
     }
     
     // Usar userId ou id, o que estiver disponível
@@ -57,7 +55,7 @@ async function authMiddleware(req) {
     console.error('Erro na autenticação JWT:', error);
     return NextResponse.json(
       { error: 'Falha na autenticação JWT' },
-      { status: 400 });
+      { status: 401 });
   }
 }
 
@@ -65,13 +63,16 @@ async function authMiddleware(req) {
  * POST - Upload de avatar
  */
 export async function POST(req) {
-  console.log('Iniciando processamento de upload de avatar');
+  console.log('=== INICIANDO PROCESSAMENTO DE UPLOAD DE AVATAR ===');
+  console.log('Headers:', Object.fromEntries(req.headers.entries()));
+  console.log('Método:', req.method);
   
   // Autenticar a requisição
   const authResult = await authMiddleware(req);
   
   // Se authResult é uma resposta (erro), retorná-la
   if (authResult instanceof NextResponse) {
+    console.error('Erro de autenticação:', authResult.status);
     return authResult;
   }
   
@@ -90,36 +91,59 @@ export async function POST(req) {
   console.log('Usuário autenticado, ID:', userId);
   
   try {
-    // Extrair dados da requisição
-    const body = await req.json();
-    const { imageData } = body;
+    // Verificar se a requisição contém um arquivo
+    console.log('Tentando processar FormData...');
     
-    if (!imageData) {
-      console.error('Dados da imagem não fornecidos');
+    // Processar o upload como multipart/form-data
+    let formData;
+    try {
+      formData = await req.formData();
+      console.log('FormData recebido com sucesso', formData.entries ? 'com entries' : 'sem entries');
+      
+      // Imprimir os campos disponíveis no FormData
+      for (const [name, value] of formData.entries()) {
+        console.log(`Campo FormData: ${name} (${typeof value})`, 
+          value instanceof File ? `File: ${value.name}, ${value.type}, ${value.size} bytes` : 'Não é um arquivo');
+      }
+    } catch (formError) {
+      console.error('Erro ao processar formData:', formError);
       return NextResponse.json(
-        { success: false, message: 'Dados da imagem não fornecidos' },
+        { success: false, message: 'Erro ao processar o FormData: ' + formError.message },
         { status: 400 });
     }
     
-    // Verificar o tamanho dos dados da imagem (aproximadamente - base64 é ~33% maior que o binário)
-    // Limitando para aproximadamente 1.5MB após codificação base64
-    const base64Size = imageData.length;
-    console.log('Tamanho da imagem base64:', Math.round(base64Size / 1024), 'KB');
+    const file = formData.get('avatar');
+    console.log('Arquivo obtido:', file ? 'sim' : 'não');
     
-    if (base64Size > 2000000) { // ~1.5MB em base64
-      console.error('Imagem muito grande:', Math.round(base64Size / 1024), 'KB');
+    if (!file) {
+      console.error('Arquivo de imagem não fornecido');
       return NextResponse.json(
-        { success: false, message: 'A imagem é muito grande. O tamanho máximo é 1.5MB.' },
+        { success: false, message: 'Arquivo de imagem não fornecido' },
         { status: 400 });
     }
     
-    // Verificar se a string está no formato base64 esperado
-    if (!imageData.startsWith('data/')) {
-      console.error('Formato de imagem inválido');
+    // Verificar se é uma imagem
+    if (!file.type.startsWith('image/')) {
+      console.error('Formato de arquivo inválido:', file.type);
       return NextResponse.json(
-        { success: false, message: 'Formato de imagem inválido. Envie uma imagem válida.' },
+        { success: false, message: 'Formato de arquivo inválido. Envie uma imagem válida.' },
         { status: 400 });
     }
+    
+    // Verificar o tamanho do arquivo (limitando para ~1.5MB)
+    console.log('Tamanho da imagem:', Math.round(file.size / 1024), 'KB');
+    
+    if (file.size > 2000000) { // ~2MB
+      console.error('Imagem muito grande:', Math.round(file.size / 1024), 'KB');
+      return NextResponse.json(
+        { success: false, message: 'A imagem é muito grande. O tamanho máximo é 2MB.' },
+        { status: 400 });
+    }
+    
+    // Converter para base64 para armazenamento no MongoDB
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = `data:${file.type};base64,${buffer.toString('base64')}`;
     
     console.log('Processando imagem para armazenamento...');
     
@@ -145,6 +169,7 @@ export async function POST(req) {
       userId,
       { 
         $set: {
+          avatarUrl: base64Image,
           updatedAt: new Date()
         } 
       },
@@ -160,7 +185,7 @@ export async function POST(req) {
           { email: authenticatedReq.user.email },
           { 
             $set: {
-              avatarUrl: imageData,
+              avatarUrl: base64Image,
               updatedAt: new Date()
             } 
           },
@@ -180,7 +205,7 @@ export async function POST(req) {
       
       return NextResponse.json(
         { success: false, message: 'Usuário não encontrado' },
-        { status: 400 });
+        { status: 404 });
     }
     
     console.log(`Avatar atualizado com sucesso para o usuário ${userId}`);
@@ -206,6 +231,6 @@ export async function POST(req) {
     console.error('Erro ao processar o upload do avatar:', error);
     return NextResponse.json(
       { success: false, message: 'Ocorreu um erro ao processar o upload. Tente novamente mais tarde.' },
-      { status: 400 });
+      { status: 500 });
   }
 } 

@@ -17,110 +17,57 @@ const FileUploadAvatar: React.FC<FileUploadAvatarProps> = ({ onFileSelected, cur
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("handleFileChange chamado", e.target.files?.length);
+    
     const file = e.target.files?.[0];
     if (file) {
+      console.log("Arquivo selecionado:", file.name, file.type, file.size);
       processFile(file);
+    } else {
+      console.log("Nenhum arquivo selecionado");
+      setError("Nenhum arquivo selecionado. Por favor, tente novamente.");
     }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
+    console.log("Drag over");
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
+    console.log("Drag leave");
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
+    console.log("Drop - arquivos:", e.dataTransfer.files?.length);
     
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      console.log("Arquivo dropado:", file.name, file.type, file.size);
       processFile(file);
+    } else {
+      console.log("Nenhum arquivo válido no drop");
+      setError("Nenhum arquivo válido detectado. Por favor, tente novamente.");
     }
   };
 
-  // Função para redimensionar a imagem antes de fazer o upload
-  const resizeImage = (file: File, maxWidth = 800, maxHeight = 800): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        // Calcular as dimensões para redimensionar
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round(height * (maxWidth / width));
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round(width * (maxHeight / height));
-            height = maxHeight;
-          }
-        }
-        
-        // Definir as dimensões do canvas
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Desenhar a imagem redimensionada
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Não foi possível obter o contexto 2D do canvas'));
-          return;
-        }
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Converter para blob com qualidade reduzida (para JPG)
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error('Falha ao converter canvas para blob'));
-            return;
-          }
-          
-          // Criar um novo arquivo com o blob redimensionado
-          const resizedFile = new File(
-            [blob], 
-            file.name, 
-            { type: file.type, lastModified: Date.now() }
-          );
-          
-          // Liberar a URL criada
-          URL.revokeObjectURL(img.src);
-          
-          // Exibir tamanho da imagem otimizada
-          const fileSizeKB = Math.round(resizedFile.size / 1024);
-          setImageSize(`${fileSizeKB} KB`);
-          
-          resolve(resizedFile);
-        }, file.type, 0.8); // Comprimir com 80% de qualidade para JPG
-      };
-      
-      img.onerror = () => {
-        reject(new Error('Erro ao carregar a imagem'));
-        URL.revokeObjectURL(img.src);
-      };
-    });
-  };
-
   const processFile = async (file: File) => {
+    console.log("Processando arquivo:", file.name, file.type, file.size);
     // Verificar se é uma imagem
     if (!file.type.match('image.*')) {
+      console.error("Tipo de arquivo inválido:", file.type);
       setError('Por favor, envie apenas arquivos de imagem (jpg, png, etc).');
       return;
     }
 
     // Verificar tamanho (máximo 2MB)
     if (file.size > 2 * 1024 * 1024) {
+      console.error("Arquivo muito grande:", file.size);
       setError('A imagem é muito grande. O tamanho máximo é 2MB. Tente uma imagem menor.');
       return;
     }
@@ -129,69 +76,90 @@ const FileUploadAvatar: React.FC<FileUploadAvatarProps> = ({ onFileSelected, cur
       // Criar preview da imagem original
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log("Preview gerado");
         setPreview(reader.result as string);
+      };
+      reader.onerror = () => {
+        console.error("Erro ao ler arquivo:", reader.error);
+        setError(`Erro ao processar imagem: ${reader.error?.message || 'erro desconhecido'}`);
       };
       reader.readAsDataURL(file);
       
-      // Redimensionar a imagem para otimizar o tamanho
-      const resizedFile = await resizeImage(file);
-      console.log('Imagem otimizada:', Math.round(resizedFile.size / 1024), 'KB');
-
-      // Armazenar o arquivo redimensionado
-      setSelectedFile(resizedFile);
+      // Armazenar o arquivo original sem redimensionar
+      setSelectedFile(file);
+      const fileSizeKB = Math.round(file.size / 1024);
+      setImageSize(`${fileSizeKB} KB`);
       setError(null);
+      console.log("Arquivo processado com sucesso");
     } catch (error) {
       console.error('Erro ao processar a imagem:', error);
-      setError('Erro ao processar a imagem. Tente novamente com outra imagem.');
+      setError(`Erro ao processar a imagem: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
     }
   };
 
   const handleConfirmUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      console.error("Tentativa de confirmar upload sem arquivo");
+      setError("Nenhum arquivo selecionado.");
+      return;
+    }
     
     try {
+      console.log("Iniciando upload de arquivo:", selectedFile.name);
       setIsLoading(true);
       // Enviar arquivo para o componente pai
       await onFileSelected(selectedFile);
       setIsLoading(false);
+      console.log("Upload concluído com sucesso");
     } catch (error) {
       console.error('Erro ao fazer upload da imagem:', error);
-      setError('Ocorreu um erro ao fazer upload da imagem. Por favor, tente novamente.');
+      setError(`Erro ao fazer upload da imagem: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
       setIsLoading(false);
     }
   };
 
   const clearFile = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log("Limpando arquivo");
     setPreview(null);
     setSelectedFile(null);
     setImageSize(null);
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const openFileDialog = () => {
+    console.log("Tentando abrir diálogo de arquivo");
     if (fileInputRef.current) {
-      fileInputRef.current.click();
+      try {
+        fileInputRef.current.click();
+        console.log("Diálogo de arquivo aberto");
+      } catch (error) {
+        console.error("Erro ao abrir diálogo de arquivo:", error);
+        setError(`Não foi possível abrir o seletor de arquivos: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+      }
+    } else {
+      console.error("Referência para input file é null");
+      setError("Erro interno: não foi possível acessar o seletor de arquivos.");
     }
   };
 
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium mb-2">Foto de Perfil</label>
       <div
-        onClick={!preview ? openFileDialog : undefined}
+        onClick={() => !preview && openFileDialog()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`
-          relative border-2 border-dashed rounded-lg transition-colors
+          relative border-2 border-dashed rounded-lg transition-colors cursor-pointer
           ${isDragging 
             ? 'border-purple-500 bg-purple-900/20' 
             : preview 
               ? 'border-green-500 bg-green-900/10' 
-              : 'border-gray-700 hover:border-gray-500 hover:bg-gray-800/50'
+              : 'border-purple-400 hover:border-purple-500 hover:bg-purple-900/10'
           }
         `}
       >
@@ -201,6 +169,7 @@ const FileUploadAvatar: React.FC<FileUploadAvatarProps> = ({ onFileSelected, cur
           onChange={handleFileChange}
           accept="image/*"
           className="hidden"
+          aria-label="Selecionar imagem"
         />
 
         {preview ? (
@@ -230,11 +199,14 @@ const FileUploadAvatar: React.FC<FileUploadAvatarProps> = ({ onFileSelected, cur
           </div>
         ) : (
           <div className="p-8 text-center">
-            <Upload className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm">
-              Arraste uma imagem ou clique para selecionar
+            <Upload className="mx-auto h-12 w-12 text-purple-400" />
+            <p className="mt-2 text-sm font-medium">
+              Clique aqui para selecionar uma foto
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm mt-1">
+              ou arraste e solte uma imagem aqui
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
               JPG, PNG ou GIF (máx. 2MB)
             </p>
           </div>
@@ -245,13 +217,13 @@ const FileUploadAvatar: React.FC<FileUploadAvatarProps> = ({ onFileSelected, cur
         <p className="mt-2 text-sm text-red-500">{error}</p>
       )}
 
-      {/* Botão de confirmação que só aparece quando uma imagem for selecionada */}
+      {/* Botão de confirmação que aparece sempre que uma imagem é selecionada */}
       {selectedFile && (
         <div className="mt-4 flex justify-center">
           <button
             onClick={handleConfirmUpload}
             disabled={isLoading}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-glow"
           >
             {isLoading ? (
               <>

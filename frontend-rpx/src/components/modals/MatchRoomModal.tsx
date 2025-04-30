@@ -59,12 +59,23 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
   const [message, setMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   
+  // Estado para controlar se a partida foi iniciada pelo capitão
+  const [matchStarted, setMatchStarted] = useState(false);
+  
   const isCaptain = match?.teams?.[0]?.players?.some(player => player.id === user?.id && player.isCaptain);
   
   // Determinar em qual time o usuário está
   const userTeam = teams.findIndex(team => 
     team.players.some(player => player.id === user?.id)
   );
+  
+  // Função para obter avatar padrão com base no ID do usuário
+  const getDefaultAvatar = (userId: string) => {
+    // Converter o ID do usuário em um número para escolher um avatar
+    const sum = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const avatarIndex = sum % 8; // 8 avatares diferentes
+    return `/images/avatars/${['blue', 'green', 'purple', 'red', 'yellow', 'orange', 'cyan', 'pink'][avatarIndex]}.svg`;
+  };
   
   // Função para rolar o chat para o final quando novas mensagens chegam
   useEffect(() => {
@@ -99,6 +110,11 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
     setMatchStatus(match.status === 'waiting_players' ? 'waiting' : 
                   match.status === 'in_progress' ? 'started' : 'finished');
     
+    // Se o status for 'in_progress', definir matchStarted como true
+    if (match.status === 'in_progress') {
+      setMatchStarted(true);
+    }
+    
     // Configurar polling para atualizações da partida
     const pollingInterval = setInterval(async () => {
       try {
@@ -124,6 +140,7 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
           // Se a partida agora está em andamento e estávamos esperando, iniciar o temporizador
           if (updatedMatch.status === 'in_progress' && match.status === 'waiting_players') {
             setTimeElapsed(0);
+            setMatchStarted(true);
           }
           
           // Se a partida agora está finalizada, mostrar o modal de resultado após um breve delay
@@ -269,10 +286,18 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
       // Atualizar status localmente
       setMatchStatus('started');
       setTimeElapsed(0);
+      setMatchStarted(true);
     } catch (error) {
       console.error('Erro ao iniciar partida:', error);
       alert('Erro ao iniciar partida. Tente novamente.');
     }
+  };
+  
+  // Finalizar partida (função nova)
+  const handleFinishMatch = () => {
+    // Marcar como finalizada e mostrar a tela de resultado
+    setMatchStatus('finished');
+    onSubmitResult();
   };
   
   // Sair da partida
@@ -547,7 +572,13 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                                 className="object-cover"
                               />
                             ) : (
-                              <User size={20} className="text-gray-400" />
+                              <Image 
+                                src={getDefaultAvatar(player.id)}
+                                alt={player.name}
+                                width={40}
+                                height={40}
+                                className="object-cover"
+                              />
                             )}
                           </div>
                           {player.isCaptain && (
@@ -611,7 +642,13 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                                 className="object-cover"
                               />
                             ) : (
-                              <User size={20} className="text-gray-400" />
+                              <Image 
+                                src={getDefaultAvatar(player.id)}
+                                alt={player.name}
+                                width={40}
+                                height={40}
+                                className="object-cover"
+                              />
                             )}
                           </div>
                           {player.isCaptain && (
@@ -695,11 +732,21 @@ const MatchRoomModal: React.FC<MatchRoomModalProps> = ({
                   </>
                 )}
                 
-                {matchStatus === 'started' && (
+                {matchStatus === 'started' && !matchStarted && (
                   <div className="flex items-center justify-center bg-green-900/20 border border-green-500/30 rounded-lg p-4 w-full">
                     <PlayCircle size={20} className="text-green-400 mr-2" />
                     <span>Partida em andamento - Jogue e retorne para enviar o resultado</span>
                   </div>
+                )}
+                
+                {matchStatus === 'started' && matchStarted && (
+                  <button
+                    onClick={handleFinishMatch}
+                    className="btn bg-red-600 hover:bg-red-700 border border-red-500/50 flex items-center justify-center"
+                  >
+                    <CheckCircle size={18} className="mr-2" />
+                    Finalizar Partida
+                  </button>
                 )}
                 
                 {matchStatus === 'finished' && (

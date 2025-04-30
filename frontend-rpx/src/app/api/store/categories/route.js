@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb/connect";
 
 // GET - Obter categorias para a loja pública (sem autenticação)
 export async function GET(request) {

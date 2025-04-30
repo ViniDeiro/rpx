@@ -12,7 +12,7 @@ export async function POST(
     if (!isAuth || !userId) {
       return NextResponse.json(
         { status: 'error', error: error || 'Não autorizado' },
-        { status: 400 });
+        { status: 401 });
     }
 
     // Obter ID do lobby

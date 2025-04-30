@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb/connect";
 import { ObjectId } from "mongodb";
 
 // GET - Obter produtos para a loja pública (sem autenticação)

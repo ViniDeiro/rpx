@@ -131,6 +131,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           return;
         }
+
+        // Adicionar código para tentar renovar o token em caso de expiração iminente
+        try {
+          // Decodificar o token para verificar a expiração (sem verificar assinatura)
+          const tokenParts = storedToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            
+            if (payload.exp) {
+              const expirationTime = payload.exp * 1000; // converter para milissegundos
+              const currentTime = Date.now();
+              const timeUntilExpiry = expirationTime - currentTime;
+              
+              // Se faltarem menos de 1 dia para expirar, tenta renovar o token
+              if (timeUntilExpiry < 24 * 60 * 60 * 1000 && timeUntilExpiry > 0) {
+                console.log('Token próximo da expiração, tentando renovar...');
+                try {
+                  const refreshResponse = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${storedToken}`
+                    }
+                  });
+                  
+                  if (refreshResponse.ok) {
+                    const refreshData = await refreshResponse.json();
+                    if (refreshData.token) {
+                      // Atualizar o token em localStorage
+                      localStorage.setItem('auth_token', refreshData.token);
+                      storedToken = refreshData.token;
+                      console.log('Token renovado com sucesso!');
+                    }
+                  }
+                } catch (refreshError) {
+                  console.warn('Erro ao renovar token:', refreshError);
+                  // Continua com o token existente mesmo se a renovação falhar
+                }
+              }
+            }
+          }
+        } catch (tokenDecodeError) {
+          console.warn('Erro ao decodificar token:', tokenDecodeError);
+          // Continua com verificação normal mesmo se falhar a decodificação
+        }
         
         // Atualizar o estado do token
         setToken(storedToken);
@@ -574,63 +619,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para fazer upload de avatar personalizado
   const updateUserAvatar = async (file: File) => {
-    setIsLoading(true);
-    
     try {
-      const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      console.log('Iniciando upload de avatar...', file.name, file.type, file.size);
       
-      if (!authToken) {
-        throw new Error('Usuário não autenticado');
-      }
-      
-      // Converter o arquivo para base64
-      const base64Data = await convertFileToBase64(file);
-      
-      const response = await fetch('/api/users/avatar', {
+      // Criar um FormData para enviar o arquivo
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      // Enviar o arquivo para o servidor
+      console.log('Enviando arquivo para /api/users/avatar...');
+      const response = await fetch(`/api/users/avatar`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ imageData: base64Data }),
+        body: formData
       });
+
+      // Verificar se a resposta é bem-sucedida
+      console.log('Resposta recebida:', response.status, response.statusText);
       
       if (!response.ok) {
-        let errorMessage = 'Erro ao fazer upload da imagem';
+        // Tentar obter o corpo da resposta para diagnóstico
+        let errorBody = '';
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // Se não conseguir parsear o JSON, usa a mensagem padrão
+          const errorData = await response.text();
+          errorBody = errorData;
+          console.error('Corpo da resposta de erro:', errorData);
+        } catch (readError) {
+          console.error('Não foi possível ler o corpo da resposta:', readError);
         }
-        throw new Error(errorMessage);
+        
+        throw new Error(`Erro HTTP: ${response.status} - ${errorBody}`);
       }
-      
-      const data = await response.json();
-      
-      // Atualizar o estado do usuário com a nova URL do avatar
-      if (data.user) {
-        setUser(data.user);
-      } else if (data.avatarUrl) {
-        // Se a API só retornar a URL do avatar, atualizamos apenas este campo
-        setUser(prevUser => prevUser ? {...prevUser, avatarUrl: data.avatarUrl} : null);
-      }
-    } catch (error: any) {
-      console.error('Erro ao fazer upload do avatar:', error);
-      throw new Error(error.message || 'Falha ao fazer upload da imagem. Tente novamente mais tarde.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // Função auxiliar para converter File para base64
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
+      try {
+        // Tentar obter a resposta como JSON
+        const data = await response.json();
+        console.log('Dados da resposta:', data);
+        
+        // Atualizar o estado do usuário com o novo avatar
+        if (data && data.avatarUrl) {
+          setUser(prev => {
+            if (!prev) return null;
+            // Atualizar corretamente o campo avatarUrl, não avatar
+            return { 
+              ...prev, 
+              avatarUrl: data.avatarUrl 
+            };
+          });
+          console.log("Avatar atualizado com sucesso!");
+        } else {
+          // Se não tiver a URL do avatar, recarregar os dados do usuário
+          await refreshUser();
+          console.log("Dados do usuário atualizados após upload de avatar");
+        }
+      } catch (parseError) {
+        // Se não for possível analisar como JSON, apenas recarregar os dados do usuário
+        console.log("Resposta não é JSON, atualizando dados do usuário");
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar avatar:", error);
+      throw new Error("Falha no upload da imagem. Tente novamente.");
+    }
   };
 
   // Função para realizar logout

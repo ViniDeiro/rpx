@@ -151,7 +151,7 @@ export async function POST(request) {
           role: user.role || 'user'
         },
         jwtSecret,
-        { expiresIn: '1d' }
+        { expiresIn: '30d' }
       );
       
       // Atualizar último login
@@ -194,7 +194,7 @@ export async function POST(request) {
         value: token,
         httpOnly: true,
         path: '/',
-        maxAge: 60 * 60 * 24, // 1 dia
+        maxAge: 60 * 60 * 24 * 30, // 30 dias
         sameSite: 'lax'
       });
       

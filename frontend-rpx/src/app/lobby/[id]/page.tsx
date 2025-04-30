@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Shield, Users, Clock, Star, ChevronLeft } from 'react-feather';
+import ProfileAvatar from "@/components/profile/ProfileAvatar";
+import { RankTier } from "@/utils/ranking";
 
 // Log inicial para debug
 console.log('🚀 Carregando página de lobby...');
@@ -20,6 +22,7 @@ interface LobbyMember {
   avatarUrl?: string | null;
   isReady?: boolean;
   isOwner?: boolean;
+  rank: { tier: string };
 }
 
 interface LobbyDetails {
@@ -167,7 +170,8 @@ export default function LobbyPage() {
             username: user.username || user.name || 'Usuário',
             avatarUrl: user.username ? null : null,
             isReady: false,
-            isOwner: true
+            isOwner: true,
+            rank: { tier: 'unranked' }
           };
           setMembersInfo([userMember]);
         }
@@ -200,7 +204,8 @@ export default function LobbyPage() {
             username: user.username || user.name || 'Usuário',
             avatarUrl: user.username ? null : null,
             isReady: false,
-            isOwner: true
+            isOwner: true,
+            rank: { tier: 'unranked' }
           };
           setMembersInfo([userMember]);
         }
@@ -371,51 +376,67 @@ export default function LobbyPage() {
         <div className="p-6">
           <h2 className="text-xl font-semibold mb-4">Jogadores</h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {/* Cabos de áudio - conexões entre jogadores */}
+          <div className="absolute inset-0 pointer-events-none">
+            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+              {/* Linhas de conexão */}
+              <path 
+                d="M200,200 C300,150 400,450 500,400" 
+                stroke="rgba(138, 85, 255, 0.3)" 
+                strokeWidth="2" 
+                fill="none"
+              />
+            </svg>
+          </div>
+          
+          {/* Lista de jogadores */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Mapeamento dos jogadores */}
             {lobby.members.map(memberId => {
               const member = membersInfo.find(m => m._id === memberId) || { 
-                _id: memberId, 
-                username: 'Usuário desconhecido',
-                isReady: false
+                _id: memberId,
+                username: 'Jogador', 
+                avatarUrl: null,
+                isReady: false,
+                rank: { tier: 'unranked' as RankTier }
               };
-              const isOwnerBadge = lobby.owner === memberId;
+              
+              const isReady = lobby.readyMembers?.includes(memberId);
               
               return (
                 <div 
                   key={memberId} 
-                  className={`flex items-center p-4 rounded-lg ${member.isReady ? 'bg-green-900/20' : 'bg-gray-700'}`}
+                  className={`relative bg-card-hover p-4 rounded-lg border-2 ${
+                    isReady ? 'border-green-500/50' : 'border-gray-700'
+                  }`}
                 >
-                  <Avatar className="h-12 w-12 mr-4">
-                    <AvatarImage src={member.avatarUrl || '/images/avatars/default.jpg'} />
-                    <AvatarFallback>
-                      {member.username?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <span className="font-medium">{member.username}</span>
-                      {isOwnerBadge && (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-600 text-yellow-100">
-                          <Star size={12} className="mr-1" />
-                          Líder
-                        </span>
-                      )}
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0">
+                      <ProfileAvatar
+                        size="sm"
+                        rankTier={member.rank?.tier as RankTier}
+                        avatarUrl={member.avatarUrl || '/images/avatar-placeholder.svg'}
+                        showRankFrame={true}
+                      />
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {member.isReady ? 'Pronto' : 'Aguardando...'}
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="font-medium">{member.username}</span>
+                        {member._id === user?.id && !isOwner && (
+                          <Button 
+                            variant={isReady ? "outline" : "default"}
+                            size="sm"
+                            onClick={handleToggleReady}
+                          >
+                            {isReady ? 'Não Pronto' : 'Pronto'}
+                          </Button>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {member.isReady ? 'Pronto' : 'Aguardando...'}
+                      </div>
                     </div>
                   </div>
-                  
-                  {member._id === user?.id && !isOwner && (
-                    <Button 
-                      variant={isReady ? "outline" : "default"}
-                      size="sm"
-                      onClick={handleToggleReady}
-                    >
-                      {isReady ? 'Não Pronto' : 'Pronto'}
-                    </Button>
-                  )}
                 </div>
               );
             })}

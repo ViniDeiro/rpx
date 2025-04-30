@@ -121,9 +121,15 @@ export default function ProfileAvatar({
     lg: { avatar: 128, frame: 180 }
   }[size];
   
-  // Ajustar tamanho da moldura
+  // Ajustar tamanho da moldura e offset com base no rank
   let frameSize = sizeConfig.frame;
   let yOffset = -50; // Default -50%
+  
+  // Ajustes específicos para challenger
+  if (effectiveRankTier === 'challenger') {
+    frameSize = sizeConfig.frame * 1.2; // Aumentar mais o tamanho da moldura
+    yOffset = -42; // Ajustar posição vertical ainda mais para baixo
+  }
   
   // Determinar a URL do avatar a ser usada
   const finalAvatarUrl = avatarUrl || user?.avatarUrl || '/images/avatar-placeholder.svg';
