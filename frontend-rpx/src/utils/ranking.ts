@@ -283,7 +283,21 @@ export const calculateRank = (points: number, position?: number): Rank => {
 };
 
 // Calcular progresso do rank
-export const calculateRankProgress = (rank: Rank): RankProgress => {
+export const calculateRankProgress = (rank: Rank | undefined | null): RankProgress => {
+  // Se o rank não existir ou for inválido, retornar progresso inicial
+  if (!rank || !rank.tier) {
+    return {
+      currentPoints: 0,
+      pointsForNextTier: 1,
+      pointsForNextDivision: 1,
+      progressPercentage: 0,
+      isInPromotionSeries: false,
+      winsRequired: 0,
+      promotionWins: 0,
+      promotionLosses: 0
+    };
+  }
+
   if (rank.tier === 'legend' || rank.tier === 'challenger') {
     // Para Legend e Challenger, o progresso é baseado em posição, não em pontos
     return {
@@ -312,10 +326,25 @@ export const calculateRankProgress = (rank: Rank): RankProgress => {
   }
   
   // Para outros ranks, calcular o progresso para o próximo tier/divisão
-  const tierConfig = RANK_CONFIG[rank.tier] as { [key: string]: { min: number; max: number } };
-  const minPoints = rank.tier === 'bronze' && rank.division === '1' ? 1 : 
-                    tierConfig[rank.division as string].min;
-  const maxPoints = tierConfig[rank.division as string].max;
+  const tierConfig = RANK_CONFIG[rank.tier];
+  
+  // Se não houver configuração para o tier ou divisão, retornar progresso padrão
+  if (!tierConfig || !rank.division || !tierConfig[rank.division]) {
+    return {
+      currentPoints: rank.points || 0,
+      pointsForNextTier: 100,
+      pointsForNextDivision: 100,
+      progressPercentage: 0,
+      isInPromotionSeries: false,
+      winsRequired: 0,
+      promotionWins: 0,
+      promotionLosses: 0
+    };
+  }
+
+  const divisionConfig = tierConfig[rank.division];
+  const minPoints = rank.tier === 'bronze' && rank.division === '1' ? 1 : divisionConfig.min;
+  const maxPoints = divisionConfig.max;
   const currentProgress = rank.points - minPoints;
   const totalRange = maxPoints - minPoints;
   const progressPercentage = Math.min((currentProgress / totalRange) * 100, 100);

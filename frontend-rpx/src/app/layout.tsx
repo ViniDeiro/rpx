@@ -11,17 +11,20 @@ import { Layout } from '@/components/layout/layout';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import SessionProvider from '@/components/providers/SessionProvider';
 import { useAuth } from '@/contexts/AuthContext';
+import dynamic from 'next/dynamic';
 
 const inter = Inter({ subsets: ['latin'] });
+
+// Carregar o Layout dinamicamente para melhorar a performance inicial
+const DynamicLayout = dynamic(() => import('@/components/layout/layout').then(mod => mod.Layout), {
+  ssr: false,
+  loading: () => <div className="min-h-screen bg-background" />
+});
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   
-  return (
-    <>
-      <Layout>{children}</Layout>
-    </>
-  );
+  return <DynamicLayout>{children}</DynamicLayout>;
 }
 
 export default function RootLayout({
@@ -45,11 +48,7 @@ export default function RootLayout({
         <SessionProvider>
           <ThemeProvider>
             <AuthProvider>
-              {isAdminPage ? (
-                children
-              ) : (
-                <MainLayout>{children}</MainLayout>
-              )}
+              {isAdminPage ? children : <MainLayout>{children}</MainLayout>}
               <Toaster />
               <ToastContainer 
                 position="bottom-right"

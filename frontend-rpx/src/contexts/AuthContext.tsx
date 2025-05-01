@@ -104,50 +104,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
-  // Inicializar token a partir do localStorage (apenas no cliente)
-  useEffect(() => {
-    // Verificar se estamos no navegador
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('auth_token');
-      setToken(storedToken);
-    }
-  }, []);
+  // Função para salvar o token e dados do usuário
+  const saveAuthData = (token: string, userData: User) => {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    setToken(token);
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
 
-  // Verificar se o usuário está autenticado ao carregar a página
+  // Função para limpar dados de autenticação
+  const clearAuthData = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('remember_login');
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  // Verificar autenticação ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
       try {
         setIsLoading(true);
         
-        // Pegar o token do localStorage
-        let storedToken = null;
-        if (typeof window !== 'undefined') {
-          storedToken = localStorage.getItem('auth_token');
-        }
+        // Verificar se existe token salvo
+        const storedToken = localStorage.getItem('auth_token');
+        const storedUserData = localStorage.getItem('user_data');
         
-        // Se não houver token, não está autenticado
+        // Se não houver token, limpar dados
         if (!storedToken) {
-          setIsAuthenticated(false);
+          clearAuthData();
           setIsLoading(false);
           return;
         }
 
-        // Adicionar código para tentar renovar o token em caso de expiração iminente
-        try {
-          // Decodificar o token para verificar a expiração (sem verificar assinatura)
-          const tokenParts = storedToken.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            
-            if (payload.exp) {
-              const expirationTime = payload.exp * 1000; // converter para milissegundos
-              const currentTime = Date.now();
-              const timeUntilExpiry = expirationTime - currentTime;
+        // Se houver dados do usuário salvos, restaurar
+        if (storedUserData) {
+          try {
+            const userData = JSON.parse(storedUserData);
+            setToken(storedToken);
+            setUser(userData);
+            setIsAuthenticated(true);
+
+            // Verificar validade do token
+            const tokenParts = storedToken.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
               
-              // Se faltarem menos de 1 dia para expirar, tenta renovar o token
-              if (timeUntilExpiry < 24 * 60 * 60 * 1000 && timeUntilExpiry > 0) {
-                console.log('Token próximo da expiração, tentando renovar...');
-                try {
+              if (payload.exp) {
+                const expirationTime = payload.exp * 1000;
+                const currentTime = Date.now();
+                
+                // Se o token expirou, tentar renovar
+                if (currentTime >= expirationTime) {
                   const refreshResponse = await fetch('/api/auth/refresh', {
                     method: 'POST',
                     headers: {
@@ -157,156 +168,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   });
                   
                   if (refreshResponse.ok) {
-                    const refreshData = await refreshResponse.json();
-                    if (refreshData.token) {
-                      // Atualizar o token em localStorage
-                      localStorage.setItem('auth_token', refreshData.token);
-                      storedToken = refreshData.token;
-                      console.log('Token renovado com sucesso!');
+                    const { token: newToken, user: refreshedUser } = await refreshResponse.json();
+                    saveAuthData(newToken, refreshedUser);
+                  } else {
+                    // Se não conseguir renovar, fazer logout apenas se não estiver na página de login
+                    if (!window.location.pathname.includes('/login')) {
+                      clearAuthData();
+                      router.push('/login');
                     }
                   }
-                } catch (refreshError) {
-                  console.warn('Erro ao renovar token:', refreshError);
-                  // Continua com o token existente mesmo se a renovação falhar
                 }
               }
             }
-          }
-        } catch (tokenDecodeError) {
-          console.warn('Erro ao decodificar token:', tokenDecodeError);
-          // Continua com verificação normal mesmo se falhar a decodificação
-        }
-        
-        // Atualizar o estado do token
-        setToken(storedToken);
-        
-        // Validar o token com a API
-        try {
-          // Alterando para usar a rota correta na API
-          const response = await fetch('/api/users/profile', {
-            headers: {
-              Authorization: `Bearer ${storedToken}`,
-            },
-          });
-
-          if (!response.ok) {
-            console.error('Erro na resposta da API:', response.status);
-            throw new Error('Token inválido ou erro ao obter perfil');
-          }
-
-          const data = await response.json();
-          console.log('Resposta completa da API de perfil:', JSON.stringify(data, null, 2));
-          
-          // Ajuste para lidar com diferentes estruturas de resposta
-          const userData = data.data?.user || data.user;
-          
-          if (userData) {
-            console.log('Perfil carregado com sucesso:', userData.id);
-            console.log('Dados do perfil:', JSON.stringify(userData, null, 2));
-            
-            // Verificar se existe um saldo salvo no localStorage para persistência
-            if (typeof window !== 'undefined') {
-              const savedBalance = localStorage.getItem('user_balance');
-              if (savedBalance) {
-                const parsedBalance = parseFloat(savedBalance);
-                if (!isNaN(parsedBalance)) {
-                  console.log(`Restaurando saldo do localStorage: ${parsedBalance}`);
-                  userData.balance = parsedBalance;
-                }
-              }
+          } catch (error) {
+            console.error('Erro ao processar dados salvos:', error);
+            // Se houver erro ao processar os dados, mas ainda estiver na página de login, não limpar
+            if (!window.location.pathname.includes('/login')) {
+              clearAuthData();
             }
-            
-            // Pré-carregar a imagem do avatar para evitar problemas de carregamento
-            if (userData.avatarUrl) {
-              try {
-                await preloadImage(userData.avatarUrl);
-                console.log('Avatar pré-carregado com sucesso');
-              } catch (error) {
-                console.warn('Erro ao pré-carregar avatar:', error);
-              }
-            }
-            
-            setUser(userData);
-            setIsAuthenticated(true);
-            
-            // Sincronizar com NextAuth - fazer login na sessão NextAuth também
-            try {
-              console.log('Tentando sincronizar com NextAuth...');
-              const syncResponse = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                  userId: userData.id,
-                  email: userData.email,
-                  name: userData.name || userData.username,
-                  image: userData.avatarUrl,
-                  token: storedToken // Incluir token para autenticação completa
-                }),
-              });
-              
-              if (!syncResponse.ok) {
-                console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
-                
-                // Tentar forçar a sessão - estratégia de backup
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('next-auth.session-token', storedToken);
-                  // Forçar recarregamento para atualizar a sessão
-                  // window.location.reload();
-                }
-              } else {
-                console.log('✅ Sincronização com NextAuth bem-sucedida');
-              }
-            } catch (error) {
-              console.warn('Erro ao sincronizar com NextAuth:', error);
-            }
-          } else {
-            console.error('Resposta não contém dados do usuário:', data);
-            throw new Error('Dados do usuário não encontrados na resposta');
           }
-        } catch (error) {
-          console.error('Erro ao validar token:', error);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-          }
-          setToken(null);
-          setUser(null);
-          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
-        
-        // Em caso de erro, limpar o estado
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        
-        // Remover token inválido
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
+        // Se houver erro, mas ainda estiver na página de login, não limpar
+        if (!window.location.pathname.includes('/login')) {
+          clearAuthData();
         }
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     checkAuth();
   }, []);
 
-  // Função para realizar login
+  // Função de login
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
-    
     try {
-      // Verificar campos obrigatórios
-      if (!email || !password) {
-        throw new Error('Email e senha são obrigatórios');
-      }
-
-      console.log('Iniciando processo de login para:', email);
-      
-      // Fazer a requisição para a API
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -314,110 +212,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({ email, password }),
       });
-      
-      // Se a resposta não for OK, tentar obter a mensagem de erro da API
+
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || errorData.message || `Erro no login (${response.status})`;
-        console.error('Resposta de erro da API:', errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      // Tentar processar a resposta
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error('Erro ao processar resposta JSON:', jsonError);
-        throw new Error('Resposta inválida do servidor');
-      }
-      
-      // Verificar se a resposta contém um token
-      if (!data.token) {
-        console.error('Resposta não contém token:', data);
-        throw new Error('Resposta de login inválida: token não encontrado');
-      }
-      
-      // Verificar se a resposta contém os dados do usuário
-      if (!data.user) {
-        console.error('Resposta não contém dados do usuário:', data);
-        throw new Error('Resposta de login inválida: dados do usuário não encontrados');
-      }
-      
-      // Verificar e logar os dados de rank recebidos
-      if (data.user && data.user.rank) {
-        console.log('Dados de rank recebidos:', data.user.rank);
-      } else {
-        console.warn('Dados de rank não encontrados na resposta de login');
+        throw new Error(data.error || 'Erro ao fazer login');
       }
 
-      // Armazenar token no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_token', data.token);
-      }
-      
-      // Definir token no estado
-      setToken(data.token);
-      
-      // Pré-carregar a imagem do avatar para evitar problemas de carregamento
-      if (data.user.avatarUrl) {
-        try {
-          await preloadImage(data.user.avatarUrl);
-          console.log('Avatar pré-carregado com sucesso');
-        } catch (error) {
-          console.warn('Erro ao pré-carregar avatar:', error);
-        }
-      }
-      
-      // Definir o usuário e estado de autenticação
-      setUser(data.user);
-      setIsAuthenticated(true);
-      
-      // Sincronizar com NextAuth
-      try {
-        const syncResponse = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            userId: data.user.id,
-            email: data.user.email,
-            name: data.user.name || data.user.username,
-            image: data.user.avatarUrl
-          }),
-        });
-        
-        if (!syncResponse.ok) {
-          console.warn('Não foi possível sincronizar com NextAuth, mas o login local funcionou');
-        }
-      } catch (error) {
-        console.warn('Erro ao sincronizar com NextAuth:', error);
-        // Continuar mesmo se a sincronização falhar
-      }
-      
-      console.log('Login realizado com sucesso para:', email);
+      // Salvar dados de autenticação
+      saveAuthData(data.token, data.user);
+
       return { success: true };
-    } catch (error) {
-      console.error('Erro no login:', error);
-      
-      // Tratar erro para apresentar mensagem mais amigável
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido no login';
-      
-      // Verificar tipos específicos de erro para mensagens mais claras
-      let friendlyMessage = errorMessage;
-      if (errorMessage.includes('MongoServerSelection') || errorMessage.includes('connect')) {
-        friendlyMessage = 'Erro de conexão com o banco de dados. Verifique sua conexão com a internet.';
-      } else if (errorMessage.includes('credenciais') || errorMessage.includes('inválidas')) {
-        friendlyMessage = 'Email ou senha incorretos. Por favor, tente novamente.';
-      }
-      
-      return { 
-        success: false, 
-        error: friendlyMessage
-      };
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   };
 
@@ -426,11 +233,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
-      // Preparar dados para registro
+      // Preparar dados para registro com rank inicial
       const registrationData = {
         ...userData,
         // Gerar um username se não for fornecido
         username: userData.username || (userData.name ? generateUsername(userData.name) : undefined),
+        // Adicionar rank inicial
+        rank: {
+          tier: 'unranked',
+          division: null,
+          points: 0
+        }
       };
       
       // Fazer a requisição para a API
@@ -454,11 +267,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('auth_token', data.token);
       }
       
+      // Garantir que o usuário tenha um rank inicial
+      const userWithRank = {
+        ...data.user,
+        rank: data.user.rank || {
+          tier: 'unranked',
+          division: null,
+          points: 0
+        }
+      };
+      
       setToken(data.token);
-      setUser(data.user);
+      setUser(userWithRank);
 
-      // Redirecionar para a página inicial após registro bem-sucedido
-      router.push('/profile');
+      // Redirecionar para a página de login após registro bem-sucedido
+      router.push('/login?registered=true');
     } catch (error: any) {
       console.error('Erro no registro:', error);
       throw error;
@@ -687,51 +510,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Função para realizar logout
   const logout = () => {
-    console.log('Iniciando processo de logout');
-    
-    // Remover o token do localStorage
-    if (typeof window !== 'undefined') {
-      console.log('Removendo token do localStorage');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('token');
-      
-      // Remover quaisquer outros itens relacionados à autenticação
-      localStorage.removeItem('userId');
-      sessionStorage.removeItem('auth_token');
-    }
-    
-    // Limpar o estado local
-    setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    // Chamada à API para fazer logout no servidor
-    try {
-      console.log('Chamando API para logout no servidor');
-      fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      }).catch(error => {
-        console.error('Erro na chamada da API de logout:', error);
-      });
-      
-      // Fazer logout da sessão do NextAuth
-      fetch('/api/auth/signout', {
-        method: 'POST',
-        credentials: 'include',
-      }).catch(error => {
-        console.error('Erro ao fazer signout no NextAuth:', error);
-      });
-    } catch (error) {
-      console.error('Erro durante o processo de logout:', error);
-    }
-    
-    console.log('Processo de logout concluído. Estado limpo.');
-    
-    // Forçar recarregamento da página para garantir que todas as sessões sejam limpas
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
-    }
+    clearAuthData();
+    router.push('/login');
   };
 
   // Função para atualizar os dados do usuário

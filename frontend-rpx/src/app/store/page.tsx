@@ -33,125 +33,115 @@ export default function StorePage() {
   const productsData: Product[] = [
     {
       id: "1",
-      name: "Pacote de Diamantes (1000)",
-      description: "1000 diamantes para usar em seus jogos e apostas.",
-      price: 50,
-      category: "boosters",
-      image: "/images/diamond-pack.jpg",
+      name: "Moldura Legend",
+      description: "Moldura exclusiva do rank Legend para seu perfil.",
+      price: 1000,
+      category: "banners",
+      image: "/images/frames/legend.png",
       isFeatured: true
     },
     {
       id: "2",
-      name: "Skin Exclusiva RPX",
-      description: "Skin exclusiva para membros da plataforma RPX.",
-      price: 120,
-      category: "skins",
-      image: "/images/exclusive-skin.jpg",
+      name: "Moldura Challenger",
+      description: "Moldura exclusiva do rank Challenger para seu perfil.",
+      price: 2000,
+      category: "banners",
+      image: "/images/frames/challenger.png",
       isNew: true
     },
     {
       id: "3",
-      name: "Ticket Torneio Semanal",
-      description: "Acesso ao torneio semanal com premiação garantida.",
-      price: 15,
-      category: "tickets",
-      image: "/images/tournament-ticket.jpg"
+      name: "Avatar Personalizado",
+      description: "Avatar personalizado para seu perfil.",
+      price: 500,
+      category: "avatars",
+      image: "/images/avatars/custom.png"
     },
     {
       id: "4",
-      name: "Pacote VIP Bronze",
-      description: "Benefícios exclusivos por 30 dias + 500 diamantes.",
-      price: 40,
-      category: "vip",
-      discountPercentage: 10,
-      image: "/images/vip-package.jpg"
+      name: "Efeito de Entrada",
+      description: "Efeito especial ao entrar no lobby.",
+      price: 800,
+      category: "effects",
+      image: "/images/effects/entrance.png",
+      isNew: true
     },
     {
       id: "5",
-      name: "Skin Lendária Dragão",
-      description: "Skin lendária de edição limitada.",
-      price: 200,
-      category: "skins",
-      image: "/images/legendary-skin.jpg",
+      name: "Pacote VIP",
+      description: "30 dias de benefícios VIP + moldura exclusiva.",
+      price: 1500,
+      category: "vip",
+      discountPercentage: 15,
+      image: "/images/vip/package.png",
       isFeatured: true
     },
     {
       id: "6",
-      name: "Pacote de Diamantes (5000)",
-      description: "5000 diamantes + 500 de bônus.",
-      price: 200,
+      name: "Pacote de Diamantes",
+      description: "1000 diamantes para usar na plataforma.",
+      price: 100,
       category: "boosters",
-      discountPercentage: 15,
-      image: "/images/big-diamond-pack.jpg"
+      image: "/images/boosters/diamonds.png"
     },
     {
       id: "7",
-      name: "Ticket Torneio Mensal",
-      description: "Acesso ao torneio mensal com premiação de R$10.000.",
+      name: "Ticket Torneio Premium",
+      description: "Acesso ao torneio premium com premiação garantida.",
       price: 50,
       category: "tickets",
-      image: "/images/monthly-ticket.jpg",
-      isNew: true
+      image: "/images/tickets/premium.png"
     },
     {
       id: "8",
-      name: "Pacote VIP Prata",
-      description: "Benefícios exclusivos por 60 dias + 1200 diamantes.",
-      price: 75,
-      category: "vip",
-      discountPercentage: 12,
-      image: "/images/silver-vip.jpg"
+      name: "Moldura Diamond",
+      description: "Moldura exclusiva do rank Diamond para seu perfil.",
+      price: 800,
+      category: "banners",
+      image: "/images/frames/diamond.png"
     },
     {
       id: "9",
-      name: "Arma Personalizada",
-      description: "Skin personalizada para sua arma favorita.",
-      price: 80,
-      category: "skins",
-      image: "/images/custom-weapon.jpg"
-    },
+      name: "Efeito de Vitória",
+      description: "Efeito especial ao vencer uma partida.",
+      price: 600,
+      category: "effects",
+      image: "/images/effects/victory.png"
+    }
   ];
 
   useEffect(() => {
-    // Buscar produtos reais da API
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fazendo a chamada real à API
-        const response = await fetch('/api/store/products');
-        
-        if (!response.ok) {
-          throw new Error('Falha ao buscar produtos da API');
-        }
-        
-        const data = await response.json();
-        
-        // Verificar se os dados estão no formato esperado
-        if (data && data.products) {
-          setProducts(data.products);
-          setFilteredProducts(data.products);
-        } else {
-          console.error('Formato de resposta da API inválido:', data);
-          setError('Formato de resposta da API inválido');
-        }
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Erro ao carregar produtos da loja:', err);
-        setError('Não foi possível carregar os produtos. Tente novamente mais tarde.');
-        setIsLoading(false);
-      }
-    };
+    // Usando dados mockados em vez da API
+    setTimeout(() => {
+      setProducts(productsData);
+      setFilteredProducts(productsData);
+      setIsLoading(false);
+    }, 1000);
 
-    fetchProducts();
-    
-    // Comentando dados mockados:
-    // setTimeout(() => {
-    //   setProducts(productsData);
-    //   setFilteredProducts(productsData);
-    //   setIsLoading(false);
-    // }, 1000);
+    // Comentando chamada à API real
+    // const fetchProducts = async () => {
+    //   try {
+    //     setIsLoading(true);
+    //     const response = await fetch('/api/store/products');
+    //     if (!response.ok) {
+    //       throw new Error('Falha ao buscar produtos da API');
+    //     }
+    //     const data = await response.json();
+    //     if (data && data.products) {
+    //       setProducts(data.products);
+    //       setFilteredProducts(data.products);
+    //     } else {
+    //       console.error('Formato de resposta da API inválido:', data);
+    //       setError('Formato de resposta da API inválido');
+    //     }
+    //     setIsLoading(false);
+    //   } catch (err) {
+    //     console.error('Erro ao carregar produtos da loja:', err);
+    //     setError('Não foi possível carregar os produtos. Tente novamente mais tarde.');
+    //     setIsLoading(false);
+    //   }
+    // };
+    // fetchProducts();
   }, []);
 
   // Filtrar produtos

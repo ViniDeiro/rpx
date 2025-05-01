@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [lembrar, setLembrar] = useState(false);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(false);
   
   const router = useRouter();
+  const { login } = useAuth();
+  
+  // Verificar se veio da página de registro
+  useEffect(() => {
+    if (router.query.registered === 'true') {
+      setSucesso('Cadastro realizado com sucesso! Faça login para continuar.');
+    }
+  }, [router.query]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,18 +31,31 @@ const LoginPage: React.FC = () => {
     }
     
     setErro('');
+    setSucesso('');
     setCarregando(true);
     
-    // Simulação de login (aqui seria integrado com a API)
-    setTimeout(() => {
-      if (email === 'demo@rpx.com' && senha === 'senha123') {
-        // Login bem-sucedido
-        router.push('/');
+    try {
+      const result = await login(email, senha);
+      
+      if (result.success) {
+        // Se lembrar estiver marcado, salvar no localStorage
+        if (lembrar) {
+          localStorage.setItem('remember_login', 'true');
+        } else {
+          localStorage.removeItem('remember_login');
+        }
+        
+        // Redirecionar para a página inicial ou para a página que o usuário tentou acessar
+        const redirectTo = router.query.redirect as string || '/';
+        router.push(redirectTo);
       } else {
-        setErro('Email ou senha incorretos');
-        setCarregando(false);
+        setErro(result.error || 'Erro ao fazer login');
       }
-    }, 1500);
+    } catch (error) {
+      setErro('Erro ao conectar com o servidor');
+    } finally {
+      setCarregando(false);
+    }
   };
   
   return (
@@ -58,6 +81,12 @@ const LoginPage: React.FC = () => {
           {erro && (
             <div className="mb-4 bg-red-500/20 border border-red-500 text-white p-3 rounded">
               {erro}
+            </div>
+          )}
+          
+          {sucesso && (
+            <div className="mb-4 bg-green-500/20 border border-green-500 text-white p-3 rounded">
+              {sucesso}
             </div>
           )}
           

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, DollarSign, RefreshCw } from 'react-feather';
@@ -53,14 +53,40 @@ export const Header = () => {
     }
   };
 
-  // Otimizar o evento de scroll usando throttle
+  // Pré-carregar links importantes quando o componente montar
+  useEffect(() => {
+    // Pré-carregar páginas principais para navegação mais rápida
+    const prefetchLinks = ['/lobby', '/matches', '/tournaments', '/ranking', '/store'];
+    
+    // Usar requestIdleCallback para não bloquear a renderização inicial
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => {
+        prefetchLinks.forEach(path => {
+          router.prefetch(path);
+        });
+      });
+    } else {
+      // Fallback para browsers que não suportam requestIdleCallback
+      setTimeout(() => {
+        prefetchLinks.forEach(path => {
+          router.prefetch(path);
+        });
+      }, 1000);
+    }
+  }, [router]);
+
+  // Otimizar o evento de scroll usando throttle e requestAnimationFrame
   useEffect(() => {
     let ticking = false;
+    let lastScrollY = window.scrollY;
+    let rafId: number;
     
     const handleScroll = () => {
+      lastScrollY = window.scrollY;
+      
       if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setIsScrolled(window.scrollY > 10);
+        rafId = requestAnimationFrame(() => {
+          setIsScrolled(lastScrollY > 10);
           ticking = false;
         });
         ticking = true;
@@ -68,23 +94,15 @@ export const Header = () => {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Pré-carregar links importantes quando o componente montar
-  useEffect(() => {
-    // Pré-carregar páginas principais para navegação mais rápida
-    const prefetchLinks = ['/lobby', '/matches', '/tournaments', '/ranking', '/store'];
     
-    prefetchLinks.forEach(path => {
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
-      link.href = path;
-      document.head.appendChild(link);
-    });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
-  const navLinks = [
+  // Memoizar os links de navegação para evitar recriação desnecessária
+  const navLinks = useMemo(() => [
     { href: '/', label: 'Início' },
     { href: '/lobby', label: 'Lobby' },
     { href: '/matches', label: 'Desafios' },
@@ -92,7 +110,7 @@ export const Header = () => {
     { href: '/ranking', label: 'Rankings' },
     { href: '/store', label: 'Loja' },
     { href: '/sponsors', label: 'Parceiros' },
-  ];
+  ], []);
 
   return (
     <header 
@@ -107,7 +125,7 @@ export const Header = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" prefetch={false} className="flex items-center">
             <div className="relative h-10 w-32">
               <Image 
                 src={ImagePaths.logo} 
@@ -129,7 +147,7 @@ export const Header = () => {
                   key={link.href} 
                   href={link.href}
                   prefetch={true}
-                  scroll={false} /* Evita recarregar a página completa */
+                  scroll={false}
                   className={`
                     px-4 py-2 rounded-md text-sm font-medium transition-colors relative
                     ${isActive
@@ -138,12 +156,20 @@ export const Header = () => {
                     }
                   `}
                   onClick={(e) => {
-                    if (isActive) e.preventDefault(); // Evita navegação se já estiver na página
+                    if (isActive) {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Iniciar pré-carregamento ao hover
+                    router.prefetch(link.href);
                   }}
                 >
                   {link.label}
                   {isActive && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-primary-light to-transparent"></span>
+                    <motion.span 
+                      layoutId="activeIndicator"
+                      className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-primary-light to-transparent"
+                    />
                   )}
                 </Link>
               );

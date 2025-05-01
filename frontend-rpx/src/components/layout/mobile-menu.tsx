@@ -7,19 +7,21 @@ import { NavLink } from '@/components/layout/nav-link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useSession } from 'next-auth/react';
-import { Moon, Sun, X } from 'lucide-react';
+import { 
+  Moon, 
+  Sun, 
+  X,
+  Home,
+  Book,
+  GraduationCap,
+  Flask,
+  Scale,
+  Users,
+  MessageCircle,
+  HelpCircle
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import clsx from 'clsx';
-import { 
-  HomeIcon,
-  BookOpenIcon,
-  AcademicCapIcon,
-  BeakerIcon,
-  ScaleIcon,
-  UsersIcon,
-  ChatBubbleOvalLeftIcon,
-  QuestionMarkCircleIcon
-} from '@heroicons/react/24/outline';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -56,14 +58,14 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   }, [theme, setTheme]);
 
   const navigationItems: NavItem[] = useMemo(() => [
-    { href: '/', label: 'Início', icon: <HomeIcon className="h-5 w-5" /> },
-    { href: '/equipe', label: 'Equipe', icon: <UsersIcon className="h-5 w-5" /> },
-    { href: '/textos', label: 'Textos', icon: <BookOpenIcon className="h-5 w-5" /> },
-    { href: '/cursos', label: 'Cursos', icon: <AcademicCapIcon className="h-5 w-5" /> },
-    { href: '/ciencia', label: 'Ciência', icon: <BeakerIcon className="h-5 w-5" /> },
-    { href: '/direito', label: 'Direito', icon: <ScaleIcon className="h-5 w-5" /> },
-    { href: '/perguntas-frequentes', label: 'FAQ', icon: <QuestionMarkCircleIcon className="h-5 w-5" /> },
-    { href: '/fale-conosco', label: 'Contato', icon: <ChatBubbleOvalLeftIcon className="h-5 w-5" /> },
+    { href: '/', label: 'Início', icon: <Home className="h-5 w-5" /> },
+    { href: '/equipe', label: 'Equipe', icon: <Users className="h-5 w-5" /> },
+    { href: '/textos', label: 'Textos', icon: <Book className="h-5 w-5" /> },
+    { href: '/cursos', label: 'Cursos', icon: <GraduationCap className="h-5 w-5" /> },
+    { href: '/ciencia', label: 'Ciência', icon: <Flask className="h-5 w-5" /> },
+    { href: '/direito', label: 'Direito', icon: <Scale className="h-5 w-5" /> },
+    { href: '/perguntas-frequentes', label: 'FAQ', icon: <HelpCircle className="h-5 w-5" /> },
+    { href: '/fale-conosco', label: 'Contato', icon: <MessageCircle className="h-5 w-5" /> },
   ], []);
 
   // Animação do menu

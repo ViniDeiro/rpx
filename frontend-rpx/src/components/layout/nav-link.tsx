@@ -1,52 +1,50 @@
 'use client';
 
-import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { memo } from 'react';
 
 interface NavLinkProps {
   href: string;
-  exact?: boolean;
   children: React.ReactNode;
   className?: string;
-  activeClassName?: string;
   onClick?: () => void;
 }
 
-export const NavLink: React.FC<NavLinkProps> = React.memo(({
-  href,
-  exact = false,
-  children,
-  className = '',
-  activeClassName = 'text-primary',
-  onClick,
-}) => {
-  const pathname = usePathname() || '';
-  
-  const isActive = useMemo(() => {
-    if (exact) return pathname === href;
-    return pathname.startsWith(href) && (href !== '/' || pathname === '/');
-  }, [pathname, href, exact]);
+const NavLinkComponent = ({ href, children, className = '', onClick }: NavLinkProps) => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isActive = pathname === href;
 
-  const baseClasses = useMemo(() => `
-    px-4 py-2 rounded-md text-sm font-medium transition-colors relative
-    ${isActive ? activeClassName : 'text-foreground hover:text-primary-light hover:bg-card-hover'}
-    ${className}
-  `, [isActive, activeClassName, className]);
+  const handleClick = (e: React.MouseEvent) => {
+    if (isActive) {
+      e.preventDefault();
+      return;
+    }
+
+    // Chamar o onClick passado como prop se existir
+    onClick?.();
+
+    // Iniciar pré-carregamento ao clicar
+    router.prefetch(href);
+  };
 
   return (
-    <Link 
-      href={href} 
-      className={baseClasses}
-      onClick={onClick}
-      prefetch={false}
+    <Link
+      href={href}
+      prefetch={true}
+      scroll={false}
+      className={`
+        ${className}
+        ${isActive ? 'text-primary font-medium' : 'text-foreground hover:text-primary-light'}
+      `}
+      onClick={handleClick}
     >
       {children}
-      {isActive && (
-        <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-primary-light to-transparent"></span>
-      )}
     </Link>
   );
-});
+};
 
-NavLink.displayName = 'NavLink'; 
+// Memoizar o componente para evitar re-renderizações desnecessárias
+export const NavLink = memo(NavLinkComponent); 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CadastroPage: React.FC = () => {
   const [nome, setNome] = useState('');
@@ -16,6 +17,7 @@ const CadastroPage: React.FC = () => {
   const [carregando, setCarregando] = useState(false);
   
   const router = useRouter();
+  const { register } = useAuth();
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +55,23 @@ const CadastroPage: React.FC = () => {
     setErro('');
     setCarregando(true);
     
-    // Simulação do cadastro (aqui seria integrado com a API)
-    setTimeout(() => {
-      // Cadastro bem-sucedido
-      router.push('/cadastro/sucesso');
-    }, 2000);
+    try {
+      await register({
+        name: nome,
+        email,
+        password: senha,
+        username: usuario,
+        birthdate: dataNascimento,
+        acceptTerms: termos,
+        acceptMarketing: marketing
+      });
+      
+      // Redirecionar para a página de login com mensagem de sucesso
+      router.push('/login?registered=true');
+    } catch (error: any) {
+      setErro(error.message || 'Erro ao realizar cadastro');
+      setCarregando(false);
+    }
   };
   
   return (

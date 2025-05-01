@@ -26,6 +26,7 @@
     "docker:down": "docker-compose down"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@types/firebase": "^2.4.32",
     "@types/nodemailer": "^6.4.17",
     "axios": "^1.8.4",

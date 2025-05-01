@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Plus, X, UserPlus, Share2, MessageCircle, Settings, PlayCircle, DollarSign, Users, ChevronRight, Shield, Globe, Award, Gift, Star, Clock, Zap, Menu, CheckCircle, RefreshCw, AlertCircle, Check, MessageSquare, Bell, ChevronDown, MoreHorizontal } from 'react-feather';
+import { User, Plus, X, UserPlus, Share2, MessageCircle, Settings, PlayCircle, DollarSign, Users, ChevronRight, Shield, Globe, Award, Gift, Star, Clock, Zap, Menu, CheckCircle, RefreshCw, AlertCircle, Check, MessageSquare, Bell, ChevronDown, MoreHorizontal, Maximize2, Book } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,7 +18,8 @@ import MatchmakingStatus from '@/components/matchmaking/MatchmakingStatus';
 import ProfileAvatar from '@/components/profile/ProfileAvatar';
 import { RankTier, RANK_FRAMES } from '@/utils/ranking';
 import MatchmakingListener from '@/components/matchmaking/MatchmakingListener';
-import { Users as LucideUsers, UserPlus as LucideUserPlus, X as LucideX, ChevronRight as LucideChevronRight, Trophy, Clock as LucideClock, DollarSign as LucideDollarSign, Zap as LucideZap, Search, Maximize2, SkipForward, AlertTriangle } from 'lucide-react';
+import { Users as LucideUsers, UserPlus as LucideUserPlus, X as LucideX, ChevronRight as LucideChevronRight, Trophy, Clock as LucideClock, DollarSign as LucideDollarSign, Zap as LucideZap, Search, SkipForward, AlertTriangle } from 'lucide-react';
+import TutorialModal from '@/components/lobby/TutorialModal';
 
 // Adicionar os tipos
 
@@ -222,6 +223,8 @@ export default function LobbyPage() {
   const [settingsTab, setSettingsTab] = useState<'game-modes' | 'platforms' | 'payment'>('game-modes');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  // Adicionar estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
   
   // Nova state para salas oficiais do administrador
   const [adminRooms, setAdminRooms] = useState<Array<{
@@ -465,8 +468,8 @@ export default function LobbyPage() {
             // Tentar obter os dados do perfil da resposta
             const profileData = await response.json();
             
-            // Para garantir que o rank seja platinum, definimos um valor padrão
-            const userRank = { tier: 'platinum', division: '4' };
+            // Usar o rank do usuário do contexto de autenticação
+            const userRank = user.rank || { tier: 'unranked', division: null };
             const { rankName, rankTier } = getUserRankInfo(userRank);
             
             // Usar dados do perfil da API se disponíveis, senão usar do contexto de auth
@@ -475,14 +478,12 @@ export default function LobbyPage() {
               name: profileData?.username || user.username || (user.profile?.name as string) || 'Usuário',
               avatar: profileData?.avatarUrl || user.avatarUrl || (user.profile?.avatar as string) || (user.avatarId as string) || '/images/avatars/default.svg',
               level: profileData?.level || user.level || 1,
-              rank: 'Platinum IV', // Definindo explicitamente como Platinum IV
-              rankTier: 'platinum', // Definindo explicitamente como platinum
+              rank: rankName,
+              rankTier: rankTier,
               isLeader: true,
               position: 0,
               username: profileData?.username || user.username
             };
-            
-            console.log('Dados do jogador carregados com rank platina:', currentPlayer);
             
             setPlayers([currentPlayer]);
             
@@ -726,11 +727,18 @@ export default function LobbyPage() {
     setPlayers(players.filter(p => p.id !== playerId));
   };
   
-  // Mudança de tipo de lobby
+  // Função para modificar o tipo de lobby
   const changeLobbyType = (type: LobbyType) => {
     setLobbyType(type);
-    
-    // Manter apenas o líder ao mudar o tipo
+    // Ajustar o gameplay mode baseado no tipo de lobby
+    if (type === 'solo') {
+      // Para Solo (1x1), apenas "infinite_ice" (gelo infinito) ou "normal" (gelo finito)
+      setGameplayMode('infinite_ice');
+    } else {
+      // Para Duo (2x2) ou Squad (4x4), apenas "normal" ou "tactical"
+      setGameplayMode('normal');
+    }
+    // Manter apenas o jogador atual (líder) ao mudar o tipo de lobby
     const leader = players.find(p => p.isLeader);
     if (leader) {
       setPlayers([leader]);
@@ -1068,1188 +1076,1217 @@ export default function LobbyPage() {
     return players.find(player => player.position === position);
   };
   
+  useEffect(() => {
+    // Verificar se é a primeira visita do usuário ao lobby
+    const hasSeenTutorial = localStorage.getItem('rpx_tutorial_seen');
+    
+    if (!hasSeenTutorial && !isLoading && isAuthenticated) {
+      // Marcar que o tutorial foi visto
+      localStorage.setItem('rpx_tutorial_seen', 'true');
+      // Mostrar o tutorial
+      setShowTutorial(true);
+    }
+    
+    // Carregar dados do lobby...
+  }, [isLoading, isAuthenticated]);
+  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#120821] via-[#0D0A2A] to-[#0A1B4D] relative overflow-hidden">
-      {/* Background elements */}
-      <div className="absolute inset-0 bg-[url('/images/stars-bg.png')] bg-repeat opacity-40 z-0 animate-twinkle"></div>
-      
-      {/* Gradient beams */}
-      <div className="absolute -top-[400px] left-1/3 w-[800px] h-[1000px] bg-gradient-to-b from-[#A44BE1]/5 to-transparent rotate-15 animate-beam-move-slow"></div>
-      <div className="absolute -top-[300px] right-1/3 w-[600px] h-[800px] bg-gradient-to-b from-[#5271FF]/5 to-transparent -rotate-15 animate-beam-move-delay"></div>
-      <div className="absolute top-[30%] left-[10%] w-[200px] h-[200px] rounded-full radial-pulse bg-[#A44BE1]/3 animate-pulse-slow"></div>
-      <div className="absolute top-[60%] right-[15%] w-[300px] h-[300px] rounded-full radial-pulse bg-[#5271FF]/3 animate-pulse-slower"></div>
-      
-      {/* Floating lights */}
-      <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-gradient-to-r from-[#A44BE1]/10 to-transparent blur-3xl animate-pulse-very-slow"></div>
-      <div className="absolute bottom-[20%] left-[15%] w-[350px] h-[350px] rounded-full bg-gradient-to-r from-[#5271FF]/10 to-transparent blur-3xl animate-pulse-slow"></div>
-      <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] rounded-full bg-gradient-to-r from-[#3FB2E9]/10 to-transparent blur-3xl animate-pulse-slower" style={{ animationDelay: '2s' }}></div>
-      
-      {/* Main content with enhanced blur and glow effects */}
-      <main className="relative z-10 h-screen flex items-center">
-        {/* Improved main lobby area with enhanced glass effect */}
-        <div className="flex px-10 h-[90vh] max-h-[850px] w-full">
-          {/* Enhanced left sidebar with better glass effect */}
-          <div className="w-72 bg-card backdrop-blur-md rounded-2xl p-5 mr-6 flex flex-col border border-border shadow-glow-sm overflow-hidden relative">
-            {/* Glass card effect */}
-            <div className="absolute -top-6 -right-6 w-20 h-32 bg-primary/5 rotate-45 blur-md"></div>
-            
-            {/* Tabs de navegação para as diferentes configurações */}
-            <div className="flex border-b border-white/10 mb-4">
-              <button 
-                onClick={() => setSettingsTab('game-modes')}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'game-modes' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
-              >
-                Modos
-              </button>
-              <button 
-                onClick={() => setSettingsTab('platforms')}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'platforms' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
-              >
-                Plataforma
-              </button>
-              <button 
-                onClick={() => setSettingsTab('payment')}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'payment' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
-              >
-                Pagamento
-              </button>
-            </div>
-            
-            {/* Conteúdo das abas */}
-            {settingsTab === 'game-modes' && (
-              <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Modos de Jogo</h2>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={fetchAdminRooms}
-                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                  title="Atualizar salas disponíveis"
-                >
-                  <RefreshCw size={14} className="text-white/70" />
+    <>
+      <div className="min-h-screen bg-rpx-dark">
+        {/* Componente de notificações de matchmaking */}
+        <MatchmakingListener
+          onMatchFound={handleMatchFound}
+          onCancelMatchmaking={handleCancelMatchmaking}
+        />
+        
+        {/* Tutorial Modal */}
+        <TutorialModal isOpen={showTutorial} onClose={() => setShowTutorial(false)} />
+        
+        {/* Conteúdo existente... */}
+        <div className="min-h-screen bg-gradient-to-b from-[#120821] via-[#0D0A2A] to-[#0A1B4D] relative overflow-hidden">
+          {/* Background elements */}
+          <div className="absolute inset-0 bg-[url('/images/stars-bg.png')] bg-repeat opacity-40 z-0 animate-twinkle"></div>
+          
+          {/* Gradient beams */}
+          <div className="absolute -top-[400px] left-1/3 w-[800px] h-[1000px] bg-gradient-to-b from-[#A44BE1]/5 to-transparent rotate-15 animate-beam-move-slow"></div>
+          <div className="absolute -top-[300px] right-1/3 w-[600px] h-[800px] bg-gradient-to-b from-[#5271FF]/5 to-transparent -rotate-15 animate-beam-move-delay"></div>
+          <div className="absolute top-[30%] left-[10%] w-[200px] h-[200px] rounded-full radial-pulse bg-[#A44BE1]/3 animate-pulse-slow"></div>
+          <div className="absolute top-[60%] right-[15%] w-[300px] h-[300px] rounded-full radial-pulse bg-[#5271FF]/3 animate-pulse-slower"></div>
+          
+          {/* Floating lights */}
+          <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-gradient-to-r from-[#A44BE1]/10 to-transparent blur-3xl animate-pulse-very-slow"></div>
+          <div className="absolute bottom-[20%] left-[15%] w-[350px] h-[350px] rounded-full bg-gradient-to-r from-[#5271FF]/10 to-transparent blur-3xl animate-pulse-slow"></div>
+          <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] rounded-full bg-gradient-to-r from-[#3FB2E9]/10 to-transparent blur-3xl animate-pulse-slower" style={{ animationDelay: '2s' }}></div>
+          
+          {/* Main content with enhanced blur and glow effects */}
+          <main className="relative z-10 h-screen flex items-center">
+            {/* Improved main lobby area with enhanced glass effect */}
+            <div className="flex px-10 h-[90vh] max-h-[850px] w-full">
+              {/* Enhanced left sidebar with better glass effect */}
+              <div className="w-72 bg-card backdrop-blur-md rounded-2xl p-5 mr-6 flex flex-col border border-border shadow-glow-sm overflow-hidden relative">
+                {/* Glass card effect */}
+                <div className="absolute -top-6 -right-6 w-20 h-32 bg-primary/5 rotate-45 blur-md"></div>
+                
+                {/* Tabs de navegação para as diferentes configurações */}
+                <div className="flex border-b border-white/10 mb-4">
+                  <button 
+                    onClick={() => setSettingsTab('game-modes')}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'game-modes' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+                  >
+                    Modos
+                  </button>
+                  <button 
+                    onClick={() => setSettingsTab('platforms')}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'platforms' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+                  >
+                    Plataforma
+                  </button>
+                  <button 
+                    onClick={() => setSettingsTab('payment')}
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${settingsTab === 'payment' ? 'text-white border-b-2 border-[#A44BE1]' : 'text-white/60 hover:text-white/80'}`}
+                  >
+                    Pagamento
+                  </button>
+                </div>
+                
+                {/* Conteúdo das abas */}
+                {settingsTab === 'game-modes' && (
+                  <>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Modos de Jogo</h2>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={fetchAdminRooms}
+                      className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                      title="Atualizar salas disponíveis"
+                    >
+                      <RefreshCw size={14} className="text-white/70" />
+                    </button>
+                  </div>
+                </div>
+                
+                    <div className="space-y-3 mb-4">
+                <button
+                  onClick={() => changeLobbyType('solo')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      lobbyType === 'solo' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        lobbyType === 'solo' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <User size={18} className={`${lobbyType === 'solo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${lobbyType === 'solo' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Solo</div>
+                        <div className="text-xs text-white/50">1 jogador</div>
+                      </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => changeLobbyType('duo')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      lobbyType === 'duo' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        lobbyType === 'duo' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <div className="flex items-center justify-center w-full h-full">
+                          <div className="relative w-5 h-5">
+                            <User size={13} className={`absolute left-0 top-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                            <User size={13} className={`absolute right-0 bottom-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${lobbyType === 'duo' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Dupla</div>
+                        <div className="text-xs text-white/50">2 jogadores</div>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => changeLobbyType('squad')}
+                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                      lobbyType === 'squad' 
+                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        lobbyType === 'squad' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                      }`}>
+                        <LucideUsers size={18} className={`${lobbyType === 'squad' ? 'text-white' : 'text-white/70'} transition-all`} />
+                      </div>
+                      <div className="ml-3">
+                        <div className={`text-sm font-medium ${lobbyType === 'squad' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Squad</div>
+                        <div className="text-xs text-white/50">4 jogadores</div>
+                    </div>
+                  </div>
                 </button>
               </div>
-            </div>
-            
-                <div className="space-y-3 mb-4">
-            <button
-              onClick={() => changeLobbyType('solo')}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                  lobbyType === 'solo' 
-                    ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                    : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                    lobbyType === 'solo' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                  }`}>
-                    <User size={18} className={`${lobbyType === 'solo' ? 'text-white' : 'text-white/70'} transition-all`} />
-                  </div>
-                  <div className="ml-3">
-                    <div className={`text-sm font-medium ${lobbyType === 'solo' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Solo</div>
-                    <div className="text-xs text-white/50">1 jogador</div>
-                  </div>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => changeLobbyType('duo')}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                  lobbyType === 'duo' 
-                    ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                    : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                    lobbyType === 'duo' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                  }`}>
-                    <div className="flex items-center justify-center w-full h-full">
-                      <div className="relative w-5 h-5">
-                        <User size={13} className={`absolute left-0 top-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
-                        <User size={13} className={`absolute right-0 bottom-0 ${lobbyType === 'duo' ? 'text-white' : 'text-white/70'} transition-all`} />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="ml-3">
-                    <div className={`text-sm font-medium ${lobbyType === 'duo' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Dupla</div>
-                    <div className="text-xs text-white/50">2 jogadores</div>
-                </div>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => changeLobbyType('squad')}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                  lobbyType === 'squad' 
-                    ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                    : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                    lobbyType === 'squad' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                  }`}>
-                    <LucideUsers size={18} className={`${lobbyType === 'squad' ? 'text-white' : 'text-white/70'} transition-all`} />
-                  </div>
-                  <div className="ml-3">
-                    <div className={`text-sm font-medium ${lobbyType === 'squad' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Squad</div>
-                    <div className="text-xs text-white/50">4 jogadores</div>
-                </div>
-              </div>
-            </button>
-          </div>
-            
-                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Modo de Jogo</h2>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setGameplayMode('normal')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      gameplayMode === 'normal' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        gameplayMode === 'normal' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'normal' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${gameplayMode === 'normal' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Normal</div>
-                        <div className="text-xs text-white/50">Modo padrão</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => setGameplayMode('tactical')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      gameplayMode === 'tactical' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        gameplayMode === 'tactical' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'tactical' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                          <line x1="6" y1="1" x2="6" y2="4"></line>
-                          <line x1="10" y1="1" x2="10" y2="4"></line>
-                          <line x1="14" y1="1" x2="14" y2="4"></line>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${gameplayMode === 'tactical' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Tático</div>
-                        <div className="text-xs text-white/50">Jogabilidade estratégica</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => setGameplayMode('infinite_ice')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      gameplayMode === 'infinite_ice' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        gameplayMode === 'infinite_ice' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${gameplayMode === 'infinite_ice' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <path d="M2 12h20"></path>
-                          <path d="M12 2v20"></path>
-                          <path d="M12 18L7.5 12 12 6"></path>
-                          <path d="M12 6l4.5 6-4.5 6"></path>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${gameplayMode === 'infinite_ice' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Gelo Infinito</div>
-                        <div className="text-xs text-white/50">Modo de deslizamento</div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </>
-            )}
-            
-            {settingsTab === 'platforms' && (
-              <>
-                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Plataforma</h2>
-                <div className="space-y-3 mb-4">
-                  <button
-                    onClick={() => setPlatformMode('emulator')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      platformMode === 'emulator' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        platformMode === 'emulator' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'emulator' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-                          <rect x="9" y="9" width="6" height="6"></rect>
-                          <line x1="9" y1="2" x2="9" y2="4"></line>
-                          <line x1="15" y1="2" x2="15" y2="4"></line>
-                          <line x1="9" y1="20" x2="9" y2="22"></line>
-                          <line x1="15" y1="20" x2="15" y2="22"></line>
-                          <line x1="20" y1="9" x2="22" y2="9"></line>
-                          <line x1="20" y1="14" x2="22" y2="14"></line>
-                          <line x1="2" y1="9" x2="4" y2="9"></line>
-                          <line x1="2" y1="14" x2="4" y2="14"></line>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${platformMode === 'emulator' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Emulador</div>
-                        <div className="text-xs text-white/50">PC ou emuladores</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => setPlatformMode('mobile')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      platformMode === 'mobile' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        platformMode === 'mobile' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mobile' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-                          <line x1="12" y1="18" x2="12" y2="18"></line>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${platformMode === 'mobile' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Mobile</div>
-                        <div className="text-xs text-white/50">Smartphones e tablets</div>
-                      </div>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => setPlatformMode('mixed')}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                      platformMode === 'mixed' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
-                        : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        platformMode === 'mixed' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
-                      }`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mixed' ? 'text-white' : 'text-white/70'} transition-all`}>
-                          <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
-                          <line x1="16" y1="8" x2="2" y2="22"></line>
-                          <line x1="17.5" y1="15" x2="9" y2="15"></line>
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <div className={`text-sm font-medium ${platformMode === 'mixed' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Misto</div>
-                        <div className="text-xs text-white/50">Todas as plataformas</div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
                 
-                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Valor da Aposta</h2>
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {[2, 5, 10].map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => setSelectedBetAmount(value)}
-                      className={`${
-                        selectedBetAmount === value 
-                          ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border border-[#A44BE1]/70' 
-                          : 'bg-white/10 hover:bg-white/15 border border-white/10'
-                      } rounded-lg py-2 flex flex-col items-center justify-center transition-all group`}
-                    >
-                      <span className={`text-sm ${
-                        selectedBetAmount === value 
-                          ? 'text-white drop-shadow-glow' 
-                          : 'text-white/80 group-hover:text-white'
-                      } transition-all`}>
-                        {value} R$
-                      </span>
-                    </button>
-                  ))}
-        </div>
-        
-                <div className="grid grid-cols-3 gap-2">
-                  {[20, 50, 100].map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => setSelectedBetAmount(value)}
-                      className={`${
-                        selectedBetAmount === value 
-                          ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border border-[#A44BE1]/70' 
-                          : 'bg-white/10 hover:bg-white/15 border border-white/10'
-                      } rounded-lg py-2 flex flex-col items-center justify-center transition-all group`}
-                    >
-                      <span className={`text-sm ${
-                        selectedBetAmount === value 
-                          ? 'text-white drop-shadow-glow' 
-                          : 'text-white/80 group-hover:text-white'
-                      } transition-all`}>
-                        {value} R$
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              </>
-            )}
-            
-            {settingsTab === 'payment' && (
-              <>
-                <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Opções de Pagamento</h2>
-                 <div className="space-y-2 mb-6">
-                  <button
-                    onClick={() => setPaymentOption('captain')}
-                    className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
-                      paymentOption === 'captain' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
-                        : 'hover:bg-white/10'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                      paymentOption === 'captain' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
-                    }`}>
-                      {paymentOption === 'captain' && (
-                        <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
-                      )}
-                    </div>
-                    <span className={`ml-3 text-sm transition-all ${paymentOption === 'captain' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
-                      Capitão paga
-                    </span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setPaymentOption('split')}
-                    className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
-                      paymentOption === 'split' 
-                        ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
-                        : 'hover:bg-white/10'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                      paymentOption === 'split' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
-                    }`}>
-                      {paymentOption === 'split' && (
-                        <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
-                      )}
-                    </div>
-                    <span className={`ml-3 text-sm transition-all ${paymentOption === 'split' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
-                      Custos divididos
-                    </span>
-                  </button>
-                </div>
-                
-                {/* Removi a seção de Status e o botão "Marcar como pronto" */}
-               </>
-             )}
-            
-            {/* Botão de iniciar partida fixo na parte inferior */}
-            <div className="mt-auto pt-4 border-t border-white/10">
-              <button
-                onClick={startGame}
-                className="w-full py-3 rounded-xl flex items-center justify-center bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white shadow-glow-sm hover:shadow-glow transition-all"
-              >
-                <span className="flex items-center">
-                  <PlayCircle size={18} className="mr-2" />
-                  Iniciar Partida
-                </span>
-              </button>
-            </div>
-          </div>
-          
-          {/* Enhanced main content area with advanced holographic display */}
-          <div className="flex-1 relative flex flex-col">
-            <div className="flex-1 relative bg-card backdrop-blur-md rounded-2xl overflow-hidden border border-border shadow-glow-sm">
-              {/* Background effects */}
-              <div className="absolute inset-0 bg-gradient-to-b from-[#A44BE1]/3 to-[#5271FF]/3"></div>
-              <div className="absolute inset-0 bg-[url('/images/grid-pattern.png')] bg-repeat opacity-10 animate-pulse-very-slow"></div>
-              
-              {/* Central light */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[500px] bg-gradient-to-b from-[#A44BE1]/10 via-[#5271FF]/5 to-transparent opacity-20 blur-2xl"></div>
-              
-              {/* Enhanced central holographic display */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                {/* Enhanced mode indicator - agora no topo */}
-                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-primary/5 rounded-full blur-md transform scale-110"></div>
-                    <div className="relative inline-block px-10 py-2.5 bg-card-hover backdrop-blur-xl rounded-full border border-border shadow-glow-sm">
-                      <span className="text-base text-white/90 uppercase tracking-wider font-medium">
-                        {lobbyType === 'solo' ? 'Modo Solo' : lobbyType === 'duo' ? 'Modo Dupla' : 'Modo Squad'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="relative w-full max-w-2xl flex flex-col items-center justify-center mt-8">
-                  {/* Main hologram container */}
-                  <div className="flex flex-col items-center justify-center text-center">
-                    {/* Círculos dos jogadores - layout horizontal fixo */}
-                    <div className="flex items-center justify-center space-x-20 relative mt-8">
-                      {/* Squad - jogador 3 ou botão à esquerda */}
-                      {lobbyType === 'squad' && (
-                        getPlayerByPosition(2) ? (
-                          <div className="flex flex-col items-center">
-                            <div 
-                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => {
-                                const player = getPlayerByPosition(2);
-                                if (player) {
-                                  router.push(`/profile/${player.username || player.name}`);
-                                }
-                              }}
-                            >
-                              <ProfileAvatar 
-                                size="md" 
-                                rankTier="platinum" 
-                                avatarUrl={getPlayerByPosition(2)?.avatar}
-                                showRankFrame={true}
-                              />
-                            </div>
-                            
-                            {/* Nome com possível indicador ao lado - adicionando mais margem superior */}
-                            <div className="flex items-center mt-10 gap-1 justify-center">
-                              <span 
-                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => {
-                                  const player = getPlayerByPosition(2);
-                                  if (player) {
-                                    router.push(`/profile/${player.username || player.name}`);
-                                  }
-                                }}
-                              >
-                                {getPlayerByPosition(2)?.name}
-                              </span>
-                              {getPlayerByPosition(2)?.isLeader && (
-                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
-                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {getPlayerByPosition(2)?.level}
-                              </div>
-                              {getPlayerByPosition(2)?.rank && (
-                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(2)?.rank}
-                                </div>
-                              )}
-                            </div>
+                    <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Modo de Jogo</h2>
+                    <div className="space-y-3">
+                      {/* Configurações do jogo - Gameplay Mode */}
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                          <div className="mr-2 bg-rpx-orange/20 p-1 rounded">
+                            <Maximize2 size={16} className="text-rpx-orange" />
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => setShowInviteModal(true)}
-                            className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
-                          </button>
-                        )
-                      )}
-                      
-                      {/* Capitão no centro sem indicador no avatar */}
-                      <div className="flex flex-col items-center">
-                        <div 
-                          className="w-32 h-32 relative flex items-center justify-center group cursor-pointer"
-                          onClick={() => {
-                            const player = getPlayerByPosition(0);
-                            if (player) {
-                              router.push(`/profile/${player.username || player.name}`);
-                            }
-                          }}
-                        >
-                            <ProfileAvatar 
-                              size="lg" 
-                              rankTier="platinum" 
-                            avatarUrl={getPlayerByPosition(0)?.avatar}
-                              showRankFrame={true}
-                            />
-                        </div>
+                          Modo de Gameplay
+                        </h3>
                         
-                        {/* Nome com possível indicador ao lado - margem maior */}
-                        <div className="flex items-center mt-12 gap-1 justify-center">
-                          <span 
-                            className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                            onClick={() => {
-                              const player = getPlayerByPosition(0);
-                              if (player) {
-                                router.push(`/profile/${player.username || player.name}`);
-                              }
-                            }}
-                          >
-                            {getPlayerByPosition(0)?.name}
-                          </span>
-                          {getPlayerByPosition(0)?.isLeader && (
-                            <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
-                              <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                        <div className="grid grid-cols-2 gap-3">
+                          {lobbyType === 'solo' ? (
+                            // Opções para Solo (1x1)
+                            <>
+                              <button
+                                className={`p-3 text-sm rounded-md border transition-all flex items-center ${
+                                  gameplayMode === 'infinite_ice' 
+                                    ? 'bg-rpx-orange/20 border-rpx-orange text-white' 
+                                    : 'bg-rpx-blue/20 border-white/10 text-white/60 hover:bg-rpx-blue/30'
+                                }`}
+                                onClick={() => setGameplayMode('infinite_ice')}
+                              >
+                                <Zap size={16} className="mr-2" />
+                                Gelo Infinito
+                              </button>
+                              
+                              <button
+                                className={`p-3 text-sm rounded-md border transition-all flex items-center ${
+                                  gameplayMode === 'normal' 
+                                    ? 'bg-rpx-orange/20 border-rpx-orange text-white' 
+                                    : 'bg-rpx-blue/20 border-white/10 text-white/60 hover:bg-rpx-blue/30'
+                                }`}
+                                onClick={() => setGameplayMode('normal')}
+                              >
+                                <Zap size={16} className="mr-2" />
+                                Gelo Finito
+                              </button>
+                            </>
+                          ) : (
+                            // Opções para Duo (2x2) e Squad (4x4)
+                            <>
+                              <button
+                                className={`p-3 text-sm rounded-md border transition-all flex items-center ${
+                                  gameplayMode === 'normal' 
+                                    ? 'bg-rpx-orange/20 border-rpx-orange text-white' 
+                                    : 'bg-rpx-blue/20 border-white/10 text-white/60 hover:bg-rpx-blue/30'
+                                }`}
+                                onClick={() => setGameplayMode('normal')}
+                              >
+                                <Zap size={16} className="mr-2" />
+                                Normal
+                              </button>
+                              
+                              <button
+                                className={`p-3 text-sm rounded-md border transition-all flex items-center ${
+                                  gameplayMode === 'tactical' 
+                                    ? 'bg-rpx-orange/20 border-rpx-orange text-white' 
+                                    : 'bg-rpx-blue/20 border-white/10 text-white/60 hover:bg-rpx-blue/30'
+                                }`}
+                                onClick={() => setGameplayMode('tactical')}
+                              >
+                                <Zap size={16} className="mr-2" />
+                                Tático
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {settingsTab === 'platforms' && (
+                  <>
+                    <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Plataforma</h2>
+                    <div className="space-y-3 mb-4">
+                      <button
+                        onClick={() => setPlatformMode('emulator')}
+                        className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                          platformMode === 'emulator' 
+                            ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                            : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                            platformMode === 'emulator' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                          }`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'emulator' ? 'text-white' : 'text-white/70'} transition-all`}>
+                              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                              <rect x="9" y="9" width="6" height="6"></rect>
+                              <line x1="9" y1="2" x2="9" y2="4"></line>
+                              <line x1="15" y1="2" x2="15" y2="4"></line>
+                              <line x1="9" y1="20" x2="9" y2="22"></line>
+                              <line x1="15" y1="20" x2="15" y2="22"></line>
+                              <line x1="20" y1="9" x2="22" y2="9"></line>
+                              <line x1="20" y1="14" x2="22" y2="14"></line>
+                              <line x1="2" y1="9" x2="4" y2="9"></line>
+                              <line x1="2" y1="14" x2="4" y2="14"></line>
                             </svg>
                           </div>
-                          )}
+                          <div className="ml-3">
+                            <div className={`text-sm font-medium ${platformMode === 'emulator' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Emulador</div>
+                            <div className="text-xs text-white/50">PC ou emuladores</div>
+                          </div>
                         </div>
-                        
-                        <div className="flex flex-col items-center gap-1 mt-1">
-                          <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center">
-                            <span className="mr-1">Capitão</span> • Lvl {getPlayerByPosition(0)?.level || 1}
+                      </button>
+                      
+                      <button
+                        onClick={() => setPlatformMode('mobile')}
+                        className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                          platformMode === 'mobile' 
+                            ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                            : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                            platformMode === 'mobile' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                          }`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mobile' ? 'text-white' : 'text-white/70'} transition-all`}>
+                              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                              <line x1="12" y1="18" x2="12" y2="18"></line>
+                            </svg>
                           </div>
-                          {getPlayerByPosition(0)?.rank && (
-                            <div className="text-sm bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-3 py-1 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                              <Award size={14} className="mr-1.5 text-[#5271FF]" /> {getPlayerByPosition(0)?.rank}
-                            </div>
-                          )}
+                          <div className="ml-3">
+                            <div className={`text-sm font-medium ${platformMode === 'mobile' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Mobile</div>
+                            <div className="text-xs text-white/50">Smartphones e tablets</div>
+                          </div>
                         </div>
-                      </div>
+                      </button>
                       
-                      {/* Botão à direita para duo e squad ou jogador 2 */}
-                      {(lobbyType === 'duo' || lobbyType === 'squad') && (
-                        getPlayerByPosition(1) ? (
-                          <div className="flex flex-col items-center">
-                            <div 
-                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => {
-                                const player = getPlayerByPosition(1);
-                                if (player) {
-                                  router.push(`/profile/${player.username || player.name}`);
-                                }
-                              }}
-                            >
-                              <ProfileAvatar 
-                                size="md" 
-                                rankTier="platinum" 
-                                avatarUrl={getPlayerByPosition(1)?.avatar}
-                                showRankFrame={true}
-                              />
-                            </div>
-                            
-                            {/* Nome com possível indicador ao lado - margem aumentada */}
-                            <div className="flex items-center mt-10 gap-1 justify-center">
-                              <span 
-                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => {
-                                  const player = getPlayerByPosition(1);
-                                  if (player) {
-                                    router.push(`/profile/${player.username || player.name}`);
-                                  }
-                                }}
-                              >
-                                {getPlayerByPosition(1)?.name}
-                              </span>
-                              {getPlayerByPosition(1)?.isLeader && (
-                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
-                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {getPlayerByPosition(1)?.level}
-                              </div>
-                              {getPlayerByPosition(1)?.rank && (
-                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(1)?.rank}
-                                </div>
-                              )}
-                            </div>
+                      <button
+                        onClick={() => setPlatformMode('mixed')}
+                        className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                          platformMode === 'mixed' 
+                            ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border-l-4 border-[#A44BE1] shadow-glow-sm' 
+                            : 'hover:bg-white/10 hover:border-l-4 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                            platformMode === 'mixed' ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] shadow-glow-sm' : 'bg-white/10'
+                          }`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${platformMode === 'mixed' ? 'text-white' : 'text-white/70'} transition-all`}>
+                              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                              <line x1="16" y1="8" x2="2" y2="22"></line>
+                              <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                            </svg>
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => setShowInviteModal(true)}
-                            className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
-                          </button>
-                        )
-                      )}
-                      
-                      {/* Squad - botão adicional à direita ou jogador 4 */}
-                      {lobbyType === 'squad' && (
-                        getPlayerByPosition(3) ? (
-                          <div className="flex flex-col items-center">
-                            <div 
-                              className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
-                              onClick={() => {
-                                const player = getPlayerByPosition(3);
-                                if (player) {
-                                  router.push(`/profile/${player.username || player.name}`);
-                                }
-                              }}
-                            >
-                              <ProfileAvatar 
-                                size="md" 
-                                rankTier="platinum" 
-                                avatarUrl={getPlayerByPosition(3)?.avatar}
-                                showRankFrame={true}
-                              />
-                            </div>
-                            
-                            {/* Nome com possível indicador ao lado - margem aumentada */}
-                            <div className="flex items-center mt-10 gap-1 justify-center">
-                              <span 
-                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
-                                onClick={() => {
-                                  const player = getPlayerByPosition(3);
-                                  if (player) {
-                                    router.push(`/profile/${player.username || player.name}`);
-                                  }
-                                }}
-                              >
-                                {getPlayerByPosition(3)?.name}
-                              </span>
-                              {getPlayerByPosition(3)?.isLeader && (
-                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
-                                    <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                              <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
-                                Lvl {getPlayerByPosition(3)?.level}
-                              </div>
-                              {getPlayerByPosition(3)?.rank && (
-                                <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                  <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(3)?.rank}
-                                </div>
-                              )}
-                            </div>
+                          <div className="ml-3">
+                            <div className={`text-sm font-medium ${platformMode === 'mixed' ? 'text-white drop-shadow-glow' : 'text-white/70'} transition-all`}>Misto</div>
+                            <div className="text-xs text-white/50">Todas as plataformas</div>
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => setShowInviteModal(true)}
-                            className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
-                          </button>
-                        )
-                      )}
+                        </div>
+                      </button>
                     </div>
                     
-                    {/* Lista de jogadores - agora só mostra jogadores após o 4º, quando aplicável */}
-                    {players.length > 0 && players.length > (lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1) && (
-                      <div className="w-full max-w-xs mt-4">
-                        <h3 className="text-xs text-white/80 uppercase tracking-wider mb-2 font-medium">Jogadores</h3>
-                        <div className="space-y-1">
-                          {players.slice(Math.min(players.length, lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1)).map((player) => (
-                            <div key={player.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-border hover:bg-card transition-all group">
-                              <div 
-                                className="flex items-center cursor-pointer w-full"
-                                onClick={() => router.push(`/profile/${player.username || player.name}`)}
-                              >
-                                <div className="mr-3 relative">
+                    <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Valor da Aposta</h2>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      {[2, 5, 10].map((value) => (
+                        <button
+                          key={value}
+                          onClick={() => setSelectedBetAmount(value)}
+                          className={`${
+                            selectedBetAmount === value 
+                              ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border border-[#A44BE1]/70' 
+                              : 'bg-white/10 hover:bg-white/15 border border-white/10'
+                          } rounded-lg py-2 flex flex-col items-center justify-center transition-all group`}
+                        >
+                          <span className={`text-sm ${
+                            selectedBetAmount === value 
+                              ? 'text-white drop-shadow-glow' 
+                              : 'text-white/80 group-hover:text-white'
+                          } transition-all`}>
+                            {value} R$
+                          </span>
+                        </button>
+                      ))}
+          </div>
+          
+                    <div className="grid grid-cols-3 gap-2">
+                      {[20, 50, 100].map((value) => (
+                        <button
+                          key={value}
+                          onClick={() => setSelectedBetAmount(value)}
+                          className={`${
+                            selectedBetAmount === value 
+                              ? 'bg-gradient-to-r from-[#A44BE1]/40 to-[#5271FF]/30 border border-[#A44BE1]/70' 
+                              : 'bg-white/10 hover:bg-white/15 border border-white/10'
+                          } rounded-lg py-2 flex flex-col items-center justify-center transition-all group`}
+                        >
+                          <span className={`text-sm ${
+                            selectedBetAmount === value 
+                              ? 'text-white drop-shadow-glow' 
+                              : 'text-white/80 group-hover:text-white'
+                          } transition-all`}>
+                            {value} R$
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  </>
+                )}
+                
+                {settingsTab === 'payment' && (
+                  <>
+                    <h2 className="text-white/90 text-sm uppercase tracking-wider mb-4 font-semibold">Opções de Pagamento</h2>
+                     <div className="space-y-2 mb-6">
+                      <button
+                        onClick={() => setPaymentOption('captain')}
+                        className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
+                          paymentOption === 'captain' 
+                            ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
+                            : 'hover:bg-white/10'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                          paymentOption === 'captain' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
+                        }`}>
+                          {paymentOption === 'captain' && (
+                            <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
+                          )}
+                        </div>
+                        <span className={`ml-3 text-sm transition-all ${paymentOption === 'captain' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
+                          Capitão paga
+                        </span>
+                      </button>
+                      
+                      <button
+                        onClick={() => setPaymentOption('split')}
+                        className={`w-full text-left px-4 py-2 rounded-xl flex items-center group transition-all ${
+                          paymentOption === 'split' 
+                            ? 'bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 shadow-inner' 
+                            : 'hover:bg-white/10'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                          paymentOption === 'split' ? 'border-[#A44BE1]' : 'border-white/30 group-hover:border-white/50'
+                        }`}>
+                          {paymentOption === 'split' && (
+                            <div className="w-2 h-2 rounded-full bg-[#A44BE1] shadow-glow-sm"></div>
+                          )}
+                        </div>
+                        <span className={`ml-3 text-sm transition-all ${paymentOption === 'split' ? 'text-white' : 'text-white/70 group-hover:text-white/90'}`}>
+                          Custos divididos
+                        </span>
+                      </button>
+                    </div>
+                    
+                    {/* Removi a seção de Status e o botão "Marcar como pronto" */}
+                   </>
+                 )}
+                
+                {/* Botão de iniciar partida fixo na parte inferior */}
+                <div className="mt-auto pt-4 border-t border-white/10">
+                  <button
+                    onClick={startGame}
+                    className="w-full py-3 rounded-xl flex items-center justify-center bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white shadow-glow-sm hover:shadow-glow transition-all"
+                  >
+                    <span className="flex items-center">
+                      <PlayCircle size={18} className="mr-2" />
+                      Iniciar Partida
+                    </span>
+                  </button>
+                </div>
+
+                {/* Área de configurações avançadas e extras */}
+                <div className="mt-6 grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setInviteModalOpen(true)} 
+                    className="flex flex-col items-center justify-center p-3 bg-rpx-blue/20 border border-white/10 rounded-xl hover:bg-rpx-blue/30 transition-colors"
+                  >
+                    <UserPlus size={20} className="text-white mb-2" />
+                    <span className="text-white/90 text-xs">Convidar</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setSettingsOpen(true)}
+                    className="flex flex-col items-center justify-center p-3 bg-rpx-blue/20 border border-white/10 rounded-xl hover:bg-rpx-blue/30 transition-colors"
+                  >
+                    <Settings size={20} className="text-white mb-2" />
+                    <span className="text-white/90 text-xs">Ajustes</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowTutorial(true)}
+                    className="flex flex-col items-center justify-center p-3 bg-rpx-blue/20 border border-white/10 rounded-xl hover:bg-rpx-blue/30 transition-colors"
+                  >
+                    <Book size={20} className="text-white mb-2" />
+                    <span className="text-white/90 text-xs">Tutorial</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Enhanced main content area with advanced holographic display */}
+              <div className="flex-1 relative flex flex-col">
+                <div className="flex-1 relative bg-card backdrop-blur-md rounded-2xl overflow-hidden border border-border shadow-glow-sm">
+                  {/* Background effects */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#A44BE1]/3 to-[#5271FF]/3"></div>
+                  <div className="absolute inset-0 bg-[url('/images/grid-pattern.png')] bg-repeat opacity-10 animate-pulse-very-slow"></div>
+                  
+                  {/* Central light */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[500px] bg-gradient-to-b from-[#A44BE1]/10 via-[#5271FF]/5 to-transparent opacity-20 blur-2xl"></div>
+                  
+                  {/* Enhanced central holographic display */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {/* Enhanced mode indicator - agora no topo */}
+                    <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-primary/5 rounded-full blur-md transform scale-110"></div>
+                        <div className="relative inline-block px-10 py-2.5 bg-card-hover backdrop-blur-xl rounded-full border border-border shadow-glow-sm">
+                          <span className="text-base text-white/90 uppercase tracking-wider font-medium">
+                            {lobbyType === 'solo' ? 'Modo Solo' : lobbyType === 'duo' ? 'Modo Dupla' : 'Modo Squad'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="relative w-full max-w-2xl flex flex-col items-center justify-center mt-8">
+                      {/* Main hologram container */}
+                      <div className="flex flex-col items-center justify-center text-center">
+                        {/* Círculos dos jogadores - layout horizontal fixo */}
+                        <div className="flex items-center justify-center space-x-20 relative mt-8">
+                          {/* Squad - jogador 3 ou botão à esquerda */}
+                          {lobbyType === 'squad' && (
+                            getPlayerByPosition(2) ? (
+                              <div className="flex flex-col items-center">
+                                <div 
+                                  className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
+                                  onClick={() => {
+                                    const player = getPlayerByPosition(2);
+                                    if (player) {
+                                      router.push(`/profile/${player.username || player.name}`);
+                                    }
+                                  }}
+                                >
                                   <ProfileAvatar 
-                                    size="sm" 
-                                    rankTier="platinum" 
-                                    avatarUrl={player.avatar}
+                                    size="md" 
+                                    rankTier={getPlayerByPosition(2)?.rankTier}
+                                    avatarUrl={getPlayerByPosition(2)?.avatar}
                                     showRankFrame={true}
                                   />
                                 </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-1">
-                                    <div className="text-sm font-medium">{player.name}</div>
-                                    {player.isLeader && (
-                                      <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center" title="Capitão">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                          <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
-                                          <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
-                                        </svg>
-                                      </div>
-                                    )}
+                                
+                                {/* Nome com possível indicador ao lado - adicionando mais margem superior */}
+                                <div className="flex items-center mt-10 gap-1 justify-center">
+                                  <span 
+                                    className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                    onClick={() => {
+                                      const player = getPlayerByPosition(2);
+                                      if (player) {
+                                        router.push(`/profile/${player.username || player.name}`);
+                                      }
+                                    }}
+                                  >
+                                    {getPlayerByPosition(2)?.name}
+                                  </span>
+                                  {getPlayerByPosition(2)?.isLeader && (
+                                    <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                        <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col items-center gap-1 mt-1">
+                                  <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                    Lvl {getPlayerByPosition(2)?.level}
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <div className="text-xs text-white/60">Lvl {player.level}</div>
-                                    {player.rank && (
-                                      <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
-                                        <Award size={10} className="mr-1 text-[#5271FF]" /> {player.rank}
-                                      </div>
-                                    )}
-                                  </div>
+                                  {getPlayerByPosition(2)?.rank && (
+                                    <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                      <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(2)?.rank}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                              {player.id !== user?.id && (
-                                <button 
-                                  onClick={() => removePlayer(player.id)} 
-                                  className="text-red-400 hover:text-red-300 p-1 ml-2"
-                                >
-                                  <LucideX size={16} />
-                                </button>
+                            ) : (
+                              <button 
+                                onClick={() => setShowInviteModal(true)}
+                                className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                              </button>
+                            )
+                          )}
+                          
+                          {/* Capitão no centro sem indicador no avatar */}
+                          <div className="flex flex-col items-center">
+                            <div 
+                              className="w-32 h-32 relative flex items-center justify-center group cursor-pointer"
+                              onClick={() => {
+                                const player = getPlayerByPosition(0);
+                                if (player) {
+                                  router.push(`/profile/${player.username || player.name}`);
+                                }
+                              }}
+                            >
+                                <ProfileAvatar 
+                                  size="lg" 
+                                  rankTier={getPlayerByPosition(0)?.rankTier}
+                                  avatarUrl={getPlayerByPosition(0)?.avatar}
+                                  showRankFrame={true}
+                                />
+                            </div>
+                            
+                            {/* Nome com possível indicador ao lado - margem maior */}
+                            <div className="flex items-center mt-12 gap-1 justify-center">
+                              <span 
+                                className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                onClick={() => {
+                                  const player = getPlayerByPosition(0);
+                                  if (player) {
+                                    router.push(`/profile/${player.username || player.name}`);
+                                  }
+                                }}
+                              >
+                                {getPlayerByPosition(0)?.name}
+                              </span>
+                              {getPlayerByPosition(0)?.isLeader && (
+                                <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                  <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                </svg>
+                              </div>
                               )}
                             </div>
-                          ))}
+                            
+                            <div className="flex flex-col items-center gap-1 mt-1">
+                              <div className="text-sm text-yellow-400 bg-[#2D0A57]/60 px-3 py-1 rounded-md shadow-sm border border-yellow-500/20 flex items-center">
+                                <span className="mr-1">Capitão</span> • Lvl {getPlayerByPosition(0)?.level || 1}
+                              </div>
+                              {getPlayerByPosition(0)?.rank && (
+                                <div className="text-sm bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-3 py-1 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                  <Award size={14} className="mr-1.5 text-[#5271FF]" /> {getPlayerByPosition(0)?.rank}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Botão à direita para duo e squad ou jogador 2 */}
+                          {(lobbyType === 'duo' || lobbyType === 'squad') && (
+                            getPlayerByPosition(1) ? (
+                              <div className="flex flex-col items-center">
+                                <div 
+                                  className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
+                                  onClick={() => {
+                                    const player = getPlayerByPosition(1);
+                                    if (player) {
+                                      router.push(`/profile/${player.username || player.name}`);
+                                    }
+                                  }}
+                                >
+                                  <ProfileAvatar 
+                                    size="md" 
+                                    rankTier={getPlayerByPosition(1)?.rankTier}
+                                    avatarUrl={getPlayerByPosition(1)?.avatar}
+                                    showRankFrame={true}
+                                  />
+                                </div>
+                                
+                                {/* Nome com possível indicador ao lado - margem aumentada */}
+                                <div className="flex items-center mt-10 gap-1 justify-center">
+                                  <span 
+                                    className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                    onClick={() => {
+                                      const player = getPlayerByPosition(1);
+                                      if (player) {
+                                        router.push(`/profile/${player.username || player.name}`);
+                                      }
+                                    }}
+                                  >
+                                    {getPlayerByPosition(1)?.name}
+                                  </span>
+                                  {getPlayerByPosition(1)?.isLeader && (
+                                    <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                        <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col items-center gap-1 mt-1">
+                                  <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                    Lvl {getPlayerByPosition(1)?.level}
+                                  </div>
+                                  {getPlayerByPosition(1)?.rank && (
+                                    <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                      <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(1)?.rank}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => setShowInviteModal(true)}
+                                className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                              </button>
+                            )
+                          )}
+                          
+                          {/* Squad - botão adicional à direita ou jogador 4 */}
+                          {lobbyType === 'squad' && (
+                            getPlayerByPosition(3) ? (
+                              <div className="flex flex-col items-center">
+                                <div 
+                                  className="w-24 h-24 relative flex items-center justify-center group cursor-pointer"
+                                  onClick={() => {
+                                    const player = getPlayerByPosition(3);
+                                    if (player) {
+                                      router.push(`/profile/${player.username || player.name}`);
+                                    }
+                                  }}
+                                >
+                                  <ProfileAvatar 
+                                    size="md" 
+                                    rankTier={getPlayerByPosition(3)?.rankTier}
+                                    avatarUrl={getPlayerByPosition(3)?.avatar}
+                                    showRankFrame={true}
+                                  />
+                                </div>
+                                
+                                {/* Nome com possível indicador ao lado - margem aumentada */}
+                                <div className="flex items-center mt-10 gap-1 justify-center">
+                                  <span 
+                                    className="text-sm text-white/90 font-medium cursor-pointer hover:underline"
+                                    onClick={() => {
+                                      const player = getPlayerByPosition(3);
+                                      if (player) {
+                                        router.push(`/profile/${player.username || player.name}`);
+                                      }
+                                    }}
+                                  >
+                                    {getPlayerByPosition(3)?.name}
+                                  </span>
+                                  {getPlayerByPosition(3)?.isLeader && (
+                                    <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                        <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col items-center gap-1 mt-1">
+                                  <div className="text-xs text-[#5271FF] bg-[#2D0A57]/60 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/30">
+                                    Lvl {getPlayerByPosition(3)?.level}
+                                  </div>
+                                  {getPlayerByPosition(3)?.rank && (
+                                    <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                      <Award size={12} className="mr-1 text-[#5271FF]" /> {getPlayerByPosition(3)?.rank}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => setShowInviteModal(true)}
+                                className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2D0A57]/80 to-[#3F1581]/80 border-2 border-[#5271FF]/30 shadow-[0_0_10px_rgba(82,113,255,0.3)] flex items-center justify-center hover:shadow-[0_0_15px_rgba(82,113,255,0.6)] transition-all group cursor-pointer overflow-hidden"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/10 to-[#5271FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div className="absolute inset-0 bg-[url('/images/hex-pattern.svg')] bg-center bg-contain opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                <LucideUserPlus size={28} className="text-white/80 group-hover:text-white/100 group-hover:drop-shadow-glow transition-all relative z-10" />
+                              </button>
+                            )
+                          )}
                         </div>
+                        
+                        {/* Lista de jogadores - agora só mostra jogadores após o 4º, quando aplicável */}
+                        {players.length > 0 && players.length > (lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1) && (
+                          <div className="w-full max-w-xs mt-4">
+                            <h3 className="text-xs text-white/80 uppercase tracking-wider mb-2 font-medium">Jogadores</h3>
+                            <div className="space-y-1">
+                              {players.slice(Math.min(players.length, lobbyType === 'squad' ? 4 : lobbyType === 'duo' ? 2 : 1)).map((player) => (
+                                <div key={player.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-border hover:bg-card transition-all group">
+                                  <div 
+                                    className="flex items-center cursor-pointer w-full"
+                                    onClick={() => router.push(`/profile/${player.username || player.name}`)}
+                                  >
+                                    <div className="mr-3 relative">
+                                      <ProfileAvatar 
+                                        size="sm" 
+                                        rankTier="platinum" 
+                                        avatarUrl={player.avatar}
+                                        showRankFrame={true}
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-1">
+                                        <div className="text-sm font-medium">{player.name}</div>
+                                        {player.isLeader && (
+                                          <div className="bg-yellow-500 text-black p-0.5 rounded-full shadow-sm flex items-center justify-center" title="Capitão">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M3 17L6.5 6L12 12L17.5 6L21 17H3Z" fill="currentColor"/>
+                                              <path d="M3 19H21V21H3V19Z" fill="currentColor"/>
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <div className="text-xs text-white/60">Lvl {player.level}</div>
+                                        {player.rank && (
+                                          <div className="text-xs bg-gradient-to-r from-[#A44BE1]/30 to-[#5271FF]/30 px-2 py-0.5 rounded-md shadow-sm border border-[#5271FF]/20 flex items-center">
+                                            <Award size={10} className="mr-1 text-[#5271FF]" /> {player.rank}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {player.id !== user?.id && (
+                                    <button 
+                                      onClick={() => removePlayer(player.id)} 
+                                      className="text-red-400 hover:text-red-300 p-1 ml-2"
+                                    >
+                                      <LucideX size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                  
+                  {/* Enhanced match info panel at the bottom - alinhado com as barras laterais */}
+                  <div className="absolute bottom-4 inset-x-4">
+                    <div className="relative">
+                      {/* Glow effect behind panel */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/20 via-[#5271FF]/20 to-[#A44BE1]/20 rounded-xl blur-md -z-10 transform scale-105"></div>
+                      
+                      {/* Main panel */}
+                      <div className="bg-card-hover backdrop-blur-xl rounded-xl p-3 border border-border shadow-glow-sm">
+                        <div className="flex justify-between mb-2">
+                          <div className="flex flex-col items-center group">
+                            <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Entrada</div>
+                            <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{selectedBetAmount} R$</div>
+                          </div>
+                          
+                          <div className="flex flex-col items-center group">
+                            <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Prêmio</div>
+                            <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{(selectedBetAmount * multiplier).toFixed(1)} R$</div>
+                          </div>
+                          
+                          <div className="flex flex-col items-center group">
+                            <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Multiplicador</div>
+                            <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{multiplier.toFixed(1)}×</div>
+                          </div>
+                      </div>
+                      
+                        <button 
+                          onClick={startGame}
+                          disabled={!readyStatus}
+                          className={`relative w-full py-2.5 rounded-lg overflow-hidden transition-all ${
+                            readyStatus 
+                              ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white hover:shadow-glow' 
+                              : 'bg-white/10 text-white/40 cursor-not-allowed'
+                          }`}
+                        >
+                          {/* Animated shine effect */}
+                          {readyStatus && (
+                            <div className="absolute inset-0 w-full animate-shine"></div>
+                          )}
+                          
+                          <span className="relative z-10 font-medium tracking-wide uppercase text-sm">
+                            {readyStatus ? 'Iniciar Partida' : 'Aguardando jogadores...'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
               </div>
               
-              {/* Enhanced match info panel at the bottom - alinhado com as barras laterais */}
-              <div className="absolute bottom-4 inset-x-4">
-                <div className="relative">
-                  {/* Glow effect behind panel */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#A44BE1]/20 via-[#5271FF]/20 to-[#A44BE1]/20 rounded-xl blur-md -z-10 transform scale-105"></div>
-                  
-                  {/* Main panel */}
-                  <div className="bg-card-hover backdrop-blur-xl rounded-xl p-3 border border-border shadow-glow-sm">
-                    <div className="flex justify-between mb-2">
-                      <div className="flex flex-col items-center group">
-                        <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Entrada</div>
-                        <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{selectedBetAmount} R$</div>
-                      </div>
-                      
-                      <div className="flex flex-col items-center group">
-                        <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Prêmio</div>
-                        <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{(selectedBetAmount * multiplier).toFixed(1)} R$</div>
-                      </div>
-                      
-                      <div className="flex flex-col items-center group">
-                        <div className="text-xs text-white/70 uppercase tracking-wider group-hover:text-white/90 transition-all">Multiplicador</div>
-                        <div className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#A44BE1] to-[#5271FF] drop-shadow-glow">{multiplier.toFixed(1)}×</div>
-                      </div>
-                  </div>
-                  
+              {/* Enhanced right sidebar - Friends online instead of chat */}
+              <div className="w-80 bg-card backdrop-blur-md rounded-2xl p-5 ml-4 flex flex-col border border-border shadow-glow-sm overflow-hidden relative">
+                {/* Subtle top light streak effect */}
+                <div className="absolute -top-6 -left-6 w-20 h-32 bg-primary/5 rotate-45 blur-md"></div>
+                
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Amigos Online</h2>
+                  <div className="flex items-center space-x-2">
                     <button 
-                      onClick={startGame}
-                      disabled={!readyStatus}
-                      className={`relative w-full py-2.5 rounded-lg overflow-hidden transition-all ${
-                        readyStatus 
-                          ? 'bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white hover:shadow-glow' 
-                          : 'bg-white/10 text-white/40 cursor-not-allowed'
-                      }`}
+                      className="text-white/60 hover:text-white transition-colors" 
+                      onClick={() => fetchFriends()}
+                      title="Recarregar amigos"
                     >
-                      {/* Animated shine effect */}
-                      {readyStatus && (
-                        <div className="absolute inset-0 w-full animate-shine"></div>
-                      )}
-                      
-                      <span className="relative z-10 font-medium tracking-wide uppercase text-sm">
-                        {readyStatus ? 'Iniciar Partida' : 'Aguardando jogadores...'}
-                      </span>
+                      <RefreshCw size={16} />
+                    </button>
+                    <button 
+                      className="text-white/60 hover:text-white transition-colors" 
+                      onClick={() => setShowInviteModal(true)}
+                      title="Convidar amigos"
+                    >
+                      <LucideUserPlus size={16} />
                     </button>
                   </div>
                 </div>
-              </div>
-              </div>
-          </div>
-          
-          {/* Enhanced right sidebar - Friends online instead of chat */}
-          <div className="w-80 bg-card backdrop-blur-md rounded-2xl p-5 ml-4 flex flex-col border border-border shadow-glow-sm overflow-hidden relative">
-            {/* Subtle top light streak effect */}
-            <div className="absolute -top-6 -left-6 w-20 h-32 bg-primary/5 rotate-45 blur-md"></div>
-            
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-white/90 text-sm uppercase tracking-wider font-semibold">Amigos Online</h2>
-              <div className="flex items-center space-x-2">
-                <button 
-                  className="text-white/60 hover:text-white transition-colors" 
-                  onClick={() => fetchFriends()}
-                  title="Recarregar amigos"
+                
+                <div 
+                  className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" 
+                  style={{ 
+                    maxHeight: "calc(100% - 50px)",
+                    minHeight: "300px" // Garantir altura mínima para visibilidade
+                  }}
                 >
-                  <RefreshCw size={16} />
-                </button>
-                <button 
-                  className="text-white/60 hover:text-white transition-colors" 
-                  onClick={() => setShowInviteModal(true)}
-                  title="Convidar amigos"
-                >
-                  <LucideUserPlus size={16} />
-                </button>
-              </div>
-            </div>
-            
-            <div 
-              className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" 
-              style={{ 
-                maxHeight: "calc(100% - 50px)",
-                minHeight: "300px" // Garantir altura mínima para visibilidade
-              }}
-            >
-              {onlineFriends.length === 0 ? (
-                // Mostrar estado vazio
-                <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <LucideUsers size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/50 text-sm mb-2">Nenhum amigo online no momento</p>
-                  <button 
-                    onClick={() => setDefaultFriends()} 
-                    className="text-primary-light hover:text-primary text-xs underline"
-                  >
-                    Carregar amigos de exemplo
-                  </button>
-                </div>
-              ) : (
-                // Mostrar a lista de amigos
-                onlineFriends.map((friend) => (
-                  <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-primary/20 hover:bg-card transition-all group">
-                    <div 
-                      className="flex items-center cursor-pointer"
-                      onClick={() => router.push(`/profile/${friend.username || friend.name}`)}
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
-                          <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                            <Image
-                              src={friend.avatar}
-                              alt={friend.name}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                            />
+                  {onlineFriends.length === 0 ? (
+                    // Mostrar estado vazio
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                      <LucideUsers size={48} className="text-white/20 mb-4" />
+                      <p className="text-white/50 text-sm mb-2">Nenhum amigo online no momento</p>
+                      <button 
+                        onClick={() => setDefaultFriends()} 
+                        className="text-primary-light hover:text-primary text-xs underline"
+                      >
+                        Carregar amigos de exemplo
+                      </button>
+                    </div>
+                  ) : (
+                    // Mostrar a lista de amigos
+                    onlineFriends.map((friend) => (
+                      <div key={friend.id} className="flex items-center justify-between bg-card-hover backdrop-blur-xl rounded-lg px-3 py-2 border border-border hover:border-primary/20 hover:bg-card transition-all group">
+                        <div 
+                          className="flex items-center cursor-pointer"
+                          onClick={() => router.push(`/profile/${friend.username || friend.name}`)}
+                        >
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A44BE1]/20 to-[#5271FF]/20 p-0.5 overflow-hidden group-hover:from-[#A44BE1]/80 group-hover:to-[#5271FF]/80 transition-all duration-300">
+                              <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                                <Image
+                                  src={friend.avatar}
+                                  alt={friend.name}
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </div>
+                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#170A2E] ${
+                              friend.status === 'online' ? 'bg-green-500' : 
+                              friend.status === 'in_game' ? 'bg-yellow-500' : 'bg-gray-500'
+                            }`}></div>
+                          </div>
+                          <div className="ml-2">
+                            <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{friend.name}</div>
+                            <div className="text-xs text-white/50">Nível {friend.level}</div>
                           </div>
                         </div>
-                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#170A2E] ${
-                          friend.status === 'online' ? 'bg-green-500' : 
-                          friend.status === 'in_game' ? 'bg-yellow-500' : 'bg-gray-500'
-                        }`}></div>
+                        <button
+                          onClick={() => inviteFriend(friend.id)}
+                          className="px-2 py-1 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
+                        >
+                          <LucideUserPlus size={14} className="mr-1.5" />
+                          Convidar
+                        </button>
                       </div>
-                      <div className="ml-2">
-                        <div className="text-sm text-white group-hover:drop-shadow-glow transition-all hover:underline">{friend.name}</div>
-                        <div className="text-xs text-white/50">Nível {friend.level}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => inviteFriend(friend.id)}
-                      className="px-2 py-1 rounded bg-gradient-to-r from-[#A44BE1] to-[#5271FF] text-white text-sm flex items-center transition-all hover:shadow-glow"
-                    >
-                      <LucideUserPlus size={14} className="mr-1.5" />
-                      Convidar
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Modal para convidar amigos */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div 
-            className="bg-gradient-to-br from-card to-card-hover border border-border rounded-xl shadow-xl p-6 w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-white">Convidar Amigos</h3>
-              <button 
-                onClick={() => setShowInviteModal(false)}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <LucideX size={20} />
-              </button>
-            </div>
-            
-            {/* Usar o componente FriendSearch para buscar e convidar amigos reais */}
-            <FriendSearch 
-              onInviteFriend={async (friend) => {
-                // Verificar se o lobby pode receber mais jogadores
-                if (
-                  (lobbyType === 'solo' && players.length >= 1) ||
-                  (lobbyType === 'duo' && players.length >= 2) ||
-                  (lobbyType === 'squad' && players.length >= 4)
-                ) {
-                  toast.error('O lobby já está cheio');
-                  return;
-                }
-                
-                try {
-                  console.log('Iniciando processo de convite para:', friend.name);
-                  console.log('Informações do amigo:', friend);
-                  
-                  // Criar o lobby primeiro
-                  console.log('Criando lobby...');
-                  const createLobbyResponse = await axios.post('/api/lobby/create', {
-                    lobbyType: lobbyType,
-                    maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
-                  });
-                  
-                  console.log('Resposta da criação do lobby:', createLobbyResponse.data);
-                  
-                  if (createLobbyResponse.data.status !== 'success') {
-                    toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
-                    return;
-                  }
-                  
-                  const currentLobbyId = createLobbyResponse.data.lobbyId;
-                  console.log('Lobby criado com ID:', currentLobbyId);
-                  
-                  // Verificar se o ID do lobby é válido
-                  if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
-                    console.error('ID do lobby inválido:', currentLobbyId);
-                    toast.error('Erro: ID do lobby inválido');
-                    return;
-                  }
-                  
-                  // Enviar convite via API
-                  console.log('Enviando convite para o usuário:', friend.id, 'lobby:', currentLobbyId);
-                  const response = await axios.post('/api/lobby/invite', {
-                    recipientId: friend.id,
-                    lobbyId: currentLobbyId
-                  });
-                  
-                  console.log('Resposta do envio de convite:', response.data);
-                  
-                  if (response.data.status === 'success') {
-                    toast.success(`Convite enviado para ${friend.name}`);
-                    
-                    // Adicionar mensagem ao chat
-                    setChatMessages([...chatMessages, {
-                      id: chatMessages.length + 1,
-                      user: 'Sistema',
-                      message: `Convite enviado para ${friend.name}.`,
-                      isSystem: true
-                    }]);
-                  } else {
-                    toast.error(response.data.error || 'Erro ao enviar convite');
-                  }
-                  
-                  // Fechar o modal
-                  setShowInviteModal(false);
-                } catch (error) {
-                  console.error('Erro detalhado ao enviar convite:', error);
-                  if (axios.isAxiosError(error)) {
-                    console.error('Detalhes da resposta:', error.response?.data);
-                    toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
-                  } else {
-                    toast.error('Falha ao enviar convite para o lobby');
-                  }
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Modal para partida encontrada */}
-      {showMatchRoomModal && foundMatch && (
-        <MatchRoomModal 
-          match={foundMatch}
-          isOpen={showMatchRoomModal}
-          onClose={handleCloseRoomModal}
-          onSubmitResult={handleSubmitResult}
-          isOfficialRoom={isConnectingToOfficialRoom}
-          officialRoomData={selectedOfficialRoom}
-        />
-      )}
-      
-      {/* Modal para submeter resultado */}
-      {showSubmitResultModal && foundMatch && (
-        <SubmitResultModal 
-          match={foundMatch}
-          isOpen={showSubmitResultModal}
-          onClose={() => setShowSubmitResultModal(false)}
-          onSubmit={handleResultSubmit}
-        />
-      )}
-      
-      {/* Busca de partida */}
-      {isSearchingMatch && !foundMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="max-w-md w-full mx-auto">
-            {waitingId ? (
-              <MatchmakingStatus
-                waitingId={waitingId}
-                userId={user?.id || ''}
-                mode={lobbyType}
-                onMatchFound={handleMatchFound}
-                onCancel={handleCancelMatchmaking}
-              />
-            ) : (
-              <div className="bg-gray-900 p-8 rounded-lg text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-900/30 flex items-center justify-center">
-                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                    ))
+                  )}
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Iniciando busca...</h3>
-                <p className="text-gray-400">Preparando para encontrar uma partida</p>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* Animação de partida completa */}
-      <AnimatePresence>
-        {matchCompleted && (
-          <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div 
-              className="bg-primary/20 backdrop-blur-lg p-8 rounded-xl border border-primary/30 shadow-glow text-center"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                <CheckCircle className="text-green-500" size={80} />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Resultado Enviado!</h2>
-              <p className="text-white/80 mb-6">Nosso time irá revisar o resultado em breve.</p>
-              <button
-                onClick={() => setMatchCompleted(false)}
-                className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg transition-colors"
+            </div>
+          </main>
+
+          {/* Modal para convidar amigos */}
+          {showInviteModal && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div 
+                className="bg-gradient-to-br from-card to-card-hover border border-border rounded-xl shadow-xl p-6 w-full max-w-md"
+                onClick={(e) => e.stopPropagation()}
               >
-                Voltar ao Lobby
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Adicionar o MatchmakingListener controlado pelo estado */}
-      {user?.id && <MatchmakingListener userId={user.id} isActive={isSearchingMatch} />}
-
-      {/* Adicionar botão de regras no canto superior direito */}
-      <button
-        onClick={() => setShowRulesModal(true)}
-        className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#A44BE1] to-[#5271FF] p-2 rounded-full shadow-glow hover:shadow-glow-lg transition-all duration-300"
-        title="Regras do Jogo"
-      >
-        <Shield size={24} className="text-white" />
-      </button>
-
-      {/* Modal de Regras */}
-      <AnimatePresence>
-        {showRulesModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowRulesModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#171335] rounded-xl overflow-hidden shadow-xl border border-[#3D2A85]/20 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <Shield size={24} className="text-[#8860FF]" />
-                    Regras do Jogo
-                  </h2>
-                  <button
-                    onClick={() => setShowRulesModal(false)}
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-white">Convidar Amigos</h3>
+                  <button 
+                    onClick={() => setShowInviteModal(false)}
                     className="text-white/60 hover:text-white transition-colors"
                   >
-                    <X size={24} />
+                    <LucideX size={20} />
+                  </button>
+                </div>
+                
+                {/* Usar o componente FriendSearch para buscar e convidar amigos reais */}
+                <FriendSearch 
+                  onInviteFriend={async (friend) => {
+                    // Verificar se o lobby pode receber mais jogadores
+                    if (
+                      (lobbyType === 'solo' && players.length >= 1) ||
+                      (lobbyType === 'duo' && players.length >= 2) ||
+                      (lobbyType === 'squad' && players.length >= 4)
+                    ) {
+                      toast.error('O lobby já está cheio');
+                      return;
+                    }
+                    
+                    try {
+                      console.log('Iniciando processo de convite para:', friend.name);
+                      console.log('Informações do amigo:', friend);
+                      
+                      // Criar o lobby primeiro
+                      console.log('Criando lobby...');
+                      const createLobbyResponse = await axios.post('/api/lobby/create', {
+                        lobbyType: lobbyType,
+                        maxPlayers: lobbyType === 'solo' ? 1 : lobbyType === 'duo' ? 2 : 4
+                      });
+                      
+                      console.log('Resposta da criação do lobby:', createLobbyResponse.data);
+                      
+                      if (createLobbyResponse.data.status !== 'success') {
+                        toast.error('Erro ao criar lobby: ' + (createLobbyResponse.data.error || 'Erro desconhecido'));
+                        return;
+                      }
+                      
+                      const currentLobbyId = createLobbyResponse.data.lobbyId;
+                      console.log('Lobby criado com ID:', currentLobbyId);
+                      
+                      // Verificar se o ID do lobby é válido
+                      if (!currentLobbyId || typeof currentLobbyId !== 'string' || currentLobbyId.length !== 24) {
+                        console.error('ID do lobby inválido:', currentLobbyId);
+                        toast.error('Erro: ID do lobby inválido');
+                        return;
+                      }
+                      
+                      // Enviar convite via API
+                      console.log('Enviando convite para o usuário:', friend.id, 'lobby:', currentLobbyId);
+                      const response = await axios.post('/api/lobby/invite', {
+                        recipientId: friend.id,
+                        lobbyId: currentLobbyId
+                      });
+                      
+                      console.log('Resposta do envio de convite:', response.data);
+                      
+                      if (response.data.status === 'success') {
+                        toast.success(`Convite enviado para ${friend.name}`);
+                        
+                        // Adicionar mensagem ao chat
+                        setChatMessages([...chatMessages, {
+                          id: chatMessages.length + 1,
+                          user: 'Sistema',
+                          message: `Convite enviado para ${friend.name}.`,
+                          isSystem: true
+                        }]);
+                      } else {
+                        toast.error(response.data.error || 'Erro ao enviar convite');
+                      }
+                      
+                      // Fechar o modal
+                      setShowInviteModal(false);
+                    } catch (error) {
+                      console.error('Erro detalhado ao enviar convite:', error);
+                      if (axios.isAxiosError(error)) {
+                        console.error('Detalhes da resposta:', error.response?.data);
+                        toast.error('Falha ao enviar convite: ' + (error.response?.data?.error || error.message));
+                      } else {
+                        toast.error('Falha ao enviar convite para o lobby');
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Modal para partida encontrada */}
+          {showMatchRoomModal && foundMatch && (
+            <MatchRoomModal 
+              match={foundMatch}
+              isOpen={showMatchRoomModal}
+              onClose={handleCloseRoomModal}
+              onSubmitResult={handleSubmitResult}
+              isOfficialRoom={isConnectingToOfficialRoom}
+              officialRoomData={selectedOfficialRoom}
+            />
+          )}
+          
+          {/* Modal para submeter resultado */}
+          {showSubmitResultModal && foundMatch && (
+            <SubmitResultModal 
+              match={foundMatch}
+              isOpen={showSubmitResultModal}
+              onClose={() => setShowSubmitResultModal(false)}
+              onSubmit={handleResultSubmit}
+            />
+          )}
+          
+          {/* Busca de partida */}
+          {isSearchingMatch && !foundMatch && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+              <div className="max-w-md w-full mx-auto">
+                {waitingId ? (
+                  <MatchmakingStatus
+                    waitingId={waitingId}
+                    userId={user?.id || ''}
+                    mode={lobbyType}
+                    onMatchFound={handleMatchFound}
+                    onCancel={handleCancelMatchmaking}
+                  />
+                ) : (
+                  <div className="bg-gray-900 p-8 rounded-lg text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-900/30 flex items-center justify-center">
+                      <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Iniciando busca...</h3>
+                    <p className="text-gray-400">Preparando para encontrar uma partida</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Animação de partida completa */}
+          <AnimatePresence>
+            {matchCompleted && (
+              <motion.div 
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <motion.div 
+                  className="bg-primary/20 backdrop-blur-lg p-8 rounded-xl border border-primary/30 shadow-glow text-center"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                    <CheckCircle className="text-green-500" size={80} />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Resultado Enviado!</h2>
+                  <p className="text-white/80 mb-6">Nosso time irá revisar o resultado em breve.</p>
+                  <button
+                    onClick={() => setMatchCompleted(false)}
+                    className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg transition-colors"
+                  >
+                    Voltar ao Lobby
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Adicionar o MatchmakingListener controlado pelo estado */}
+          {user?.id && <MatchmakingListener userId={user.id} isActive={isSearchingMatch} />}
+
+          {/* Adicionar botão de regras no canto superior direito */}
+          <button
+            onClick={() => setShowRulesModal(true)}
+            className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#A44BE1] to-[#5271FF] p-2 rounded-full shadow-glow hover:shadow-glow-lg transition-all duration-300"
+            title="Regras do Jogo"
+          >
+            <Shield size={24} className="text-white" />
+          </button>
+
+          {/* Modal de Regras */}
+          {showRulesModal && (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+              <div className="bg-rpx-blue/90 rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto relative border border-rpx-orange/50">
+                <button
+                  onClick={() => setShowRulesModal(false)}
+                  className="absolute top-4 right-4 text-white/70 hover:text-white"
+                >
+                  <X size={24} />
+                </button>
+                
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-rpx-orange">Regras do Jogo</h2>
+                  <p className="text-white/70 mt-2">
+                    Estas são as regras que todos os jogadores devem seguir. Violações podem resultar em penalidades.
+                  </p>
+                </div>
+                
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-white mb-3">Regras Gerais</h3>
+                  <ul className="list-disc list-inside space-y-2 text-white/90">
+                    {gameRules.general.map((rule, index) => (
+                      <li key={index} className="pl-2">{rule}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {lobbyType === 'solo' && (
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-white mb-3">
+                      Regras Específicas - {gameplayMode === 'infinite_ice' ? 'Gelo Infinito' : 'Gelo Finito'}
+                    </h3>
+                    <ul className="list-disc list-inside space-y-2 text-white/90">
+                      {gameplayMode === 'infinite_ice' ? (
+                        gameRules.x1.infiniteIce.map((rule, index) => (
+                          <li key={index} className="pl-2">{rule}</li>
+                        ))
+                      ) : (
+                        gameRules.x1.normalIce.map((rule, index) => (
+                          <li key={index} className="pl-2">{rule}</li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                )}
+                
+                {(lobbyType === 'duo' || lobbyType === 'squad') && (
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold text-white mb-3">
+                      Regras Específicas - {gameplayMode === 'tactical' ? 'Modo Tático' : 'Modo Normal'}
+                    </h3>
+                    <p className="text-white/70 italic">
+                      {gameplayMode === 'tactical'
+                        ? "No modo tático, a estratégia em equipe é essencial. Foco em posicionamento e comunicação."
+                        : "No modo normal, siga as regras gerais e jogue de forma limpa e justa com sua equipe."}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setShowRulesModal(false)}
+                    className="bg-rpx-orange hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-md transition-colors"
+                  >
+                    Entendi
                   </button>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Regras Gerais */}
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                      <Globe size={20} className="text-[#8860FF]" />
-                      Regras Gerais
-                    </h3>
-                    <ul className="space-y-2">
-                      {gameRules.general.map((rule, index) => (
-                        <li key={index} className="flex items-start gap-2 text-white/90">
-                          <div className="min-w-[20px] h-5 flex items-center justify-center">
-                            <Check size={16} className="text-[#8860FF]" />
-                          </div>
-                          <span>{rule}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Regras X1 */}
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                      <Users size={20} className="text-[#8860FF]" />
-                      Regras X1
-                    </h3>
-                    
-                    {/* Gelo Infinito */}
-                    <div className="mb-4">
-                      <h4 className="text-lg font-medium text-white/90 mb-2 flex items-center gap-2">
-                        <Zap size={18} className="text-[#8860FF]" />
-                        Gelo Infinito
-                      </h4>
-                      <ul className="space-y-2">
-                        {gameRules.x1.infiniteIce.map((rule, index) => (
-                          <li key={index} className="flex items-start gap-2 text-white/90">
-                            <div className="min-w-[20px] h-5 flex items-center justify-center">
-                              <Check size={16} className="text-[#8860FF]" />
-                            </div>
-                            <span>{rule}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Gelo Normal */}
-                    <div>
-                      <h4 className="text-lg font-medium text-white/90 mb-2 flex items-center gap-2">
-                        <Shield size={18} className="text-[#8860FF]" />
-                        Gelo Normal
-                      </h4>
-                      <ul className="space-y-2">
-                        {gameRules.x1.normalIce.map((rule, index) => (
-                          <li key={index} className="flex items-start gap-2 text-white/90">
-                            <div className="min-w-[20px] h-5 flex items-center justify-center">
-                              <Check size={16} className="text-[#8860FF]" />
-                            </div>
-                            <span>{rule}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                {/* Botão para ver regras */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowRulesModal(true)}
+                    className="w-full flex justify-center items-center py-2 px-4 bg-rpx-blue/20 border border-rpx-orange/40 text-white rounded-md hover:bg-rpx-blue/30 transition-colors"
+                  >
+                    <Book size={16} className="mr-2 text-rpx-orange" />
+                    Ver Regras do Jogo
+                  </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 } 
