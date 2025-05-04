@@ -48,6 +48,15 @@ export default function ProfileBanner() {
         {/* Gradiente de sobreposição */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0D0A2A] via-transparent to-[#0D0A2A]/60"></div>
         
+        {/* Imagem do troféu acima do botão de editar */}
+        <div className="absolute bottom-16 right-[20px] flex flex-col items-center z-10">
+          <img 
+            src="/images/trofeus/nacional.png" 
+            alt="Troféu Nacional" 
+            className="h-40 drop-shadow-lg mb-1" 
+          />
+        </div>
+        
         {/* Botão de editar */}
         <button 
           onClick={() => setShowSelector(true)}

@@ -8,7 +8,8 @@ import {
   User, Lock, Shield, Activity, LogOut, Edit, ChevronRight, 
   Clock, Award, Star, Calendar, Gift, Settings, Zap,
   PieChart, TrendingUp, Users, MessageCircle, Cpu, Bookmark, X, Check,
-  Instagram, Twitter, Facebook, Youtube, Twitch, MessageSquare, ShoppingCart
+  Instagram, Twitter, Facebook, Youtube, Twitch, MessageSquare, ShoppingCart,
+  ChevronLeft
 } from 'react-feather';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Medal } from '@/components/ui/icons';
@@ -121,6 +122,26 @@ interface Friend {
   };
 }
 
+// Interface para Insignias
+interface Insignia {
+  id: string;
+  nome: string;
+  descricao: string;
+  imagem: string;
+  data: string;
+  raridade: 'comum' | 'rara' | 'epica' | 'lendaria';
+}
+
+// Interface para Troféus
+interface Trofeu {
+  id: string;
+  nome: string;
+  descricao: string;
+  imagem: string;
+  data: string;
+  tipo: 'ouro' | 'prata' | 'bronze' | 'platina' | 'diamante';
+}
+
 // Definir um rank padrão para uso quando não houver rank disponível
 const defaultRank: Rank = {
   name: 'Novato',
@@ -143,6 +164,181 @@ export default function ProfilePage() {
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [user, setUser] = useState<ProfileUser | null>(null);
+  
+  // Estados para controlar os carousels
+  const [insigniaAtual, setInsigniaAtual] = useState(0);
+  const [trofeuAtual, setTrofeuAtual] = useState(0);
+  
+  // Dados de exemplo para as insignias
+  const insignias: Insignia[] = [
+    {
+      id: '1',
+      nome: 'Season 1',
+      descricao: 'Season 1',
+      imagem: '/images/insignias/0RPX-01.png',
+      data: '2023-01-10',
+      raridade: 'comum'
+    },
+    {
+      id: '2',
+      nome: 'Season 3',
+      descricao: 'Season 3',
+      imagem: '/images/insignias/0RPX-03.png',
+      data: '2023-01-15',
+      raridade: 'comum'
+    },
+    {
+      id: '3',
+      nome: 'Season 6',
+      descricao: 'Season 6',
+      imagem: '/images/insignias/0RPX-06.png',
+      data: '2023-02-20',
+      raridade: 'rara'
+    },
+    {
+      id: '4',
+      nome: 'Season 12',
+      descricao: 'Season 12',
+      imagem: '/images/insignias/0RPX-12.png',
+      data: '2023-03-05',
+      raridade: 'rara'
+    },
+    {
+      id: '5',
+      nome: 'Season 18',
+      descricao: 'Season 18',
+      imagem: '/images/insignias/0RPX-18.png',
+      data: '2023-03-15',
+      raridade: 'epica'
+    },
+    {
+      id: '6',
+      nome: 'Season 24',
+      descricao: 'Season 24',
+      imagem: '/images/insignias/0RPX-24.png',
+      data: '2023-04-01',
+      raridade: 'lendaria'
+    },
+    {
+      id: '7',
+      nome: 'Participação da Copa RPX S1',
+      descricao: 'Participação da Copa RPX S1',
+      imagem: '/images/insignias/1Joguei-Copa-RPX-S1.png',
+      data: '2023-04-10',
+      raridade: 'rara'
+    },
+    {
+      id: '8',
+      nome: 'MVP Copa RPX S1',
+      descricao: 'MVP Copa RPX S1',
+      imagem: '/images/insignias/1MVP-Copa-RPX-S1.png',
+      data: '2023-04-15',
+      raridade: 'epica'
+    },
+    {
+      id: '9',
+      nome: 'Participação da Copa RPX S2',
+      descricao: 'Participação da Copa RPX S2',
+      imagem: '/images/insignias/2Joguei-liga-RPX-S1.png',
+      data: '2023-05-01',
+      raridade: 'rara'
+    },
+    {
+      id: '10',
+      nome: 'MVP Copa RPX S2',
+      descricao: 'MVP Copa RPX S2',
+      imagem: '/images/insignias/2MVP-liga-RPX-S1.png',
+      data: '2023-05-15',
+      raridade: 'epica'
+    },
+    {
+      id: '11',
+      nome: 'Apoiador Inicial',
+      descricao: 'Apoiador Inicial',
+      imagem: '/images/insignias/Apoiador-Inicial.png',
+      data: '2023-06-01',
+      raridade: 'lendaria'
+    },
+    {
+      id: '12',
+      nome: 'Beta',
+      descricao: 'Beta',
+      imagem: '/images/insignias/Beta_Player.png',
+      data: '2023-06-15',
+      raridade: 'rara'
+    },
+    {
+      id: '13',
+      nome: 'Premium RPX',
+      descricao: 'Premium RPX',
+      imagem: '/images/insignias/Premium-RPX.png',
+      data: '2023-07-01',
+      raridade: 'lendaria'
+    },
+    {
+      id: '14',
+      nome: 'Staff',
+      descricao: 'Staff',
+      imagem: '/images/insignias/Staff.png',
+      data: '2023-07-15',
+      raridade: 'lendaria'
+    }
+  ];
+  
+  // Dados de exemplo para os troféus
+  const trofeus: Trofeu[] = [
+    {
+      id: '1',
+      nome: 'Torneio Regional',
+      descricao: 'Vencedor do torneio regional',
+      imagem: '/images/trofeus/regional.png',
+      data: '2023-02-15',
+      tipo: 'bronze'
+    },
+    {
+      id: '2',
+      nome: 'Campeonato Estadual',
+      descricao: 'Segundo lugar no campeonato estadual',
+      imagem: '/images/trofeus/estadual.png',
+      data: '2023-03-20',
+      tipo: 'prata'
+    },
+    {
+      id: '3',
+      nome: 'Copa Nacional',
+      descricao: 'Vencedor da copa nacional',
+      imagem: '/images/trofeus/nacional.png',
+      data: '2023-05-10',
+      tipo: 'ouro'
+    },
+    {
+      id: '4',
+      nome: 'Campeonato Mundial',
+      descricao: 'Top 10 no campeonato mundial',
+      imagem: '/images/trofeus/mundial.png',
+      data: '2023-06-30',
+      tipo: 'platina'
+    }
+  ];
+  
+  // Funções para navegação dos carousels
+  const proximaInsignia = () => {
+    const totalGroups = Math.ceil(insignias.length / 5);
+    setInsigniaAtual((prev) => (prev === totalGroups - 1 ? 0 : prev + 1));
+  };
+  
+  const insigniaAnterior = () => {
+    const totalGroups = Math.ceil(insignias.length / 5);
+    setInsigniaAtual((prev) => (prev === 0 ? totalGroups - 1 : prev - 1));
+  };
+  
+  const proximoTrofeu = () => {
+    setTrofeuAtual((prev) => (prev === trofeus.length - 1 ? 0 : prev + 1));
+  };
+  
+  const trofeuAnterior = () => {
+    setTrofeuAtual((prev) => (prev === 0 ? trofeus.length - 1 : prev - 1));
+  };
 
   // Redirecionar para login se não estiver autenticado
   useEffect(() => {
@@ -661,6 +857,63 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   
+                  {/* Carousel de Insígnias abaixo do rank */}
+                  <div className="mt-[-15px] mb-8 bg-gradient-to-r from-[#232048] to-[#28254f] rounded-lg border border-[#3D2A85]/20 py-2 w-[calc(100%-45px)] mx-auto">
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center space-x-4 mb-1 justify-center">
+                        {Array.from({ length: Math.min(5, insignias.length) }).map((_, i) => {
+                          const index = insigniaAtual * 5 + i;
+                          if (index >= insignias.length) return null;
+                          const insignia = insignias[index];
+                          return (
+                            <div 
+                              key={insignia.id} 
+                              className="w-10 h-10 flex items-center justify-center group relative"
+                              title={insignia.nome}
+                            >
+                              {insignia.imagem ? (
+                                <img 
+                                  src={insignia.imagem} 
+                                  alt={insignia.nome}
+                                  className="w-full h-full object-contain" 
+                                  onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white text-xs font-bold">${insignia.nome.charAt(0)}</div>`;
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                  {insignia.nome.charAt(0)}
+                                </div>
+                              )}
+                              
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-black/80 text-white text-xs p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <div className="font-bold text-center">{insignia.nome}</div>
+                                <div className="text-center text-gray-300 text-[10px]">{insignia.descricao}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Indicadores de navegação por grupo */}
+                      <div className="flex justify-center space-x-1">
+                        {Array.from({ length: Math.ceil(insignias.length / 5) }).map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setInsigniaAtual(index)}
+                            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                              index === Math.floor(insigniaAtual / 5) ? 'bg-[#8860FF]' : 'bg-[#3D2A85]/30 hover:bg-[#3D2A85]/50'
+                            }`}
+                            aria-label={`Ir para grupo de insignias ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Links rápidos */}
                   <div className="border-t border-[#3D2A85]/50">
                     <Link 
@@ -897,10 +1150,210 @@ export default function ProfilePage() {
                       <h2 className="text-lg font-bold text-white">Conquistas e Insígnias</h2>
                     </div>
                     
-                    <div className="bg-[#232048] rounded-lg p-8 text-center">
-                      <Trophy size={32} className="mx-auto mb-3 text-[#A89ECC]" />
-                      <h4 className="text-lg font-medium text-white mb-1">Conquistas em breve</h4>
-                      <p className="text-[#A89ECC]">Suas conquistas e insígnias serão exibidas aqui.</p>
+                    {/* Seção de Insignias */}
+                    <div className="mb-8">
+                      <h3 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
+                        <Award size={16} className="text-[#F3A953]" />
+                        INSIGNIAS
+                      </h3>
+                      
+                      {insignias.length > 0 ? (
+                        <div className="bg-[#232048] rounded-lg p-4 relative">
+                          {/* Carousel de Insignias */}
+                          <div className="flex flex-col items-center justify-center py-4">
+                            {/* Detalhes da insignia selecionada */}
+                            <div className="text-center px-12 mb-3">
+                              <div className="flex justify-center mb-3">
+                                <div className="relative w-24 h-24 mb-2 flex items-center justify-center">
+                                  {insignias[insigniaAtual * 5]?.imagem ? (
+                                    <img 
+                                      src={insignias[insigniaAtual * 5].imagem} 
+                                      alt={insignias[insigniaAtual * 5].nome}
+                                      className="w-full h-full object-contain" 
+                                      onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white text-lg font-bold">${insignias[insigniaAtual * 5].nome.charAt(0)}</div>`;
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold">
+                                      {insignias[insigniaAtual * 5]?.nome?.charAt(0) || '?'}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <h4 className="text-white font-medium">{insignias[insigniaAtual * 5]?.nome || 'Carregando...'}</h4>
+                              <p className="text-sm text-[#A89ECC] mt-1">{insignias[insigniaAtual * 5]?.descricao || ''}</p>
+                              <p className="text-xs text-[#8860FF] mt-2">
+                                {insignias[insigniaAtual * 5]?.data ? new Date(insignias[insigniaAtual * 5].data).toLocaleDateString('pt-BR') : ''}
+                              </p>
+                            </div>
+                            
+                            {/* Barra de insignias do grupo atual */}
+                            <div className="bg-[#171335]/40 backdrop-blur-sm rounded-lg border border-[#3D2A85]/20 p-2 mb-4 max-w-md">
+                              <div className="flex items-center space-x-4 mb-1 justify-center">
+                                {Array.from({ length: Math.min(5, insignias.length) }).map((_, i) => {
+                                  const index = insigniaAtual * 5 + i;
+                                  if (index >= insignias.length) return null;
+                                  const insignia = insignias[index];
+                                  return (
+                                    <div 
+                                      key={insignia.id} 
+                                      className="w-10 h-10 flex items-center justify-center group relative"
+                                      title={insignia.nome}
+                                    >
+                                      {insignia.imagem ? (
+                                        <img 
+                                          src={insignia.imagem} 
+                                          alt={insignia.nome}
+                                          className="w-full h-full object-contain" 
+                                          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                            target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white text-xs font-bold">${insignia.nome.charAt(0)}</div>`;
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                          {insignia.nome.charAt(0)}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Tooltip */}
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-black/80 text-white text-xs p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <div className="font-bold text-center">{insignia.nome}</div>
+                                        <div className="text-center text-gray-300 text-[10px]">{insignia.descricao}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Indicadores */}
+                            <div className="flex justify-center mt-2 space-x-1">
+                              {Array.from({ length: Math.ceil(insignias.length / 5) }).map((_, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setInsigniaAtual(index)}
+                                  className={`w-2 h-2 rounded-full transition-colors ${
+                                    index === insigniaAtual ? 'bg-[#8860FF]' : 'bg-[#3D2A85]/50'
+                                  }`}
+                                  aria-label={`Ir para grupo de insignias ${index + 1}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-[#232048] rounded-lg p-8 text-center">
+                          <Award size={32} className="mx-auto mb-3 text-[#A89ECC]" />
+                          <h4 className="text-lg font-medium text-white mb-1">Nenhuma insignia conquistada</h4>
+                          <p className="text-[#A89ECC]">Continue jogando para desbloquear insignias.</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Seção de Troféus */}
+                    <div>
+                      <h3 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
+                        <Trophy size={16} className="text-[#F3D253]" />
+                        TROFÉUS
+                      </h3>
+                      
+                      {trofeus.length > 0 ? (
+                        <div className="bg-[#232048] rounded-lg p-4 relative">
+                          {/* Carousel de Troféus */}
+                          <div className="flex flex-col items-center justify-center py-4">
+                            {/* Detalhes do troféu selecionado */}
+                            <div className="text-center px-12 mb-3">
+                              <div className="flex justify-center mb-3">
+                                <div className="relative w-24 h-24 mb-2 flex items-center justify-center">
+                                  {trofeus[trofeuAtual]?.imagem ? (
+                                    <img 
+                                      src={trofeus[trofeuAtual].imagem} 
+                                      alt={trofeus[trofeuAtual].nome}
+                                      className="w-full h-full object-contain" 
+                                      onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white text-lg font-bold">${trofeus[trofeuAtual].nome.charAt(0)}</div>`;
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold">
+                                      {trofeus[trofeuAtual]?.nome?.charAt(0) || '?'}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <h4 className="text-white font-medium">{trofeus[trofeuAtual]?.nome || 'Carregando...'}</h4>
+                              <p className="text-sm text-[#A89ECC] mt-1">{trofeus[trofeuAtual]?.descricao || ''}</p>
+                              <p className="text-xs text-[#8860FF] mt-2">
+                                {trofeus[trofeuAtual]?.data ? new Date(trofeus[trofeuAtual].data).toLocaleDateString('pt-BR') : ''}
+                              </p>
+                            </div>
+                            
+                            {/* Barra de troféus */}
+                            <div className="bg-[#171335]/40 backdrop-blur-sm rounded-lg border border-[#3D2A85]/20 p-2 mb-4 max-w-md">
+                              <div className="flex items-center space-x-3 justify-center">
+                                {trofeus.map((trofeu, index) => (
+                                  <div 
+                                    key={trofeu.id} 
+                                    className={`w-8 h-8 flex items-center justify-center group relative ${index === trofeuAtual ? 'scale-110' : ''}`}
+                                    title={trofeu.nome}
+                                    onClick={() => setTrofeuAtual(index)}
+                                  >
+                                    {trofeu.imagem ? (
+                                      <img 
+                                        src={trofeu.imagem} 
+                                        alt={trofeu.nome}
+                                        className="w-full h-full object-contain" 
+                                        onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white text-xs font-bold">${trofeu.nome.charAt(0)}</div>`;
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                        {trofeu.nome.charAt(0)}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-black/80 text-white text-xs p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                      <div className="font-bold text-center">{trofeu.nome}</div>
+                                      <div className="text-center text-gray-300 text-[10px]">{trofeu.descricao}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Indicadores */}
+                            <div className="flex justify-center mt-2 space-x-1">
+                              {trofeus.map((_, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setTrofeuAtual(index)}
+                                  className={`w-2 h-2 rounded-full transition-colors ${
+                                    index === trofeuAtual ? 'bg-[#8860FF]' : 'bg-[#3D2A85]/50'
+                                  }`}
+                                  aria-label={`Troféu ${index + 1}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-[#232048] rounded-lg p-8 text-center">
+                          <Trophy size={32} className="mx-auto mb-3 text-[#A89ECC]" />
+                          <h4 className="text-lg font-medium text-white mb-1">Nenhum troféu conquistado</h4>
+                          <p className="text-[#A89ECC]">Participe de torneios para ganhar troféus.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

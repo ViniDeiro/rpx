@@ -70,6 +70,7 @@ interface GameRules {
     infiniteIce: string[];
     normalIce: string[];
   };
+  tactical: string[]; // Nova seção para regras do modo tático
 }
 
 // Definir as regras
@@ -109,7 +110,37 @@ const gameRules: GameRules = {
       "VALE 2 DE RUSH",
       "VALE SE TRANCAR/TRANCAR INIMIGO"
     ]
-  }
+  },
+  tactical: [
+    "SEM SUBIR EM CASA",
+    "DESERT NÃO VALE NEM NO 1º ROUND",
+    "PLATAFORMA DE OBS E TODOS OS CONTAINERS VALE",
+    "TODOS OS SKIPS VALE",
+    "VÁLIDO SUBIR NOS CAMINHÕES",
+    "SEM SKYLER",
+    "SEM ÁLVARO",
+    "SEM HOMERO",
+    "SEM JUSTIN BIEBER",
+    "SEM ÍRIS",
+    "SEM A124",
+    "SEM WOLFRAH",
+    "SEM RAFAEL",
+    "SEM ORION",
+    "SEM SONIA",
+    "SEM IGNIS",
+    "SEM RYDEN",
+    "SEM KAIROS",
+    "SEM DRAKINHO",
+    "SEM ARITA",
+    "SEM MANDRAKO",
+    "SEM AWP",
+    "SEM M590",
+    "SEM BARRET",
+    "SEM AC80",
+    "SEM CARGA EXTRA",
+    "SEM DESERT",
+    "SEM GRANADA"
+  ]
 };
 
 // Adicionar esta função auxiliar após as definições de interfaces no início do arquivo (antes da função principal)
@@ -2231,6 +2262,18 @@ export default function LobbyPage() {
                   </ul>
                 </div>
                 
+                {/* Regras do Modo Tático (sempre exibir) */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-white mb-3">
+                    Regras do Modo Tático
+                  </h3>
+                  <ul className="list-disc list-inside space-y-2 text-white/90">
+                    {gameRules.tactical.map((rule, index) => (
+                      <li key={index} className="pl-2">{rule}</li>
+                    ))}
+                  </ul>
+                </div>
+                
                 {lobbyType === 'solo' && (
                   <div className="mb-6">
                     <h3 className="text-xl font-semibold text-white mb-3">
@@ -2247,19 +2290,6 @@ export default function LobbyPage() {
                         ))
                       )}
                     </ul>
-                  </div>
-                )}
-                
-                {(lobbyType === 'duo' || lobbyType === 'squad') && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-white mb-3">
-                      Regras Específicas - {gameplayMode === 'tactical' ? 'Modo Tático' : 'Modo Normal'}
-                    </h3>
-                    <p className="text-white/70 italic">
-                      {gameplayMode === 'tactical'
-                        ? "No modo tático, a estratégia em equipe é essencial. Foco em posicionamento e comunicação."
-                        : "No modo normal, siga as regras gerais e jogue de forma limpa e justa com sua equipe."}
-                    </p>
                   </div>
                 )}
                 
